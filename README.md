@@ -311,6 +311,13 @@ co minutę buduje i publikuje każdy nowy commit na `main`. Na komputerze z prog
 `RUSTEXPLORER_UPDATE_URL=off` wyłącza aktualizacje, a inny adres `latest.json` w tej zmiennej
 kieruje je gdzie indziej. Przebieg aktualizacji zapisuje się w `%APPDATA%\RustExplorer\update.log`.
 
+## O autorze
+
+RustExplorera napisał **Jarosław Hartwich** ([github.com/jarx-dev](https://github.com/jarx-dev)).
+To samo znajdziesz w programie: Plik → „O programie”.
+
+Jeśli RustExplorer Ci się przydaje, możesz [postawić mi kawę](https://buymeacoffee.com/jarx) ☕
+
 ## Licencja
 
 [MIT](LICENSE). Katalog `patches/windows-link` to łatka crate'a
