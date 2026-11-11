@@ -144,6 +144,26 @@ impl App {
         resp.on_hover_text("Pokaż wszystkie foldery na tym poziomie").clicked()
     }
 
+    /// The Zakładki group takes a dragged tab or address-bar folder as a new bookmark, as a browser's bar does.
+    fn bookmark_drop_zone(&mut self, ui: &Ui, zone: Rect) {
+        let ctx = ui.ctx();
+        let tab = egui::DragAndDrop::payload::<DraggedTab>(ctx).and_then(|t| self.tabs.get(t.0)).map(|t| t.path.clone());
+        let Some(p) = tab.or_else(|| egui::DragAndDrop::payload::<DraggedPath>(ctx).map(|d| d.0.clone())) else { return };
+        if is_pc(&p) || !ui.rect_contains_pointer(zone) {
+            return;
+        }
+        let known = self.bookmarks.contains(&p);
+        ui.painter().rect(zone.shrink(2.0), cr(6.0), pal().accent.gamma_multiply(0.10), Stroke::new(2.0, pal().accent), StrokeKind::Inside);
+        self.tab_target = Some(if known { "Już jest w zakładkach" } else { "Dodaj do zakładek" });
+        if ui.input(|i| i.pointer.any_released()) {
+            let _ = egui::DragAndDrop::take_payload::<DraggedTab>(ctx);
+            let _ = egui::DragAndDrop::take_payload::<DraggedPath>(ctx);
+            // open, so the new bookmark shows where it was dropped
+            self.tree_open.insert(PathBuf::from("::zakladki"));
+            self.pending.push(Act::AddBookmark(p));
+        }
+    }
+
     pub(crate) fn tree(&mut self, ui: &mut Ui) {
         // the way to the current folder shows under the deepest pin of Widok główny or Zakładki
         // holding it (Widok główny on a tie), otherwise under its drive in Ten komputer
@@ -178,6 +198,7 @@ impl App {
             }
             group_line(ui);
             let bm = PathBuf::from("::zakladki");
+            let top = ui.cursor().top();
             if self.tree_row(ui, &bm, "Zakładki", Kind::Star, 0, true, None, false, self.tree_open.contains(&bm)) {
                 for p in self.bookmarks.clone() {
                     let name = self.dname(&p);
@@ -186,9 +207,11 @@ impl App {
                     self.tree_dir(ui, &p, &name, k, 1, true, way(1, &p));
                 }
                 if self.bookmarks.is_empty() {
-                    ui.label(RichText::new("     Prawy klik na folderze → Dodaj do zakładek").small().color(pal().dim));
+                    ui.label(RichText::new("     Przeciągnij tu kartę lub folder ze ścieżki").small().color(pal().dim));
                 }
             }
+            let zone = Rect::from_x_y_ranges(ui.max_rect().x_range(), top..=ui.cursor().top());
+            self.bookmark_drop_zone(ui, zone);
             group_line(ui);
             let pc = PathBuf::from(PC);
             if self.tree_row(ui, &pc, "Ten komputer", Kind::Computer, 0, true, Some(&pc), false, self.tree_open.contains(&pc)) {

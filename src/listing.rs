@@ -913,6 +913,9 @@ pub(crate) struct Dragged(pub(crate) Vec<PathBuf>, pub(crate) usize, pub(crate) 
 /// Drag and drop: a tab being dragged by its header (dropped on the right, it splits the view).
 pub(crate) struct DraggedTab(pub(crate) usize);
 
+/// Drag and drop: a folder of the address bar; it only bookmarks (dropped on Zakładki), never copies.
+pub(crate) struct DraggedPath(pub(crate) PathBuf);
+
 /// As in Explorer: a drop moves on the same drive and copies to another (and out of an archive);
 /// Ctrl copies, Shift moves.
 pub(crate) fn drop_moves(paths: &[PathBuf], into: &Path, mods: egui::Modifiers) -> bool {

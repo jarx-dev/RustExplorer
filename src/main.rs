@@ -424,7 +424,7 @@ struct App {
     drop_on_row: bool,
     /// drag and drop: where a drop would go at this frame, and whether it would move, for the hint
     drop_target: Option<(PathBuf, bool)>,
-    /// a dragged tab is over a place that takes it: what letting go there does, for the card
+    /// a dragged tab or address-bar folder is over a place that takes it: what letting go there does, for the card
     tab_target: Option<&'static str>,
     /// split view: the other pane shows tabs[other]
     split: bool,
@@ -852,6 +852,9 @@ impl eframe::App for App {
             let hint = if self.split { "Upuść na drugim panelu" } else { "Upuść po prawej, aby podzielić widok" };
             let kind = if is_pc(&self.tabs[t.0].path) { Kind::Computer } else { Kind::Folder };
             drag_card(&ctx, kind, &self.tab_label(t.0), 1, tab_target.unwrap_or(hint), tab_target.is_some());
+        }
+        if let Some(d) = egui::DragAndDrop::payload::<DraggedPath>(&ctx) {
+            drag_card(&ctx, Kind::Folder, &self.dname(&d.0), 1, tab_target.unwrap_or("Upuść na Zakładkach w drzewie"), tab_target.is_some());
         }
         if self.about {
             let (version, build) = update::version();
