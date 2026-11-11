@@ -32,7 +32,7 @@ fn text_field(ui: &mut Ui, text: &mut String, width: f32, hint: String, lead: Op
             if !text.is_empty() {
                 // 20px tall so the field stays 32px
                 let b = egui::Button::new(icon(ic::CLOSE, 10.0).color(pal().dim)).frame(false).min_size(vec2(24.0, 20.0));
-                if ui.add(b).on_hover_text("Wyczyść (Esc)").clicked() {
+                if ui.add(b).on_hover_text(t!("bars.search.clear")).clicked() {
                     text.clear();
                     changed = true;
                 }
@@ -74,13 +74,13 @@ impl App {
             let p = &mut self.pending;
             // every top-level entry is a menu_item: the Fluent glyph where the context menus use
             // one, an empty 16px column otherwise, so labels start at one edge in every menu
-            let r = ui.menu_button("Plik", |ui| {
+            let r = ui.menu_button(t!("bars.menu.file"), |ui| {
                 menu_style(ui);
                 let groups: [&[(&str, &str, &str, Act)]; 4] = [
-                    &[(ic::ADD, "Nowa karta", "Ctrl+T", Act::NewTab(None)), (ic::CLOSE, "Zamknij kartę", "Ctrl+W", Act::CloseTab(cur))],
-                    &[(ic::NEW_FOLDER, "Nowy folder", "Ctrl+Shift+N", Act::NewFolder)],
-                    &[(ic::STAR, "Dodaj do zakładek", "", Act::AddBookmark(dir.clone())), (ic::TERMINAL, "Otwórz terminal tutaj", "", Act::Terminal)],
-                    &[(ic::INFO, "Właściwości", "Alt+Enter", Act::Properties)],
+                    &[(ic::ADD, t!("bars.cmd.new_tab"), "Ctrl+T", Act::NewTab(None)), (ic::CLOSE, t!("bars.cmd.close_tab"), "Ctrl+W", Act::CloseTab(cur))],
+                    &[(ic::NEW_FOLDER, t!("bars.cmd.new_folder"), "Ctrl+Shift+N", Act::NewFolder)],
+                    &[(ic::STAR, t!("bars.cmd.add_bookmark"), "", Act::AddBookmark(dir.clone())), (ic::TERMINAL, t!("bars.cmd.terminal"), "", Act::Terminal)],
+                    &[(ic::INFO, t!("bars.cmd.properties"), "Alt+Enter", Act::Properties)],
                 ];
                 for (g, items) in groups.iter().enumerate() {
                     if g > 0 {
@@ -92,54 +92,73 @@ impl App {
                         }
                     }
                     // next to the bookmark and terminal entries, which also act on this folder
-                    if g == 2 && menu_item(ui, ic::NEW_WINDOW, "Otwórz w Eksploratorze", "") {
+                    if g == 2 && menu_item(ui, ic::NEW_WINDOW, t!("bars.file.open_explorer"), "") {
                         let _ = std::process::Command::new("explorer").arg(&dir).spawn();
                     }
                 }
                 ui.separator();
                 // preferences kept between starts; what changes the view on screen is in Widok
-                let title = (egui::AtomExt::atom_size(icon(ic::SETTINGS, 14.0).color(pal().dim), vec2(16.0, 16.0)), RichText::new("Ustawienia"));
+                let title = (egui::AtomExt::atom_size(icon(ic::SETTINGS, 14.0).color(pal().dim), vec2(16.0, 16.0)), RichText::new(t!("bars.file.settings")));
                 ui.menu_button(title, |ui| {
                     menu_style(ui);
-                    if check_item(ui, ic::CHECK, self.tree_full, "Pełne drzewo folderów", "") {
+                    // in both languages, so it is found in either; the next frame is drawn in it, the
+                    // tray menu is renamed, every row (also of results, which no refresh reads again)
+                    // gets its type name in it, and the folders are read again; the layout stores it (lang=)
+                    let title = (egui::AtomExt::atom_size(icon(ic::GLOBE, 14.0).color(pal().dim), vec2(16.0, 16.0)), RichText::new(t!("main.settings.language")));
+                    ui.menu_button(title, |ui| {
+                        menu_style(ui);
+                        for l in rx_core::i18n::Lang::ALL {
+                            if check_item(ui, ic::BULLET, rx_core::i18n::lang() == l, l.name(), "") && rx_core::i18n::lang() != l {
+                                rx_core::i18n::set_lang(l);
+                                tray_texts();
+                                for t in &mut self.tabs {
+                                    t.all.iter_mut().for_each(|e| e.type_name = type_of(&e.name, e.dir));
+                                    t.dirty = true;
+                                }
+                                p.push(Act::Refresh);
+                            }
+                        }
+                    });
+                    ui.separator();
+                    if check_item(ui, ic::CHECK, self.tree_full, t!("bars.file.full_tree"), "") {
                         self.tree_full = !self.tree_full;
                     }
-                    if check_item(ui, ic::CHECK, self.lock_format, "Blokada formatu (zachowaj sortowanie)", "") {
+                    if check_item(ui, ic::CHECK, self.lock_format, t!("bars.file.lock_format"), "") {
                         self.lock_format = !self.lock_format;
                     }
                     // at sign-in it starts in the tray; an update swaps the EXE in place, so the entry stays right
                     let cmd = std::env::current_exe().ok().map(|e| format!("\"{}\" {}", e.display(), update::TRAY_ARG));
                     let on = cmd.as_ref().is_some_and(|c| sys::run_at_sign_in(APP_NAME).is_some_and(|v| v.eq_ignore_ascii_case(c)));
-                    if check_item(ui, ic::CHECK, on, "Uruchamiaj razem z Windows", "") {
+                    if check_item(ui, ic::CHECK, on, t!("bars.file.autostart"), "") {
                         if let Err(e) = sys::set_run_at_sign_in(APP_NAME, if on { None } else { cmd.as_deref() }) {
-                            self.msg = Some(format!("Uruchamianie z Windows: {e}"));
+                            self.msg = Some(t!("bars.file.autostart_error", error = e));
                         }
                     }
-                    if menu_item(ui, ic::SHIELD, "Klucz VirusTotal…", "") {
+                    if menu_item(ui, ic::SHIELD, t!("bars.file.vt_key"), "") {
                         p.push(Act::VtKey);
                     }
                 });
-                if menu_item(ui, ic::HELP, "O programie", "") {
+                if menu_item(ui, ic::HELP, t!("bars.file.about"), "") {
                     self.about = true;
                 }
-                if menu_entry(ui, ic::POWER, "Zakończ", "").on_hover_text("Kończy działanie programu (zamknięcie okna tylko je minimalizuje)").clicked() {
+                if menu_entry(ui, ic::POWER, t!("bars.file.exit"), "").on_hover_text(t!("bars.file.exit_tip")).clicked() {
                     p.push(Act::Exit);
                 }
             });
             self.menus[0] = r.response.id;
-            let r = ui.menu_button("Edycja", |ui| {
+            let r = ui.menu_button(t!("bars.menu.edit"), |ui| {
                 menu_style(ui);
                 // enabled only with something to take back, named after it
                 let undo = self.undo.top().map(|u| u.label());
-                if ui.add_enabled_ui(undo.is_some(), |ui| menu_item(ui, ic::UNDO, undo.as_deref().unwrap_or("Cofnij"), "Ctrl+Z")).inner {
+                if ui.add_enabled_ui(undo.is_some(), |ui| menu_item(ui, ic::UNDO, undo.as_deref().unwrap_or(t!("bars.edit.undo")), "Ctrl+Z")).inner {
                     p.push(Act::Undo);
                 }
                 ui.separator();
                 let groups: [&[(&str, &str, &str, Act)]; 4] = [
-                    &[(ic::CUT, "Wytnij", "Ctrl+X", Act::Copy(true)), (ic::COPY, "Kopiuj", "Ctrl+C", Act::Copy(false)), (ic::PASTE, "Wklej", "Ctrl+V", Act::Paste)],
-                    &[(ic::RENAME, "Zmień nazwę", "F2", Act::Rename), (ic::DELETE, "Usuń", "Delete", Act::Delete)],
-                    &[(ic::LINK, "Kopiuj ścieżkę", "Ctrl+Shift+C", Act::CopyPath)],
-                    &[(ic::SELECT_ALL, "Zaznacz wszystko", "Ctrl+A", Act::SelectAll), (ic::INVERT, "Odwróć zaznaczenie", "", Act::Invert)],
+                    &[(ic::CUT, t!("bars.cmd.cut"), "Ctrl+X", Act::Copy(true)), (ic::COPY, t!("bars.cmd.copy"), "Ctrl+C", Act::Copy(false)), (ic::PASTE, t!("bars.cmd.paste"), "Ctrl+V", Act::Paste)],
+                    &[(ic::RENAME, t!("bars.cmd.rename"), "F2", Act::Rename), (ic::DELETE, t!("bars.cmd.delete"), "Delete", Act::Delete)],
+                    &[(ic::LINK, t!("bars.cmd.copy_path"), "Ctrl+Shift+C", Act::CopyPath)],
+                    &[(ic::SELECT_ALL, t!("bars.cmd.select_all"), "Ctrl+A", Act::SelectAll), (ic::INVERT, t!("bars.cmd.invert"), "", Act::Invert)],
                 ];
                 for (g, items) in groups.iter().enumerate() {
                     if g > 0 {
@@ -153,53 +172,53 @@ impl App {
                 }
             });
             self.menus[1] = r.response.id;
-            let r = ui.menu_button("Widok", |ui| {
+            let r = ui.menu_button(t!("bars.menu.view"), |ui| {
                 menu_style(ui);
                 // WinUI menu: a bullet marks the view mode, a check mark each switch that is on
-                for (m, l) in [(ViewMode::Details, "Szczegóły"), (ViewMode::Thumbs, "Miniatury"), (ViewMode::DetailsThumbs, "Szczegóły z miniaturami")] {
+                for (m, l) in [(ViewMode::Details, t!("bars.view.details")), (ViewMode::Thumbs, t!("bars.view.thumbs")), (ViewMode::DetailsThumbs, t!("bars.view.details_thumbs"))] {
                     if check_item(ui, ic::BULLET, self.view == m, l, "") {
                         self.view = m;
                     }
                 }
                 ui.separator();
-                if check_item(ui, ic::CHECK, self.show_preview, "Panel podglądu", "Alt+P") {
+                if check_item(ui, ic::CHECK, self.show_preview, t!("bars.view.preview"), "Alt+P") {
                     self.show_preview = !self.show_preview;
                 }
-                if check_item(ui, ic::CHECK, self.split, "Widok z podziałem", "F3") {
+                if check_item(ui, ic::CHECK, self.split, t!("bars.view.split"), "F3") {
                     p.push(Act::ToggleSplit);
                 }
-                if ui.add_enabled_ui(self.split, |ui| menu_item(ui, ic::SWITCH, "Przełącz panel", "Tab")).inner {
+                if ui.add_enabled_ui(self.split, |ui| menu_item(ui, ic::SWITCH, t!("bars.view.switch_pane"), "Tab")).inner {
                     p.push(Act::SwitchPane);
                 }
-                if check_item(ui, ic::CHECK, self.tabs[cur].flat, "Widok płaski", "") {
+                if check_item(ui, ic::CHECK, self.tabs[cur].flat, t!("bars.view.flat"), "") {
                     p.push(Act::ToggleFlat);
                 }
-                if check_item(ui, ic::CHECK, self.show_hidden, "Pokaż ukryte pliki", "Ctrl+H") {
+                if check_item(ui, ic::CHECK, self.show_hidden, t!("bars.view.show_hidden"), "Ctrl+H") {
                     p.push(Act::ToggleHidden);
                 }
                 ui.separator();
-                if menu_item(ui, ic::FILTER, "Filtr nazw…", "Ctrl+Shift+F") {
+                if menu_item(ui, ic::FILTER, t!("bars.cmd.name_filter"), "Ctrl+Shift+F") {
                     p.push(Act::FilterNames);
                 }
-                if menu_item(ui, ic::REFRESH, "Odśwież", "F5") {
+                if menu_item(ui, ic::REFRESH, t!("bars.cmd.refresh"), "F5") {
                     p.push(Act::Refresh);
                 }
                 ui.separator();
-                if menu_item(ui, ic::ZOOM_IN, "Powiększ", "Ctrl+Plus") {
+                if menu_item(ui, ic::ZOOM_IN, t!("bars.view.zoom_in"), "Ctrl+Plus") {
                     egui::gui_zoom::zoom_in(ui.ctx());
                 }
-                if menu_item(ui, ic::ZOOM_OUT, "Pomniejsz", "Ctrl+Minus") {
+                if menu_item(ui, ic::ZOOM_OUT, t!("bars.view.zoom_out"), "Ctrl+Minus") {
                     egui::gui_zoom::zoom_out(ui.ctx());
                 }
-                if menu_item(ui, ic::ZOOM_RESET, "Rzeczywisty rozmiar", "Ctrl+0") {
+                if menu_item(ui, ic::ZOOM_RESET, t!("bars.view.zoom_reset"), "Ctrl+0") {
                     ui.ctx().set_zoom_factor(1.0);
                 }
                 ui.separator();
-                let title = (egui::AtomExt::atom_size(icon(ic::THEME, 14.0).color(pal().dim), vec2(16.0, 16.0)), RichText::new("Motyw"));
+                let title = (egui::AtomExt::atom_size(icon(ic::THEME, 14.0).color(pal().dim), vec2(16.0, 16.0)), RichText::new(t!("bars.view.theme")));
                 ui.menu_button(title, |ui| {
                     menu_style(ui);
                     use egui::ThemePreference as T;
-                    for (t, l) in [(T::System, "Systemowy"), (T::Light, "Jasny"), (T::Dark, "Ciemny")] {
+                    for (t, l) in [(T::System, t!("bars.view.theme_system")), (T::Light, t!("bars.view.theme_light")), (T::Dark, t!("bars.view.theme_dark"))] {
                         if check_item(ui, ic::BULLET, self.theme == t, l, "") {
                             self.theme = t;
                             ui.ctx().set_theme(t);
@@ -208,12 +227,12 @@ impl App {
                 });
             });
             self.menus[2] = r.response.id;
-            let r = ui.menu_button("Narzędzia", |ui| {
+            let r = ui.menu_button(t!("bars.menu.tools"), |ui| {
                 menu_style(ui);
                 // as WizTree: what takes the disk, biggest first, with the map of tiles below;
                 // asks for the scope: the whole drive or the folder on screen
                 // the same 16px icon column as menu_item
-                let title = (egui::AtomExt::atom_size(icon(ic::PIE, 14.0).color(pal().dim), vec2(16.0, 16.0)), RichText::new("Analiza miejsca (co zajmuje dysk)"));
+                let title = (egui::AtomExt::atom_size(icon(ic::PIE, 14.0).color(pal().dim), vec2(16.0, 16.0)), RichText::new(t!("bars.tools.space")));
                 ui.menu_button(title, |ui| {
                     menu_style(ui);
                     let here = self.tabs[cur].path.clone();
@@ -226,7 +245,7 @@ impl App {
                     let drives: Vec<PathBuf> = drive.clone().filter(|d| !same(d, &here)).into_iter().chain(others).collect();
                     for d in drives {
                         let name = d.to_string_lossy().trim_end_matches('\\').to_string();
-                        if menu_item(ui, ic::DRIVE, &format!("Cały dysk {name}"), "") {
+                        if menu_item(ui, ic::DRIVE, &t!("bars.tools.whole_drive", name = name), "") {
                             p.push(Act::Goto(d));
                             if !self.space {
                                 p.push(Act::ToggleSpace);
@@ -234,26 +253,26 @@ impl App {
                         }
                     }
                     let label = if pc {
-                        "Wszystkie dyski (Ten komputer)".to_string()
+                        t!("bars.tools.all_drives").to_string()
                     } else {
-                        format!("Bieżący folder: {}", here.file_name().map_or_else(|| here.to_string_lossy(), |n| n.to_string_lossy()))
+                        t!("bars.tools.this_folder", name = here.file_name().map_or_else(|| here.to_string_lossy(), |n| n.to_string_lossy()))
                     };
                     if menu_item(ui, ic::PIE, &label, "") && !self.space {
                         p.push(Act::ToggleSpace);
                     }
                     if self.space {
                         ui.separator();
-                        if menu_item(ui, ic::CLOSE, "Wyłącz analizę miejsca", "") {
+                        if menu_item(ui, ic::CLOSE, t!("bars.cmd.space_off"), "") {
                             p.push(Act::ToggleSpace);
                         }
                     }
                 });
                 ui.separator();
                 for (g, l, k, a) in [
-                    (ic::CALC, "Oblicz wielkości folderów", "", Act::CalcSizes),
-                    (ic::BAK, "Utwórz kopię .bak", "Ctrl+B", Act::MakeBak),
-                    (ic::EXTRACT, "Wypakuj archiwum (ZIP, 7z, RAR)", "", Act::Extract),
-                    (ic::PACK, "Spakuj… (ZIP lub 7z)", "", Act::Pack),
+                    (ic::CALC, t!("bars.tools.calc_sizes"), "", Act::CalcSizes),
+                    (ic::BAK, t!("bars.cmd.make_bak"), "Ctrl+B", Act::MakeBak),
+                    (ic::EXTRACT, t!("bars.tools.extract"), "", Act::Extract),
+                    (ic::PACK, t!("bars.tools.pack"), "", Act::Pack),
                 ] {
                     if menu_item(ui, g, l, k) {
                         p.push(a);
@@ -263,7 +282,7 @@ impl App {
             self.menus[3] = r.response.id;
             // the everyday file commands, in order, each only while it fits whole before the caption
             // buttons (all of them are in the menus and the right-click menu too)
-            let label = egui::WidgetText::from("Nowy folder").into_galley(ui, None, f32::INFINITY, egui::TextStyle::Button).size().x;
+            let label = egui::WidgetText::from(t!("bars.cmd.new_folder")).into_galley(ui, None, f32::INFINITY, egui::TextStyle::Button).size().x;
             // 20 + separator (8 with the spacing) + 4 before it, then the 16 pt glyph, gap, label and padding
             let mut room = ui.available_width() >= 32.0 + 16.0 + ui.spacing().icon_spacing + label + 2.0 * ui.spacing().button_padding.x;
             // on Ten komputer there are no files to act on
@@ -278,20 +297,20 @@ impl App {
                 ui.add(egui::Separator::default().shrink(8.0));
                 ui.add_space(4.0);
                 // the main command keeps a text label, as Explorer's "Nowy"
-                let nb = egui::Button::new((icon(ic::NEW_FOLDER, 16.0).color(pal().text), RichText::new("Nowy folder"))).min_size(vec2(0.0, 32.0));
-                if ui.add_enabled(here, nb).on_hover_text("Nowy folder (Ctrl+Shift+N)").clicked() {
+                let nb = egui::Button::new((icon(ic::NEW_FOLDER, 16.0).color(pal().text), RichText::new(t!("bars.cmd.new_folder")))).min_size(vec2(0.0, 32.0));
+                if ui.add_enabled(here, nb).on_hover_text(t!("bars.tool.new_folder_tip")).clicked() {
                     self.pending.push(Act::NewFolder);
                 }
             }
             // clusters (clipboard, then rename and delete) so the icons do not read as one strip
             let groups: [&[(&str, bool, &str, Act)]; 2] = [
                 &[
-                    (ic::CUT, has_sel, "Wytnij (Ctrl+X)", Act::Copy(true)),
-                    (ic::COPY, has_sel, "Kopiuj (Ctrl+C)", Act::Copy(false)),
-                    (ic::PASTE, has_clip, "Wklej (Ctrl+V)", Act::Paste),
+                    (ic::CUT, has_sel, t!("bars.tool.cut"), Act::Copy(true)),
+                    (ic::COPY, has_sel, t!("bars.tool.copy"), Act::Copy(false)),
+                    (ic::PASTE, has_clip, t!("bars.tool.paste"), Act::Paste),
                 ],
                 // the Edit pencil: Fluent's Rename glyph (E8AC) reads as "A]" at 16px
-                &[(ic::RENAME, has_sel, "Zmień nazwę (F2)", Act::Rename), (ic::DELETE, has_sel, "Usuń (Delete)", Act::Delete)],
+                &[(ic::RENAME, has_sel, t!("bars.tool.rename"), Act::Rename), (ic::DELETE, has_sel, t!("bars.tool.delete"), Act::Delete)],
             ];
             for items in groups {
                 // the separator (12 with the spacing) with the first 32 pt button, then each button
@@ -327,11 +346,11 @@ impl App {
                     egui::Button::new((icon(glyph, 16.0).color(pal().text), RichText::new(label), icon(ic::CHEV_D, 10.0).color(pal().dim))).min_size(vec2(0.0, 32.0))
                 };
                 ui.add_enabled_ui(files, |ui| {
-                    let (r, _) = egui::containers::menu::MenuButton::from_button(drop(ic::SORT, "Sortuj")).ui(ui, |ui| {
+                    let (r, _) = egui::containers::menu::MenuButton::from_button(drop(ic::SORT, t!("bars.tool.sort"))).ui(ui, |ui| {
                         menu_style(ui);
                         let t = &mut self.tabs[cur];
                         let was = (t.sort, t.asc);
-                        for (c, l) in [(Col::Name, "Nazwa"), (Col::Size, "Rozmiar"), (Col::Type, "Typ"), (Col::Modified, "Zmodyfikowany")] {
+                        for (c, l) in [(Col::Name, t!("list.col.name")), (Col::Size, t!("list.col.size")), (Col::Type, t!("list.col.type")), (Col::Modified, t!("list.col.modified"))] {
                             if check_item(ui, ic::BULLET, t.sort == c, l, "") && t.sort != c {
                                 // the direction a column header click starts with
                                 t.asc = c == Col::Name || c == Col::Type;
@@ -340,7 +359,7 @@ impl App {
                             }
                         }
                         ui.separator();
-                        for (asc, l) in [(true, "Rosnąco"), (false, "Malejąco")] {
+                        for (asc, l) in [(true, t!("bars.sort.asc")), (false, t!("bars.sort.desc"))] {
                             if check_item(ui, ic::BULLET, t.asc == asc, l, "") {
                                 t.asc = asc;
                                 t.dirty = true;
@@ -350,27 +369,27 @@ impl App {
                             self.remember_sort();
                         }
                     });
-                    named(&r, egui::Role::Button, "Sortuj");
+                    named(&r, egui::Role::Button, t!("bars.tool.sort"));
                 });
-                let (r, _) = egui::containers::menu::MenuButton::from_button(drop(ic::GRID, "Wyświetl")).ui(ui, |ui| {
+                let (r, _) = egui::containers::menu::MenuButton::from_button(drop(ic::GRID, t!("bars.tool.view"))).ui(ui, |ui| {
                     menu_style(ui);
                     // Ten komputer has one layout, as the status bar's view buttons show
                     ui.add_enabled_ui(files, |ui| {
-                        for (m, l) in [(ViewMode::Details, "Szczegóły"), (ViewMode::Thumbs, "Miniatury"), (ViewMode::DetailsThumbs, "Szczegóły z miniaturami")] {
+                        for (m, l) in [(ViewMode::Details, t!("bars.view.details")), (ViewMode::Thumbs, t!("bars.view.thumbs")), (ViewMode::DetailsThumbs, t!("bars.view.details_thumbs"))] {
                             if check_item(ui, ic::BULLET, self.view == m, l, "") {
                                 self.view = m;
                             }
                         }
                     });
                     ui.separator();
-                    if check_item(ui, ic::CHECK, self.show_preview, "Panel podglądu", "Alt+P") {
+                    if check_item(ui, ic::CHECK, self.show_preview, t!("bars.view.preview"), "Alt+P") {
                         self.show_preview = !self.show_preview;
                     }
-                    if check_item(ui, ic::CHECK, self.split, "Widok z podziałem", "F3") {
+                    if check_item(ui, ic::CHECK, self.split, t!("bars.view.split"), "F3") {
                         self.pending.push(Act::ToggleSplit);
                     }
                 });
-                named(&r, egui::Role::Button, "Wyświetl");
+                named(&r, egui::Role::Button, t!("bars.tool.view"));
             }
         });
     }
@@ -380,13 +399,13 @@ impl App {
             ui.spacing_mut().item_spacing.x = 2.0;
             let t = &self.tabs[self.cur];
             let (b, f, u) = (!t.back.is_empty(), !t.fwd.is_empty(), !is_pc(&t.path));
-            if icon_button(ui, ic::BACK, b, "Wstecz (Alt+←)").clicked() {
+            if icon_button(ui, ic::BACK, b, t!("bars.nav.back")).clicked() {
                 self.pending.push(Act::Back);
             }
-            if icon_button(ui, ic::FORWARD, f, "Dalej (Alt+→)").clicked() {
+            if icon_button(ui, ic::FORWARD, f, t!("bars.nav.forward")).clicked() {
                 self.pending.push(Act::Forward);
             }
-            if icon_button(ui, ic::UP, u, "W górę (Backspace)").clicked() {
+            if icon_button(ui, ic::UP, u, t!("bars.nav.up")).clicked() {
                 self.pending.push(Act::Up);
             }
             ui.add_space(8.0);
@@ -407,8 +426,8 @@ impl App {
             let rr = Rect::from_center_size(pos2(rect.right() - 18.0, rect.center().y), vec2(28.0, 28.0));
             let mut rui = ui.new_child(UiBuilder::new().max_rect(rr));
             let r = rui.add(egui::Button::new(icon(ic::REFRESH, 14.0).color(pal().text)).min_size(vec2(28.0, 28.0)));
-            named(&r, egui::Role::Button, "Odśwież");
-            if r.on_hover_text("Odśwież (F5)").clicked() {
+            named(&r, egui::Role::Button, t!("bars.cmd.refresh"));
+            if r.on_hover_text(t!("bars.nav.refresh_tip")).clicked() {
                 self.pending.push(Act::Refresh);
             }
             let body = Rect::from_min_max(rect.min + vec2(8.0, 2.0), pos2(rr.left() - 2.0, rect.bottom() - 2.0));
@@ -439,7 +458,7 @@ impl App {
                 chain.reverse();
                 let (ir, iresp) = inner.allocate_exact_size(vec2(20.0, 20.0), Sense::click());
                 paint_icon(inner.painter(), ir.shrink(1.0), Kind::Computer);
-                if iresp.on_hover_text("Ten komputer").clicked() {
+                if iresp.on_hover_text(t!("pc.this")).clicked() {
                     self.pending.push(Act::Goto(PathBuf::from(PC)));
                 }
                 let chev = |ui: &mut Ui| {
@@ -450,7 +469,7 @@ impl App {
                 if is_pc(&path) {
                     chev(&mut inner);
                     inner.add_space(6.0);
-                    inner.label(here("Ten komputer".into()));
+                    inner.label(here(t!("pc.this").into()));
                 }
                 if !chain.is_empty() {
                     chev(&mut inner);
@@ -477,7 +496,7 @@ impl App {
                         // read on another thread: the menu fills when they come
                         if kids.is_empty() {
                             let read = self.tree_kids.contains_key(&p);
-                            ui.add_enabled(false, egui::Button::new(if read { "Brak podfolderów" } else { "Wczytuję…" }));
+                            ui.add_enabled(false, egui::Button::new(if read { t!("bars.nav.no_subfolders") } else { t!("bars.cmd.loading") }));
                         }
                         egui::ScrollArea::vertical().max_height(400.0).show(ui, |ui| {
                             for k in kids {
@@ -489,14 +508,14 @@ impl App {
                         });
                     });
                     inner.spacing_mut().button_padding = vec2(6.0, 2.0);
-                    named(&r, egui::Role::Button, "Podfoldery");
+                    named(&r, egui::Role::Button, t!("bars.nav.subfolders"));
                 }
                 let used = inner.min_rect().width();
                 if ui.data(|d| d.get_temp::<f32>(wid)) != Some(used) {
                     ui.data_mut(|d| d.insert_temp(wid, used));
                     ui.ctx().request_repaint();
                 }
-                if resp.on_hover_text("Kliknij, aby wpisać ścieżkę (Ctrl+L)").clicked() {
+                if resp.on_hover_text(t!("bars.nav.type_path")).clicked() {
                     self.addr_edit = Some(path.display().to_string());
                 }
             }
@@ -511,16 +530,16 @@ impl App {
                 let (mode, on, all) = (self.filter_open, !self.tabs[self.cur].filter.is_empty(), self.tabs[self.cur].search_all);
                 // the mode shows as a "Filtr:" label inside the box, never by the placeholder alone
                 let (changed, r) = if mode {
-                    text_field(ui, &mut self.tabs[self.cur].filter, search_w, "*.pdf;*.jpg".into(), Some("Filtr:"), None, "filter")
+                    text_field(ui, &mut self.tabs[self.cur].filter, search_w, "*.pdf;*.jpg".into(), Some(t!("bars.search.filter_lead")), None, "filter")
                 } else {
                     let trail = icon(ic::SEARCH, 14.0).color(pal().dim);
-                    let hint = if all { "Szukaj na wszystkich dyskach".into() } else { format!("Przeszukaj: {name}") };
+                    let hint = if all { t!("bars.search.hint_all").into() } else { t!("bars.search.hint_here", name = name) };
                     text_field(ui, &mut self.tabs[self.cur].search, search_w, hint, None, Some(trail), "search")
                 };
                 let tip = match (mode, all) {
-                    (true, _) => "Filtr nazw zostaje przy zmianie folderu",
-                    (false, true) => "Nazwy plików na wszystkich dyskach lokalnych; przy kilku słowach muszą wystąpić wszystkie, *.pdf szuka po rozszerzeniu",
-                    (false, false) => "Szukaj w bieżącym folderze (Ctrl+F)",
+                    (true, _) => t!("bars.search.tip_filter"),
+                    (false, true) => t!("bars.search.tip_all"),
+                    (false, false) => t!("bars.search.tip_here"),
                 };
                 r.on_hover_text(tip);
                 if changed {
@@ -529,8 +548,8 @@ impl App {
                 // Everything-like search of every local drive; the index is read only while it is on
                 let ab = egui::Button::new(icon(ic::DRIVE, 16.0).color(if all { pal().accent } else { pal().text })).min_size(vec2(32.0, 32.0)).selected(all);
                 let ar = ui.add(ab);
-                ar.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ar.enabled(), all, "Szukaj wszędzie"));
-                let atip = if all { "Wróć do szukania w bieżącym folderze" } else { "Szukaj wszędzie: na wszystkich dyskach lokalnych, jak Everything" };
+                ar.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ar.enabled(), all, t!("bars.search.everywhere")));
+                let atip = if all { t!("bars.search.everywhere_off_tip") } else { t!("bars.search.everywhere_tip") };
                 if ar.on_hover_text(atip).clicked() {
                     let t = &mut self.tabs[self.cur];
                     (t.search_all, t.dirty) = (!all, true);
@@ -542,10 +561,10 @@ impl App {
                     ui.memory_mut(|m| m.request_focus(egui::Id::unique("search")));
                 }
                 // a 32px toggle of its own; accent while a filter is set, even with the box on search
-                let tip = if mode { "Wróć do wyszukiwania w bieżącym folderze (Ctrl+F)" } else { "Filtr nazw, np. *.pdf;*.jpg; zostaje przy zmianie folderu (Ctrl+Shift+F)" };
+                let tip = if mode { t!("bars.search.filter_off_tip") } else { t!("bars.search.filter_tip") };
                 let fb = egui::Button::new(icon(ic::FILTER, 16.0).color(if on { pal().accent } else { pal().text })).min_size(vec2(32.0, 32.0)).selected(mode);
                 let fr = ui.add(fb);
-                fr.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, fr.enabled(), mode, "Filtr nazw"));
+                fr.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, fr.enabled(), mode, t!("bars.search.filter")));
                 if fr.on_hover_text(tip).clicked() {
                     self.filter_open = !mode;
                     let id = if mode { "search" } else { "filter" };
@@ -592,7 +611,7 @@ impl App {
                 if resp.drag_started_by(egui::PointerButton::Primary) {
                     resp.dnd_set_drag_payload(DraggedTab(i));
                 }
-                let resp = resp.on_hover_text(if closable { format!("{full}\nŚrodkowy klik zamyka kartę") } else { full });
+                let resp = resp.on_hover_text(if closable { format!("{full}\n{}", t!("bars.tab.middle_click")) } else { full });
                 let p = ui.painter();
                 if is_shown {
                     let top = CornerRadius { nw: 8, ne: 8, sw: 0, se: 0 };
@@ -633,17 +652,17 @@ impl App {
                 resp.context_menu(|ui| {
                     menu_style(ui);
                     // through `plus`, so the caller puts the tab in the right pane
-                    if menu_item(ui, ic::ADD, "Nowa karta", "Ctrl+T") {
+                    if menu_item(ui, ic::ADD, t!("bars.cmd.new_tab"), "Ctrl+T") {
                         plus = true;
                     }
-                    if closable && menu_item(ui, ic::CLOSE, "Zamknij kartę", "Ctrl+W") {
+                    if closable && menu_item(ui, ic::CLOSE, t!("bars.cmd.close_tab"), "Ctrl+W") {
                         pending.push(Act::CloseTab(i));
                     }
                 });
             }
             let r = ui.add(egui::Button::new(icon(ic::ADD, 12.0).color(pal().dim)).min_size(vec2(32.0, 32.0)));
-            named(&r, egui::Role::Button, "Nowa karta");
-            if r.on_hover_text("Nowa karta (Ctrl+T)").clicked() {
+            named(&r, egui::Role::Button, t!("bars.cmd.new_tab"));
+            if r.on_hover_text(t!("bars.tab.new_tip")).clicked() {
                 plus = true;
             }
         });
@@ -658,9 +677,9 @@ impl App {
         let pane = if !self.split {
             ""
         } else if t.side == 0 {
-            "Lewy panel · "
+            t!("bars.status.left_pane")
         } else {
-            "Prawy panel · "
+            t!("bars.status.right_pane")
         };
         let (mut dirs, mut files, mut sd, mut sf, mut sb, mut tb) = (0, 0, 0, 0, 0u64, 0u64);
         for &i in &t.view {
@@ -697,33 +716,33 @@ impl App {
                 let (free, total) = drives.iter().filter(|d| d.2 != 4).fold((0, 0), |a, d| (a.0 + d.3, a.1 + d.4));
                 // the same wording as the folder view's free-space label
                 put(&drives.len().to_string(), pal().text);
-                put(&format!(" {} · ", dyski(drives.len())), pal().dim);
+                put(&format!(" {} · ", plural("drives", drives.len() as u64)), pal().dim);
                 put(&fmt_size(free), pal().text);
-                put(" wolne z ", pal().dim);
+                put(t!("bars.status.free_of"), pal().dim);
                 put(&fmt_size(total), pal().text);
-                put(" (lokalnie)", pal().dim);
+                put(t!("bars.status.local"), pal().dim);
             } else if found {
                 // results everywhere: how many show and how many matched in all; the biggest files:
                 // of how many files under the folder
-                put(if biggest { "Największe pliki: " } else { "Wyniki: " }, pal().dim);
+                put(if biggest { t!("bars.status.largest") } else { t!("bars.status.results") }, pal().dim);
                 put(&group(shown as u64), pal().text);
                 if matched > listed {
-                    put(" z ", pal().dim);
+                    put(t!("bars.status.of"), pal().dim);
                     put(&group(matched as u64), pal().text);
                     if biggest {
-                        put(" w tym folderze", pal().dim);
+                        put(t!("bars.status.in_folder"), pal().dim);
                     }
                 }
             } else {
-                put("Foldery: ", pal().dim);
+                put(t!("bars.status.folders"), pal().dim);
                 put(&dirs.to_string(), pal().text);
-                put(" · Pliki: ", pal().dim);
+                put(t!("bars.status.files"), pal().dim);
                 put(&files.to_string(), pal().text);
                 if sd + sf > 0 {
-                    put(" · Zaznaczono: ", pal().dim);
+                    put(t!("bars.status.selected"), pal().dim);
                     put(&format!("{} ({})", sd + sf, fmt_size(sb)), pal().text);
                 } else {
-                    put(" · Razem: ", pal().dim);
+                    put(t!("bars.status.total"), pal().dim);
                     put(&fmt_size(tb), pal().text);
                 }
             }
@@ -731,11 +750,11 @@ impl App {
             // show or hide them; red while some are hidden, as in the original design
             let hid = (!pc).then(|| {
                 if self.show_hidden {
-                    (format!("ukryte widoczne: {hidden}"), pal().accent, "Kliknij, aby znów ukryć ukryte pliki (Ctrl+H)")
+                    (t!("bars.status.hidden_shown", n = hidden), pal().accent, t!("bars.status.hidden_hide_tip"))
                 } else if hidden > 0 {
-                    (format!("ukrytych: {hidden}"), pal().red, "Kliknij, aby pokazać ukryte pliki (Ctrl+H)")
+                    (t!("bars.status.hidden", n = hidden), pal().red, t!("bars.status.hidden_show_tip"))
                 } else {
-                    ("ukrytych: 0".to_string(), pal().dim, "Brak ukrytych plików; kliknij, aby pokazywać je zawsze (Ctrl+H)")
+                    (t!("bars.status.hidden", n = 0), pal().dim, t!("bars.status.hidden_none_tip"))
                 }
             });
             // the room the counts and the counter take (10 + spacing before the counter, a frameless button)
@@ -748,7 +767,7 @@ impl App {
                 // (right to left here, so Szczegóły shows first), then the panes. Szczegóły z
                 // miniaturami stays in Widok and the list's menu. Kept, greyed, on Ten komputer, so
                 // the bar does not jump between views.
-                for (g, l, m) in [(ic::GRID, "Miniatury", ViewMode::Thumbs), (ic::DETAILS, "Szczegóły", ViewMode::Details)] {
+                for (g, l, m) in [(ic::GRID, t!("bars.view.thumbs"), ViewMode::Thumbs), (ic::DETAILS, t!("bars.view.details"), ViewMode::Details)] {
                     if toggle_icon(ui, g, self.view == m && !pc, !pc, l, l) {
                         self.view = m;
                     }
@@ -758,16 +777,16 @@ impl App {
                 ui.add(egui::Separator::default().shrink(6.0));
                 ui.add_space(10.0);
                 // the same filled pill as the view modes; both panes work on Ten komputer too
-                if toggle_icon(ui, ic::PREVIEW, self.show_preview, true, "Panel podglądu", "Panel podglądu (Alt+P)") {
+                if toggle_icon(ui, ic::PREVIEW, self.show_preview, true, t!("bars.view.preview"), t!("bars.view.preview_tip")) {
                     self.show_preview = !self.show_preview;
                 }
-                if toggle_icon(ui, ic::SPLIT, self.split, true, "Widok z podziałem", "Widok z podziałem (F3)") {
+                if toggle_icon(ui, ic::SPLIT, self.split, true, t!("bars.view.split"), t!("bars.view.split_tip")) {
                     self.pending.push(Act::ToggleSplit);
                 }
                 ui.add_space(12.0);
                 ui.spacing_mut().item_spacing.x = 6.0;
                 if let Some(&(_, free, total)) = self.disk.as_ref().filter(|_| !pc) {
-                    let label = format!("{} wolne z {}", fmt_size(free), fmt_size(total));
+                    let label = t!("bars.status.disk_free", free = fmt_size(free), total = fmt_size(total));
                     // the free space gives way first, before the counts are cut (bar 80, two spacings)
                     let need = 92.0 + ui.painter().layout_no_wrap(label.clone(), font.clone(), pal().text).size().x + text_w + hid_w;
                     if total > 0 && ui.available_width() >= need {
@@ -782,14 +801,14 @@ impl App {
                 // states that change the listing, each switched off with one click
                 let x = || icon(ic::CLOSE, 8.0).color(pal().dim);
                 let t = &mut self.tabs[self.cur];
-                if !t.filter.is_empty() && chip(ui, (RichText::new(format!("Filtr: {}", t.filter)).color(pal().dim), x()), "Kliknij, aby wyczyścić filtr") {
+                if !t.filter.is_empty() && chip(ui, (RichText::new(t!("bars.status.filter", filter = t.filter)).color(pal().dim), x()), t!("bars.status.filter_tip")) {
                     t.filter.clear();
                     t.dirty = true;
                 }
-                if self.lock_format && chip(ui, (RichText::new("Blokada formatu").color(pal().dim), x()), "Kliknij, aby wyłączyć blokadę formatu") {
+                if self.lock_format && chip(ui, (RichText::new(t!("bars.status.lock")).color(pal().dim), x()), t!("bars.status.lock_tip")) {
                     self.lock_format = false;
                 }
-                if flat && chip(ui, (RichText::new("Widok płaski").color(pal().dim), x()), "Kliknij, aby wyłączyć widok płaski") {
+                if flat && chip(ui, (RichText::new(t!("bars.view.flat")).color(pal().dim), x()), t!("bars.status.flat_tip")) {
                     self.pending.push(Act::ToggleFlat);
                 }
                 let left = row.with_max_x(ui.available_rect_before_wrap().right());
@@ -811,7 +830,7 @@ impl App {
                     if self.index_busy && self.tabs[self.cur].search_all && !self.space {
                         ui.add_space(16.0);
                         ui.add(egui::Spinner::new().size(12.0));
-                        ui.label("Odświeżam indeks dysków…").on_hover_text("Wyniki pochodzą z poprzedniego indeksowania; nowe pliki dojdą po jego zakończeniu");
+                        ui.label(t!("bars.status.indexing")).on_hover_text(t!("bars.status.indexing_tip"));
                     }
                     if let Some(m) = &self.msg {
                         ui.add_space(16.0);

@@ -66,17 +66,17 @@ impl App {
             let pending = &mut self.pending;
             resp.context_menu(|ui| {
                 menu_style(ui);
-                if menu_item(ui, ic::OPEN, "Otwórz", "") {
+                if menu_item(ui, ic::OPEN, t!("bars.cmd.open"), "") {
                     pending.push(Act::Goto(t.clone()));
                 }
-                if menu_item(ui, ic::NEW_WINDOW, "Otwórz w nowej karcie", "") {
+                if menu_item(ui, ic::NEW_WINDOW, t!("bars.cmd.open_new_tab"), "") {
                     pending.push(Act::NewTab(Some(t.clone())));
                 }
                 if bookmark {
-                    if menu_item(ui, ic::DELETE, "Usuń z zakładek", "") {
+                    if menu_item(ui, ic::DELETE, t!("tree.remove_bookmark"), "") {
                         pending.push(Act::RemoveBookmark(t.clone()));
                     }
-                } else if menu_item(ui, ic::STAR, "Dodaj do zakładek", "") {
+                } else if menu_item(ui, ic::STAR, t!("bars.cmd.add_bookmark"), "") {
                     pending.push(Act::AddBookmark(t.clone()));
                 }
             });
@@ -131,7 +131,7 @@ impl App {
 
     /// "… jeszcze 23 foldery": shows all folders of a folder on the way; `depth`: of those folders.
     fn tree_more(&mut self, ui: &mut Ui, depth: usize, n: usize) -> bool {
-        let text = format!("… jeszcze {n} {}", foldery(n));
+        let text = t!("tree.more", n = n, folders = plural("folders", n as u64));
         let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 28.0), Sense::CLICK);
         named(&resp, egui::Role::Button, &text);
         let p = ui.painter();
@@ -141,7 +141,7 @@ impl App {
         // in the label column of the folders it stands for, as one more of them
         let x = rect.left() + 10.0 + depth as f32 * 12.0 + 44.0;
         p.text(pos2(x, rect.center().y), Align2::LEFT_CENTER, text, FontId::proportional(14.0), pal().dim);
-        resp.on_hover_text("Pokaż wszystkie foldery na tym poziomie").clicked()
+        resp.on_hover_text(t!("tree.more_tip")).clicked()
     }
 
     /// The Zakładki group takes a dragged tab or address-bar folder as a new bookmark, as a browser's bar does.
@@ -154,7 +154,7 @@ impl App {
         }
         let known = self.bookmarks.contains(&p);
         ui.painter().rect(zone.shrink(2.0), cr(6.0), pal().accent.gamma_multiply(0.10), Stroke::new(2.0, pal().accent), StrokeKind::Inside);
-        self.tab_target = Some(if known { "Już jest w zakładkach" } else { "Dodaj do zakładek" });
+        self.tab_target = Some(if known { t!("tree.already_bookmarked") } else { t!("bars.cmd.add_bookmark") });
         if ui.input(|i| i.pointer.any_released()) {
             let _ = egui::DragAndDrop::take_payload::<DraggedTab>(ctx);
             let _ = egui::DragAndDrop::take_payload::<DraggedPath>(ctx);
@@ -186,7 +186,7 @@ impl App {
             let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("C:\\"));
             // an id of its own: the home folder's path would also open C:\Users\<name> under its drive
             let wg = PathBuf::from("::home");
-            if self.tree_row(ui, &wg, "Widok główny", Kind::Home, 0, true, Some(&home), false, self.tree_open.contains(&wg)) {
+            if self.tree_row(ui, &wg, t!("tree.home"), Kind::Home, 0, true, Some(&home), false, self.tree_open.contains(&wg)) {
                 for (p, name, k) in self.known.clone() {
                     self.tree_dir(ui, &p, &name, k, 1, false, way(0, &p));
                 }
@@ -199,7 +199,7 @@ impl App {
             group_line(ui);
             let bm = PathBuf::from("::zakladki");
             let top = ui.cursor().top();
-            if self.tree_row(ui, &bm, "Zakładki", Kind::Star, 0, true, None, false, self.tree_open.contains(&bm)) {
+            if self.tree_row(ui, &bm, t!("tree.bookmarks"), Kind::Star, 0, true, None, false, self.tree_open.contains(&bm)) {
                 for p in self.bookmarks.clone() {
                     let name = self.dname(&p);
                     // a bookmark to Pobrane, Pulpit… keeps that place's icon; one in a cloud folder shows the cloud
@@ -207,14 +207,14 @@ impl App {
                     self.tree_dir(ui, &p, &name, k, 1, true, way(1, &p));
                 }
                 if self.bookmarks.is_empty() {
-                    ui.label(RichText::new("     Przeciągnij tu kartę lub folder ze ścieżki").small().color(pal().dim));
+                    ui.label(RichText::new(t!("tree.bookmarks_empty")).small().color(pal().dim));
                 }
             }
             let zone = Rect::from_x_y_ranges(ui.max_rect().x_range(), top..=ui.cursor().top());
             self.bookmark_drop_zone(ui, zone);
             group_line(ui);
             let pc = PathBuf::from(PC);
-            if self.tree_row(ui, &pc, "Ten komputer", Kind::Computer, 0, true, Some(&pc), false, self.tree_open.contains(&pc)) {
+            if self.tree_row(ui, &pc, t!("pc.this"), Kind::Computer, 0, true, Some(&pc), false, self.tree_open.contains(&pc)) {
                 for (p, name, net) in self.drives.clone() {
                     self.tree_dir(ui, &p, &name, if net { Kind::NetDrive } else { Kind::Drive }, 1, false, way(2, &p));
                 }
@@ -223,7 +223,7 @@ impl App {
         group_line(ui);
         ui.spacing_mut().item_spacing.y = 0.0;
         // the shell's own bin: deleted files go there (sys::recycle), restoring them is Explorer's job
-        if tree_link(ui, ic::DELETE, "Kosz", "Otwórz Kosz w Eksploratorze").clicked() {
+        if tree_link(ui, ic::DELETE, t!("tree.recycle_bin"), t!("tree.recycle_bin_tip")).clicked() {
             let _ = std::process::Command::new("explorer").arg("shell:RecycleBinFolder").spawn();
         }
         // not while the folders above it are still being read: once in, they move its row, which

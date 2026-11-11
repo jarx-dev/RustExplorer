@@ -26,6 +26,8 @@ pub(crate) mod ic {
     /// Package (a box), for "Spakuj…"
     pub const PACK: &str = "\u{E7B8}";
     pub const SETTINGS: &str = "\u{E713}";
+    /// Globe, for Ustawienia ▸ Language / Język
+    pub const GLOBE: &str = "\u{E774}";
     pub const DRIVE: &str = "\u{EDA2}";
     pub const CHECK: &str = "\u{E73E}";
     pub const BULLET: &str = "\u{E915}";
@@ -525,9 +527,9 @@ const RESIZE_EDGE: f32 = 4.0;
 pub(crate) fn caption_buttons(ui: &mut Ui) {
     let max = ui.input(|i| i.viewport().maximized.unwrap_or(false));
     for (glyph, tip, cmd) in [
-        (ic::WIN_CLOSE, "Zamknij", egui::ViewportCommand::Close),
-        (if max { ic::WIN_RESTORE } else { ic::WIN_MAX }, if max { "Przywróć" } else { "Maksymalizuj" }, egui::ViewportCommand::Maximized(!max)),
-        (ic::WIN_MIN, "Minimalizuj", egui::ViewportCommand::Minimized(true)),
+        (ic::WIN_CLOSE, t!("theme.caption.close"), egui::ViewportCommand::Close),
+        (if max { ic::WIN_RESTORE } else { ic::WIN_MAX }, if max { t!("theme.caption.restore") } else { t!("theme.caption.maximize") }, egui::ViewportCommand::Maximized(!max)),
+        (ic::WIN_MIN, t!("theme.caption.minimize"), egui::ViewportCommand::Minimized(true)),
     ] {
         let (rect, resp) = ui.allocate_exact_size(vec2(CAPTION_W / 3.0, TITLE_H), Sense::click());
         let close = glyph == ic::WIN_CLOSE;

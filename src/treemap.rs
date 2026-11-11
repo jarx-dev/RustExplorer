@@ -117,19 +117,19 @@ impl App {
         let path = self.tabs[self.cur].path.clone();
         let pc = is_pc(&path);
         let Some(ix) = self.index.clone() else {
-            ui.centered_and_justified(|ui| ui.label(RichText::new("Wczytuję indeks dysków…").color(pal().dim)));
+            ui.centered_and_justified(|ui| ui.label(RichText::new(t!("treemap.loading")).color(pal().dim)));
             return;
         };
         // a caption: what the map shows and how to use it
         let head = ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 6.0;
-            ui.label(RichText::new("Mapa").family(FontFamily::Name("semibold".into())));
-            let name = if pc { "Ten komputer".to_string() } else { self.dname(&path) };
+            ui.label(RichText::new(t!("treemap.title")).family(FontFamily::Name("semibold".into())));
+            let name = if pc { t!("pc.this").to_string() } else { self.dname(&path) };
             ui.label(RichText::new(name).color(pal().dim));
             if let Some(total) = self.tmap.as_ref().and_then(|m| m.total) {
                 ui.label(RichText::new(format!("· {}", fmt_size(total))).color(pal().dim));
             }
-            ui.label(RichText::new("· kliknij kafelek, aby tam przejść; prawy przycisk: usuń do Kosza").color(pal().dim).small());
+            ui.label(RichText::new(t!("treemap.hint")).color(pal().dim).small());
         });
         let rect = Rect::from_min_max(pos2(ui.min_rect().left(), head.response.rect.bottom() + 4.0), ui.max_rect().max);
         let resp = ui.allocate_rect(rect, Sense::click());
@@ -166,8 +166,8 @@ impl App {
         let Some(m) = &self.tmap else { return };
         let p = ui.painter_at(rect);
         let note = match m.total {
-            None => Some("Tego folderu nie ma w indeksie dysków (dysk sieciowy albo folder nowszy niż indeks)"),
-            Some(_) if m.tiles.is_empty() => Some("Ten folder nie zajmuje miejsca"),
+            None => Some(t!("treemap.not_indexed")),
+            Some(_) if m.tiles.is_empty() => Some(t!("treemap.empty")),
             _ => None,
         };
         if let Some(n) = note {
@@ -199,8 +199,9 @@ impl App {
         if let Some((id, r)) = hover {
             p.rect_stroke(r, 0.0, Stroke::new(2.0, Color32::WHITE), StrokeKind::Inside);
             let bytes = self.space_data.as_ref().map_or(0, |d| d.1.totals[id as usize]);
-            let what = if ix.is_dir(id) { "folder" } else { "plik" };
-            let tip = format!("{}\n{} · {} · {:.1} % tego, co tu widać", ix.path(id as usize).display(), what, fmt_size(bytes), bytes as f64 * 100.0 / total as f64);
+            let what = if ix.is_dir(id) { t!("treemap.folder") } else { t!("treemap.file") };
+            let pct = format!("{:.1}", bytes as f64 * 100.0 / total as f64);
+            let tip = t!("treemap.tip", path = ix.path(id as usize).display(), what = what, size = fmt_size(bytes), pct = pct);
             resp.clone().on_hover_text_at_pointer(tip);
         }
         if resp.clicked() {
@@ -228,38 +229,38 @@ impl App {
             };
             let name = |p: &Path| p.file_name().map_or_else(|| p.display().to_string(), |n| n.to_string_lossy().into_owned());
             ui.label(RichText::new(name(&path)).color(pal().dim));
-            if menu_item(ui, ic::OPEN, "Otwórz", "") {
+            if menu_item(ui, ic::OPEN, t!("treemap.open"), "") {
                 self.pending.push(if dir { Act::Goto(path.clone()) } else { Act::OpenPath(path.clone()) });
             }
-            if menu_item(ui, ic::CHEV_R, "Pokaż na liście", "") {
+            if menu_item(ui, ic::CHEV_R, t!("treemap.reveal"), "") {
                 self.pending.push(Act::Reveal(path.clone()));
             }
-            if menu_item(ui, ic::LINK, "Kopiuj ścieżkę", "") {
+            if menu_item(ui, ic::LINK, t!("treemap.copy_path"), "") {
                 ui.ctx().copy_text(path.display().to_string());
             }
             // a drive itself (Ten komputer) is no thing to recycle
-            if path.parent().is_some() && menu_item(ui, ic::DELETE, "Usuń do Kosza", "") {
+            if path.parent().is_some() && menu_item(ui, ic::DELETE, t!("treemap.recycle"), "") {
                 self.pending.push(Act::Recycle(vec![path.clone()]));
             }
             // the folders the pointer is also over, nearest first, each with the same commands
             let above: Vec<PathBuf> = self.tmap_menu.iter().skip(1).map(|(p, _)| p.clone()).collect();
             if !above.is_empty() {
                 ui.separator();
-                ui.label(RichText::new("Foldery nad nim").color(pal().dim).small());
+                ui.label(RichText::new(t!("treemap.above")).color(pal().dim).small());
             }
             for p in above {
                 ui.menu_button(format!("{}  {}", ic::CHEV_R, name(&p)), |ui| {
                     menu_style(ui);
-                    if menu_item(ui, ic::OPEN, "Otwórz", "") {
+                    if menu_item(ui, ic::OPEN, t!("treemap.open"), "") {
                         self.pending.push(Act::Goto(p.clone()));
                     }
-                    if menu_item(ui, ic::CHEV_R, "Pokaż na liście", "") {
+                    if menu_item(ui, ic::CHEV_R, t!("treemap.reveal"), "") {
                         self.pending.push(Act::Reveal(p.clone()));
                     }
-                    if menu_item(ui, ic::LINK, "Kopiuj ścieżkę", "") {
+                    if menu_item(ui, ic::LINK, t!("treemap.copy_path"), "") {
                         ui.ctx().copy_text(p.display().to_string());
                     }
-                    if p.parent().is_some() && menu_item(ui, ic::DELETE, "Usuń folder do Kosza", "") {
+                    if p.parent().is_some() && menu_item(ui, ic::DELETE, t!("treemap.recycle_folder"), "") {
                         self.pending.push(Act::Recycle(vec![p.clone()]));
                     }
                 });

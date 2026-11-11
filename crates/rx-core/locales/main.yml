@@ -1,0 +1,93 @@
+# src/main.rs and src/tray.rs: dialogs, drag cards, the tray, the language setting
+_version: 2
+
+main.tray_note.title:
+  en: "%{app} is running in the notification area"
+  pl: "%{app} działa w zasobniku"
+main.tray_note.text:
+  en: Click here or the icon next to the clock to bring it back
+  pl: Kliknij tu lub ikonę przy zegarze, aby wrócić
+main.drop.refused:
+  en: "Files can't be dropped here: drop them on another folder's list or on a folder (not in an archive or search results)"
+  pl: "Tu nie można upuścić tych plików: upuść je na liście innego folderu lub na folderze (nie w archiwum ani w wynikach wyszukiwania)"
+main.drag.and_more:
+  en: "%{name} and %{n} more"
+  pl: "%{name} i jeszcze %{n}"
+main.drag.move_to:
+  en: "Move to “%{to}”"
+  pl: "Przenieś do „%{to}”"
+main.drag.copy_to:
+  en: "Copy to “%{to}”"
+  pl: "Kopiuj do „%{to}”"
+main.drag.hint:
+  en: Drop on the other pane or on a folder
+  pl: Upuść na drugim panelu albo na folderze
+main.drag.other_pane:
+  en: Drop on the other pane
+  pl: Upuść na drugim panelu
+main.drag.split:
+  en: Drop on the right to split the view
+  pl: Upuść po prawej, aby podzielić widok
+main.drag.bookmarks:
+  en: Drop on Bookmarks in the tree
+  pl: Upuść na Zakładkach w drzewie
+main.about.version:
+  en: "Version %{version} (build %{build})"
+  pl: "Wersja %{version} (build %{build})"
+main.about.version_note:
+  en: "The version is the build date and time (yy.mmdd.hhmm); the app updates itself."
+  pl: "Wersja to data i godzina zbudowania (rr.mmdd.ggmm); program aktualizuje się sam."
+main.about.author:
+  en: "Author: Jarosław Hartwich,"
+  pl: "Autor: Jarosław Hartwich,"
+main.about.source:
+  en: "Source code:"
+  pl: "Kod źródłowy:"
+main.about.license:
+  en: MIT License ·
+  pl: Licencja MIT ·
+main.about.coffee:
+  en: Buy me a coffee
+  pl: Postaw mi kawę
+main.pw.title:
+  en: Password-protected archive
+  pl: Archiwum chronione hasłem
+main.pw.hint:
+  en: Password
+  pl: Hasło
+main.pw.wrong:
+  en: Wrong password, try again
+  pl: Złe hasło, spróbuj jeszcze raz
+main.pw.extract:
+  en: Extract
+  pl: Wypakuj
+main.pack.title:
+  en: Compress selected items
+  pl: Spakuj zaznaczone
+main.pack.name:
+  en: Archive name
+  pl: Nazwa archiwum
+main.pack.format:
+  en: "Format:"
+  pl: "Format:"
+main.pack.zip_tip:
+  en: Opens on any system without extra software
+  pl: Otworzy go każdy system bez dodatkowych programów
+main.pack.7z_tip:
+  en: Smaller file, takes longer to compress
+  pl: Mniejszy plik, pakowanie trwa dłużej
+main.pack.bad_name:
+  en: "A name can't contain any of these characters: \\ / : * ? \" < > |"
+  pl: "Nazwa nie może zawierać znaków \\ / : * ? \" < > |"
+main.pack.go:
+  en: Compress
+  pl: Spakuj
+main.settings.language:
+  en: Language / Język
+  pl: Language / Język
+tray.show:
+  en: "Show %{app}"
+  pl: "Pokaż %{app}"
+tray.exit:
+  en: Exit
+  pl: Zakończ

@@ -1,0 +1,84 @@
+# Texts of the VirusTotal check (app/src/scan.rs). The engine count follows "z" (of), which in
+# Polish always takes the genitive plural, so these are plain texts, not plurals.
+_version: 2
+scan.clean:
+  en: "Clean: none of %{n} engines detected anything"
+  pl: "Bezpieczny: żaden z %{n} silników nic nie wykrył"
+scan.malicious:
+  en: "Threat: %{m} of %{n} engines detected malicious code"
+  pl: "Zagrożenie: %{m} z %{n} silników wykryło złośliwy kod"
+scan.suspicious:
+  en: "Suspicious: %{m} of %{n} engines flagged it"
+  pl: "Podejrzany: %{m} z %{n} silników ma zastrzeżenia"
+scan.known:
+  en: "VirusTotal, %{name}: %{verdict}"
+  pl: "VirusTotal, %{name}: %{verdict}"
+scan.unknown:
+  en: "VirusTotal doesn't know the file %{name}: you can upload it from the preview"
+  pl: "VirusTotal nie zna pliku %{name}: można go tam wysłać z podglądu"
+scan.failed:
+  en: "VirusTotal, %{name}: %{e}"
+  pl: "VirusTotal, %{name}: %{e}"
+scan.checking_job:
+  en: Checking on VirusTotal
+  pl: Sprawdzanie w VirusTotal
+scan.cant_read:
+  en: "can't read the file: %{e}"
+  pl: "nie można odczytać pliku: %{e}"
+scan.sending_job:
+  en: Uploading to VirusTotal
+  pl: Wysyłanie do VirusTotal
+scan.slow:
+  en: "VirusTotal is taking longer than usual to analyze the file: check it again in a few minutes"
+  pl: "VirusTotal analizuje plik dłużej niż zwykle: sprawdź go ponownie za kilka minut"
+scan.check:
+  en: Check on VirusTotal
+  pl: Sprawdź w VirusTotal
+scan.checking:
+  en: Checking on VirusTotal…
+  pl: Sprawdzam w VirusTotal…
+scan.sent:
+  en: Uploaded to VirusTotal, the engines are checking the file (usually 1–3 minutes)…
+  pl: Wysłano do VirusTotal, silniki sprawdzają plik (zwykle 1–3 minuty)…
+scan.report:
+  en: Full report on VirusTotal
+  pl: Pełny raport w VirusTotal
+scan.not_known:
+  en: VirusTotal doesn't know this file
+  pl: VirusTotal nie zna tego pliku
+scan.upload_warning:
+  en: "An uploaded file goes to VirusTotal and antivirus companies: don't upload private documents."
+  pl: "Wysłany plik trafia do VirusTotal i firm antywirusowych: nie wysyłaj prywatnych dokumentów."
+scan.upload:
+  en: Upload to VirusTotal
+  pl: Wyślij do VirusTotal
+scan.check_again:
+  en: Check again
+  pl: Sprawdź ponownie
+scan.key.title:
+  en: VirusTotal API key
+  pl: Klucz API VirusTotal
+scan.key.info:
+  en: You'll find a free key after signing in at virustotal.com. The app keeps it in Windows Credential Manager.
+  pl: Darmowy klucz znajdziesz po zalogowaniu na virustotal.com. Program trzyma go w Menedżerze poświadczeń Windows.
+scan.key.page:
+  en: Open the key page
+  pl: Otwórz stronę z kluczem
+scan.key.hint_new:
+  en: New key (one is already saved)
+  pl: Nowy klucz (jeden już jest zapisany)
+scan.key.hint:
+  en: API key
+  pl: Klucz API
+scan.key.save:
+  en: Save
+  pl: Zapisz
+scan.key.remove:
+  en: Remove key
+  pl: Usuń klucz
+scan.key.saved:
+  en: VirusTotal key saved
+  pl: Klucz VirusTotal zapisany
+scan.key.removed:
+  en: VirusTotal key removed
+  pl: Klucz VirusTotal usunięty

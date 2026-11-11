@@ -7,21 +7,25 @@ pub(crate) fn type_of(name: &str, dir: bool) -> Arc<str> {
     static CACHE: OnceLock<Mutex<HashMap<String, Arc<str>>>> = OnceLock::new();
     let key = if dir { "<dir>".to_string() } else { ext_of(name) };
     let mut c = CACHE.get_or_init(Default::default).lock().unwrap();
-    c.entry(key.clone())
+    // per language too: after a switch, rows get the names in the new one. Read once, so a switch
+    // during this call cannot store one language's name under the other's key
+    let l = rx_core::i18n::lang();
+    c.entry(format!("{}:{key}", l.code()))
         .or_insert_with(|| {
-            if let Some(own) = rx_core::known_type_name(&key) {
+            if let Some(own) = rx_core::known_type_name(&key, l) {
                 return own.into();
             }
-            let probe = if dir { name.to_string() } else { format!("x.{key}") };
-            let t = sys::type_name(&probe, dir);
+            // folders by the app's own name, in its language (the shell's follows Windows')
+            if dir {
+                return rx_core::i18n::tr_in(l, "listing.type.folder").into();
+            }
+            let t = sys::type_name(&format!("x.{key}"), false);
             let t = if !t.is_empty() {
                 t
-            } else if dir {
-                "Folder plików".into()
             } else if key.is_empty() {
-                "Plik".into()
+                rx_core::i18n::tr_in(l, "listing.type.file").into()
             } else {
-                format!("Plik {}", key.to_uppercase())
+                rx_core::i18n::fill(rx_core::i18n::tr_in(l, "listing.type.ext"), &[("ext", &key.to_uppercase())])
             };
             t.into()
         })
@@ -131,7 +135,7 @@ impl App {
                     None => list_dir(&path, flat),
                 };
                 // a panic in an archive's decoder must not leave the list waiting for good
-                let rows = std::panic::catch_unwind(read).unwrap_or_else(|_| Err("odczyt przerwany przez wewnętrzny błąd".into()));
+                let rows = std::panic::catch_unwind(read).unwrap_or_else(|_| Err(t!("listing.read_crashed").into()));
                 let _ = tx.send(Msg::Listed(number, rows, arc.is_some()));
                 ctx.request_repaint();
             });
@@ -274,14 +278,14 @@ impl App {
 pub(crate) fn google_link(p: &Path) -> Result<String, String> {
     let mut stream = p.as_os_str().to_owned();
     stream.push(":user.drive.id");
-    let id = std::fs::read_to_string(stream).map_err(|_| "Google Drive nie podał adresu tego pliku".to_string())?;
+    let id = std::fs::read_to_string(stream).map_err(|_| t!("listing.drive_no_link").to_string())?;
     drive_link(id.trim())
 }
 
 fn drive_link(id: &str) -> Result<String, String> {
     // "local…": not uploaded yet
     if id.is_empty() || id.starts_with("local") {
-        return Err("Plik nie jest jeszcze wysłany na Dysk Google".into());
+        return Err(t!("listing.drive_not_uploaded").into());
     }
     Ok(format!("https://drive.google.com/open?id={id}&usp=drive_fs"))
 }
@@ -801,7 +805,7 @@ impl App {
     /// the button again bring the folder back).
     pub(crate) fn show_biggest(&mut self, ctx: &egui::Context) {
         let Some(ix) = self.index.clone() else {
-            self.msg = Some("Wczytuję indeks dysków, spróbuj za chwilę".into());
+            self.msg = Some(t!("listing.index_loading").into());
             self.want_index(ctx);
             return;
         };
@@ -811,7 +815,7 @@ impl App {
             None => ix.find(&path),
         };
         let Some(id) = id else {
-            self.msg = Some("Tego folderu nie ma w indeksie dysków (np. dysk sieciowy albo folder nowszy niż indeks)".into());
+            self.msg = Some(t!("listing.not_indexed").into());
             return;
         };
         let gone = self.space_data.as_ref().map(|d| &d.1.gone);

@@ -1,0 +1,42 @@
+# Texts of the Operacje indicator in the status bar and its panel (app/src/ops.rs).
+_version: 2
+
+ops_panel.title:
+  en: Operations
+  pl: Operacje
+ops_panel.speed:
+  en: "Speed: %{v}"
+  pl: "Szybkość: %{v}"
+ops_panel.a11y:
+  en: "Operations: %{text}"
+  pl: "Operacje: %{text}"
+ops_panel.a11y_one_failed:
+  en: "; one of the operations failed"
+  pl: "; jedna z operacji zakończyła się błędem"
+ops_panel.failed:
+  en: Operation failed
+  pl: Błąd operacji
+ops_panel.a11y_failed:
+  en: "Operations: operation failed"
+  pl: "Operacje: błąd operacji"
+ops_panel.done_n:
+  en: Completed %{n}
+  pl: Zakończono %{n}
+ops_panel.a11y_done:
+  en: "Operations: done, %{t}"
+  pl: "Operacje: zakończono, %{t}"
+ops_panel.hide:
+  en: Hide operations
+  pl: Ukryj operacje
+ops_panel.show:
+  en: Show operations
+  pl: Pokaż operacje
+ops_panel.running:
+  en: "running: %{n}"
+  pl: "w toku: %{n}"
+ops_panel.none:
+  en: no active operations
+  pl: brak aktywnych operacji
+ops_panel.close_error:
+  en: Dismiss operation error
+  pl: Zamknij błąd operacji

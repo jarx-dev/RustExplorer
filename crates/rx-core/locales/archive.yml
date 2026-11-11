@@ -1,0 +1,113 @@
+# Texts of the app's archive handling (app/src/archive.rs).
+_version: 2
+archive.list_encrypted:
+  en: "This archive's file list is encrypted: use Extract to enter the password"
+  pl: "Lista plików tego archiwum jest zaszyfrowana: użyj Wypakuj, aby podać hasło"
+archive.cant_open:
+  en: "Can't open the archive: %{e}"
+  pl: "Nie można otworzyć archiwum: %{e}"
+archive.no_folder:
+  en: "There's no folder “%{inner}” in the archive"
+  pl: "W archiwum nie ma folderu „%{inner}”"
+archive.files_encrypted:
+  en: "the files are encrypted: use Extract on the whole archive to enter the password"
+  pl: "pliki są zaszyfrowane: użyj Wypakuj na całym archiwum, aby podać hasło"
+archive.not_inside:
+  en: this isn't a file in an archive
+  pl: to nie jest plik w archiwum
+archive.no_file:
+  en: this file isn't in the archive
+  pl: nie ma tego pliku w archiwum
+archive.no_name:
+  en: no name
+  pl: bez nazwy
+archive.too_many_copies:
+  en: too many changed copies of this file
+  pl: za dużo zmienionych kopii tego pliku
+archive.open_to_see:
+  en: Open the file (Enter) to see it
+  pl: Otwórz plik (Enter), aby go zobaczyć
+archive.too_big:
+  en: "A preview from a large archive would take long; open the file (Enter)"
+  pl: "Podgląd z dużego archiwum trwałby długo; otwórz plik (Enter)"
+archive.no_preview:
+  en: "No preview: %{e}"
+  pl: "Brak podglądu: %{e}"
+archive.extracting_to:
+  en: "Extracting to %{place}"
+  pl: "Wypakowywanie do %{place}"
+archive.extracted:
+  en: "Files extracted: %{n}"
+  pl: "Wypakowano plików: %{n}"
+archive.skipped_more:
+  en: "; skipped names not allowed in Windows: %{n}"
+  pl: "; pominięte nazwy niedozwolone w Windows: %{n}"
+archive.skipped:
+  en: "Skipped names not allowed in Windows: %{n}"
+  pl: "Pominięte nazwy niedozwolone w Windows: %{n}"
+archive.originals_kept:
+  en: "; the originals stayed in the archive"
+  pl: "; oryginały zostały w archiwum"
+archive.originals_kept_source:
+  en: The originals stayed in the source archive
+  pl: Oryginały zostały w archiwum źródłowym
+archive.originals_kept_source_more:
+  en: "; the originals stayed in the source archive"
+  pl: "; oryginały zostały w archiwum źródłowym"
+archive.opening:
+  en: Opening from archive
+  pl: Otwieranie z archiwum
+archive.save.title:
+  en: Save changes to the archive?
+  pl: Zapisać zmiany w archiwum?
+archive.save.text:
+  en: "The file “%{file}” opened from the archive “%{arc}” was saved. Update it in the archive?"
+  pl: "Plik „%{file}” otwarty z archiwum „%{arc}” został zapisany. Zaktualizować go w archiwum?"
+archive.save.yes:
+  en: Save to archive
+  pl: Zapisz w archiwum
+archive.nested:
+  en: "This archive was opened from another archive: changes wouldn't reach it. Extract it to change it"
+  pl: "To archiwum jest otwarte z innego archiwum: zmiany nie trafiłyby do niego. Wypakuj je, aby je zmieniać"
+archive.nested_extract:
+  en: "This archive was opened from another archive: select files, Copy, and Paste them into a folder"
+  pl: "To archiwum jest otwarte z innego archiwum: zaznacz pliki, Kopiuj, i Wklej je w wybranym folderze"
+archive.rar.title:
+  en: RAR archives are read-only
+  pl: Archiwum RAR można tylko czytać
+archive.rar.text:
+  en: Only WinRAR creates RAR files. Create a ZIP copy of this archive and go to it? Then repeat the change.
+  pl: Pliki RAR tworzy tylko WinRAR. Utworzyć kopię tego archiwum jako ZIP i przejść do niej? Potem powtórz zmianę.
+archive.rar.yes:
+  en: Create ZIP copy
+  pl: Utwórz kopię ZIP
+archive.saving:
+  en: Saving changes to the archive
+  pl: Zapisywanie zmian w archiwum
+archive.saved:
+  en: "Saved changes to “%{name}”"
+  pl: "Zapisano zmiany w „%{name}”"
+archive.into_itself:
+  en: Can't paste a folder into itself
+  pl: Folderu nie można wkleić do niego samego
+archive.pasting:
+  en: Pasting into archive
+  pl: Wklejanie do archiwum
+archive.pasted:
+  en: "Pasted into “%{name}”"
+  pl: "Wklejono do „%{name}”"
+archive.extracted_to:
+  en: "Extracted to “%{dest}” (files: %{n})"
+  pl: "Wypakowano do „%{dest}” (plików: %{n})"
+archive.extracting_msg:
+  en: "Extracting to %{dir}"
+  pl: "Wypakowuję do %{dir}"
+archive.converting:
+  en: Creating ZIP copy
+  pl: Tworzenie kopii ZIP
+archive.no_parent:
+  en: no folder
+  pl: brak folderu
+archive.converted:
+  en: "Created “%{name}” (files: %{n}); now you can change it"
+  pl: "Utworzono „%{name}” (plików: %{n}); teraz możesz je zmieniać"

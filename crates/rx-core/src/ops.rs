@@ -1,5 +1,5 @@
 //! The Operacje panel's model: file operations running off the UI thread, their speed over their
-//! progress and the Polish texts shown for them. Workers report through [`Ops`]; the window only
+//! progress and the texts shown for them. Workers report through [`Ops`]; the window only
 //! reads a copy ([`Ops::list`]), so neither waits on the other for long.
 
 use std::sync::Mutex;
@@ -106,10 +106,10 @@ impl Job {
     /// while it waits its turn.
     pub fn status(&self) -> String {
         if let Some(w) = self.waiting(Instant::now()) {
-            return format!("W kolejce: start za {}", fmt_secs(w.as_secs_f64().ceil() as u64));
+            return t!("ops.queued", t = fmt_secs(w.as_secs_f64().ceil() as u64));
         }
         let size = match self.total {
-            Some(t) => format!("{} z {}", fmt_size(self.done), fmt_size(t)),
+            Some(t) => t!("ops.of", done = fmt_size(self.done), total = fmt_size(t)),
             None if self.done > 0 => fmt_size(self.done),
             None => String::new(),
         };
@@ -125,7 +125,7 @@ impl Job {
         if self.done == 0 {
             return took;
         }
-        format!("{} · {took} · śr. {}", fmt_size(self.done), fmt_speed(self.done as f64 / secs.max(0.1)))
+        t!("ops.summary", size = fmt_size(self.done), took = took, speed = fmt_speed(self.done as f64 / secs.max(0.1)))
     }
 
     /// What the job ended with, for the bar and the panel: its note or, without one, its title
@@ -133,7 +133,7 @@ impl Job {
     pub fn outcome(&self) -> String {
         match &self.state {
             State::Done(n) | State::Failed(n) if !n.is_empty() => n.clone(),
-            State::Done(_) => format!("Zakończono: {}", self.title),
+            State::Done(_) => t!("ops.done", title = self.title),
             _ => self.title.clone(),
         }
     }
@@ -225,9 +225,10 @@ pub fn overall(jobs: &[Job]) -> Option<f32> {
     (total > 0).then(|| (done as f64 / total as f64) as f32)
 }
 
-/// "64 %": rounded down, so 100 % shows only at the end; a non-breaking space before the sign.
+/// "64 %": rounded down, so 100 % shows only at the end; in Polish a non-breaking space before the sign.
 pub fn fmt_pct(f: f32) -> String {
-    format!("{}\u{a0}%", (f.clamp(0.0, 1.0) * 100.0).floor() as u32)
+    let n = (f.clamp(0.0, 1.0) * 100.0).floor() as u32;
+    if crate::i18n::lang() == crate::i18n::Lang::En { format!("{n}%") } else { format!("{n}\u{a0}%") }
 }
 
 pub fn fmt_speed(bytes_per_s: f64) -> String {
@@ -245,17 +246,12 @@ pub fn fmt_secs(s: u64) -> String {
 
 /// "zostało 1 min 15 s"; under a second "kończę…".
 pub fn fmt_eta(secs: f64) -> String {
-    if secs < 1.0 { "kończę…".into() } else { format!("zostało {}", fmt_secs(secs.ceil() as u64)) }
+    if secs < 1.0 { t!("ops.finishing").into() } else { t!("ops.left", t = fmt_secs(secs.ceil() as u64)) }
 }
 
 /// "1 operacja", "3 operacje", "5 operacji".
 pub fn fmt_count(n: usize) -> String {
-    let word = match (n % 10, n % 100) {
-        _ if n == 1 => "operacja",
-        (2..=4, r) if !(12..=14).contains(&r) => "operacje",
-        _ => "operacji",
-    };
-    format!("{n} {word}")
+    format!("{n} {}", crate::i18n::plural("operations", n as u64))
 }
 
 #[cfg(test)]
@@ -344,5 +340,13 @@ mod tests {
         j.progress(2 * 1024 * 1024 * 1024, 2 * 1024 * 1024 * 1024, t0 + Duration::from_secs(16));
         j.end = Some(t0 + Duration::from_secs(16));
         assert_eq!(j.summary(), "2 GB · 16\u{a0}s · śr. 128 MB/s");
+    }
+
+    #[test]
+    fn english_texts() {
+        crate::i18n::set_lang(crate::i18n::Lang::En);
+        assert_eq!(fmt_eta(75.0), "1\u{a0}min 15\u{a0}s left");
+        assert_eq!(fmt_pct(0.999), "99%");
+        assert_eq!([1, 2, 5].map(fmt_count), ["1 operation", "2 operations", "5 operations"]);
     }
 }

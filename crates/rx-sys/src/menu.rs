@@ -71,7 +71,7 @@ pub fn shell_menu(hwnd: isize, at: Option<(i32, i32)>, items: &Items) -> std::re
         return Ok(false);
     }
     let h = HWND(hwnd as _);
-    let fail = |e: windows::core::Error| format!("Menu Windows: {}", e.message());
+    let fail = |e: windows::core::Error| rx_core::t!("rx_sys.menu", e = e.message());
     let extended = unsafe { GetKeyState(VK_SHIFT.0 as i32) } < 0;
     let (menu, hmenu) = build(h, items, extended).map_err(fail)?;
     let mut pt = POINT::default();

@@ -8,6 +8,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
+// first: t! is in scope for the modules after it
+#[macro_use]
+pub mod i18n;
 pub mod icon;
 pub mod index;
 pub mod ops;
@@ -89,48 +92,51 @@ pub fn kind_of(name: &str, dir: bool) -> Kind {
     }
 }
 
-/// Polish type names for common extensions (lowercase, as `ext_of` gives them); they win over
-/// the shell's, which follow the installed apps and mix languages ("Markdown Source File").
-pub fn known_type_name(ext: &str) -> Option<&'static str> {
-    Some(match ext {
-        "pdf" => "Dokument PDF",
-        "doc" | "docx" => "Dokument Word",
-        "xls" | "xlsx" => "Arkusz Excel",
-        "ppt" | "pptx" => "Prezentacja PowerPoint",
-        "odt" => "Dokument tekstowy OpenDocument",
-        "ods" => "Arkusz OpenDocument",
-        "txt" => "Dokument tekstowy",
-        "md" | "markdown" => "Dokument Markdown",
-        "csv" => "Plik CSV",
-        "json" => "Plik JSON",
-        "yaml" | "yml" => "Plik YAML",
-        "toml" => "Plik TOML",
-        "log" => "Dziennik (log)",
-        "ps1" => "Skrypt PowerShell",
-        "bat" | "cmd" => "Skrypt wsadowy",
-        "bak" => "Kopia zapasowa",
-        "png" => "Obraz PNG",
-        "jpg" | "jpeg" => "Obraz JPEG",
-        "gif" => "Obraz GIF",
-        "svg" => "Obraz SVG",
-        "mp4" => "Wideo MP4",
-        "mp3" => "Dźwięk MP3",
-        "zip" => "Folder skompresowany (zip)",
+/// Type names for common extensions (lowercase, as `ext_of` gives them) in language `l`; they
+/// win over the shell's, which follow the installed apps and mix languages ("Markdown Source File").
+pub fn known_type_name(ext: &str, l: i18n::Lang) -> Option<&'static str> {
+    let key = match ext {
+        "pdf" => "type.pdf",
+        "doc" | "docx" => "type.word",
+        "xls" | "xlsx" => "type.excel",
+        "ppt" | "pptx" => "type.powerpoint",
+        "odt" => "type.odt",
+        "ods" => "type.ods",
+        "txt" => "type.txt",
+        "md" | "markdown" => "type.md",
+        "csv" => "type.csv",
+        "json" => "type.json",
+        "yaml" | "yml" => "type.yaml",
+        "toml" => "type.toml",
+        "log" => "type.log",
+        "ps1" => "type.ps1",
+        "bat" | "cmd" => "type.bat",
+        "bak" => "type.bak",
+        "png" => "type.png",
+        "jpg" | "jpeg" => "type.jpeg",
+        "gif" => "type.gif",
+        "svg" => "type.svg",
+        "mp4" => "type.mp4",
+        "mp3" => "type.mp3",
+        "zip" => "type.zip",
         _ => return None,
-    })
+    };
+    Some(i18n::tr_in(l, key))
 }
 
 // ---------- formatting rules ----------
 /// Sizes as classic Windows file managers show them: base 1024, next unit once the whole part
 /// reaches 1000; whole part < 10 -> 2 decimals, < 100 -> 1, else none; decimals cut off (integer
-/// division) and dropped only when they are all zero ("45 kB", but "1,50 MB").
+/// division) and dropped only when they are all zero ("45 kB", but "1,50 MB"; in English "45 KB",
+/// "1.50 MB", as English Windows writes them).
 pub fn fmt_size(b: u64) -> String {
-    const UNITS: [&str; 5] = ["kB", "MB", "GB", "TB", "PB"];
+    let en = i18n::lang() == i18n::Lang::En;
+    let units: [&str; 5] = [if en { "KB" } else { "kB" }, "MB", "GB", "TB", "PB"];
     if b < 1024 {
         return format!("{} B", group(b));
     }
     let (mut div, mut i) = (1024u64, 0);
-    while i < UNITS.len() - 1 && b / div >= 1000 {
+    while i < units.len() - 1 && b / div >= 1000 {
         div *= 1024;
         i += 1;
     }
@@ -138,19 +144,20 @@ pub fn fmt_size(b: u64) -> String {
     let dec = if whole < 10 { 2 } else if whole < 100 { 1 } else { 0 };
     let frac = (rem as u128 * 10u128.pow(dec) / div as u128) as u64;
     if frac == 0 {
-        format!("{} {}", group(whole), UNITS[i])
+        format!("{} {}", group(whole), units[i])
     } else {
-        format!("{},{:0w$} {}", group(whole), frac, UNITS[i], w = dec as usize)
+        format!("{}{}{:0w$} {}", group(whole), if en { '.' } else { ',' }, frac, units[i], w = dec as usize)
     }
 }
 
-/// Whole numbers in Polish style: thousands grouped with a (non-breaking) space.
+/// Whole numbers with their thousands grouped: by a (non-breaking) space in Polish, a comma in English.
 pub fn group(n: u64) -> String {
+    let sep = if i18n::lang() == i18n::Lang::En { ',' } else { '\u{a0}' };
     let s = n.to_string();
     let mut out = String::new();
     for (k, c) in s.chars().enumerate() {
         if k > 0 && (s.len() - k) % 3 == 0 {
-            out.push('\u{a0}');
+            out.push(sep);
         }
         out.push(c);
     }
@@ -185,33 +192,25 @@ pub fn caption_hit(r: [i32; 4], x: i32, y: i32) -> bool {
     x >= r[0] && x < r[2] && y >= r[1] && y < r[3]
 }
 
-/// Polish plural of "dysk": 1 dysk, 2-4 dyski, 5+ dysków (12-14 dysków).
-pub fn dyski(n: usize) -> &'static str {
-    match (n % 10, n % 100) {
-        _ if n == 1 => "dysk",
-        (2..=4, r) if !(12..=14).contains(&r) => "dyski",
-        _ => "dysków",
-    }
-}
-
 pub fn fmt_time(t: Option<SystemTime>) -> String {
     // dates before 1601 (the start of Windows FILETIME) are left blank
     use chrono::Datelike;
-    t.map(chrono::DateTime::<chrono::Local>::from)
-        .filter(|d| d.year() >= 1601)
-        // the Polish short date Explorer shows
-        .map(|d| d.format("%d.%m.%Y %H:%M").to_string())
-        .unwrap_or_default()
+    // the short date Explorer shows in Polish, and in US English
+    let format = match i18n::lang() {
+        i18n::Lang::Pl => "%d.%m.%Y %H:%M",
+        i18n::Lang::En => "%-m/%-d/%Y %-I:%M %p",
+    };
+    t.map(chrono::DateTime::<chrono::Local>::from).filter(|d| d.year() >= 1601).map(|d| d.format(format).to_string()).unwrap_or_default()
 }
 
 /// How long ago, for files changed in the last hours: "przed chwilą", "40 min temu", "2 godz. 5 min temu".
 pub fn fmt_ago(secs: u64) -> String {
     let (h, m) = (secs / 3600, secs % 3600 / 60);
     match (h, m) {
-        (0, 0) => "przed chwilą".into(),
-        (0, m) => format!("{m} min temu"),
-        (h, 0) => format!("{h} godz. temu"),
-        (h, m) => format!("{h} godz. {m} min temu"),
+        (0, 0) => t!("ago.now").into(),
+        (0, m) => t!("ago.min", m = m),
+        (h, 0) => t!("ago.hr", h = h),
+        (h, m) => t!("ago.hr_min", h = h, m = m),
     }
 }
 
@@ -274,15 +273,6 @@ pub fn glob_any(patterns: &str, name: &str) -> bool {
         let pat = if pat.contains(['*', '?']) { pat.to_string() } else { format!("*{pat}*") };
         m(&pat.to_lowercase().chars().collect::<Vec<_>>(), &n)
     })
-}
-
-/// Polish plural of "folder": 1 folder, 2-4 foldery, 5+ folderów (12-14 folderów).
-pub fn foldery(n: usize) -> &'static str {
-    match (n % 10, n % 100) {
-        _ if n == 1 => "folder",
-        (2..=4, r) if !(12..=14).contains(&r) => "foldery",
-        _ => "folderów",
-    }
 }
 
 /// A path on a network share as the Linux server has it, for Kopiuj ścieżkę:
@@ -636,25 +626,36 @@ mod tests {
 
     #[test]
     fn polish_type_names_for_common_extensions() {
-        assert_eq!(known_type_name(&ext_of("README.MD")), Some("Dokument Markdown"));
-        assert_eq!(known_type_name("svg"), Some("Obraz SVG"));
-        assert_eq!(known_type_name("yml"), Some("Plik YAML"));
-        assert_eq!(known_type_name("bat"), Some("Skrypt wsadowy"));
-        assert_eq!(known_type_name("bak"), Some("Kopia zapasowa"));
-        assert_eq!(known_type_name("exe"), None);
-        assert_eq!(known_type_name(""), None);
+        assert_eq!(known_type_name(&ext_of("README.MD"), i18n::Lang::Pl), Some("Dokument Markdown"));
+        assert_eq!(known_type_name("svg", i18n::Lang::Pl), Some("Obraz SVG"));
+        assert_eq!(known_type_name("yml", i18n::Lang::Pl), Some("Plik YAML"));
+        assert_eq!(known_type_name("bat", i18n::Lang::Pl), Some("Skrypt wsadowy"));
+        assert_eq!(known_type_name("bak", i18n::Lang::Pl), Some("Kopia zapasowa"));
+        assert_eq!(known_type_name("exe", i18n::Lang::Pl), None);
+        assert_eq!(known_type_name("", i18n::Lang::Pl), None);
     }
 
     #[test]
     fn time_ago() {
         let got: Vec<String> = [0, 59, 60, 2400, 3600, 7500].iter().map(|&s| fmt_ago(s)).collect();
         assert_eq!(got, ["przed chwilą", "przed chwilą", "1 min temu", "40 min temu", "1 godz. temu", "2 godz. 5 min temu"]);
+        i18n::set_lang(i18n::Lang::En);
+        let got: Vec<String> = [0, 60, 3600, 7500].iter().map(|&s| fmt_ago(s)).collect();
+        assert_eq!(got, ["just now", "1 min ago", "1 hr ago", "2 hr 5 min ago"]);
     }
 
     #[test]
-    fn folder_plurals() {
-        let got: Vec<&str> = [1, 2, 4, 5, 12, 14, 22, 25, 101].iter().map(|&n| foldery(n)).collect();
-        assert_eq!(got, ["folder", "foldery", "foldery", "folderów", "folderów", "folderów", "foldery", "folderów", "folderów"]);
+    fn english_numbers_sizes_and_dates() {
+        i18n::set_lang(i18n::Lang::En);
+        assert_eq!(group(826_734), "826,734");
+        assert_eq!(fmt_size(46_223), "45.1 KB");
+        assert_eq!(fmt_size(1_572_864), "1.50 MB");
+        assert_eq!(fmt_size(1_000_000_000_000), "931 GB");
+        assert_eq!(known_type_name("zip", i18n::Lang::En), Some("Compressed (zipped) Folder"));
+        let t = chrono::NaiveDate::from_ymd_opt(2026, 3, 7).unwrap().and_hms_opt(14, 5, 0).unwrap().and_local_timezone(chrono::Local).unwrap();
+        assert_eq!(fmt_time(Some(t.into())), "3/7/2026 2:05 PM");
+        i18n::set_lang(i18n::Lang::Pl);
+        assert_eq!(fmt_time(Some(t.into())), "07.03.2026 14:05");
     }
 
     #[test]
@@ -754,11 +755,7 @@ mod tests {
 
     #[test]
     fn polish_plural() {
-        assert_eq!(dyski(1), "dysk");
-        assert_eq!(dyski(2), "dyski");
-        assert_eq!(dyski(5), "dysków");
-        assert_eq!(dyski(12), "dysków");
-        assert_eq!(dyski(22), "dyski");
+        assert_eq!([1, 2, 5, 12, 22].map(|n| i18n::plural("drives", n)), ["dysk", "dyski", "dysków", "dysków", "dyski"]);
     }
 
     #[test]

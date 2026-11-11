@@ -1,0 +1,30 @@
+# The folder tree on the left (app/src/tree.rs).
+_version: 2
+
+tree.remove_bookmark:
+  en: Remove from bookmarks
+  pl: Usuń z zakładek
+tree.more:
+  en: "… %{n} more %{folders}"
+  pl: "… jeszcze %{n} %{folders}"
+tree.more_tip:
+  en: Show all folders at this level
+  pl: Pokaż wszystkie foldery na tym poziomie
+tree.already_bookmarked:
+  en: Already in bookmarks
+  pl: Już jest w zakładkach
+tree.home:
+  en: Home
+  pl: Widok główny
+tree.bookmarks:
+  en: Bookmarks
+  pl: Zakładki
+tree.bookmarks_empty:
+  en: "     Drag a tab or a folder from the path here"
+  pl: "     Przeciągnij tu kartę lub folder ze ścieżki"
+tree.recycle_bin:
+  en: Recycle Bin
+  pl: Kosz
+tree.recycle_bin_tip:
+  en: Open the Recycle Bin in File Explorer
+  pl: Otwórz Kosz w Eksploratorze

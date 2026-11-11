@@ -1,0 +1,87 @@
+# rx-archive: errors the window shows when an archive can't be opened, unpacked, packed or changed,
+# and the names it gives to folders it makes.
+_version: 2
+rx_archive.work_dir:
+  en: ".%{stem} (extracting)"
+  pl: ".%{stem} (wypakowywanie)"
+rx_archive.new_folder:
+  en: New folder
+  pl: Nowy folder
+rx_archive.rest_left:
+  en: "%{to}: %{e}; the rest was left in “%{work}”"
+  pl: "%{to}: %{e}; reszta została w „%{work}”"
+rx_archive.unsupported:
+  en: "Unsupported format: .%{ext}"
+  pl: "Nieobsługiwany format: .%{ext}"
+rx_archive.damaged_stopped:
+  en: damaged archive (stopped)
+  pl: uszkodzone archiwum (przerwano)
+rx_archive.damaged:
+  en: damaged archive
+  pl: uszkodzone archiwum
+rx_archive.exists:
+  en: "%{path} already exists"
+  pl: "%{path} już istnieje"
+rx_archive.same_name_files:
+  en: the archive has two files with the same name (Windows doesn't tell upper and lower case apart)
+  pl: w archiwum są dwa pliki o tej samej nazwie (Windows nie rozróżnia wielkości liter)
+rx_archive.link:
+  en: it's a symbolic link, which an archive can't hold
+  pl: to skrót systemowy (dowiązanie), którego archiwum nie obejmie
+rx_archive.cant_create:
+  en: "Can't create .%{kind} archives"
+  pl: "Nie umiem tworzyć archiwów .%{kind}"
+rx_archive.internal:
+  en: stopped by an internal error
+  pl: przerwano przez wewnętrzny błąd
+rx_archive.no_file:
+  en: no file to add
+  pl: brak pliku do dodania
+rx_archive.not_in_archive:
+  en: "“%{name}” isn't in the archive"
+  pl: "W archiwum nie ma „%{name}”"
+rx_archive.bad_windows_name:
+  en: "The name “%{name}” can't be used in Windows"
+  pl: "Nazwy „%{name}” nie da się zapisać w Windows"
+rx_archive.name_taken:
+  en: "“%{name}” is already in this folder of the archive"
+  pl: "„%{name}” już jest w tym folderze archiwum"
+rx_archive.into_itself:
+  en: A folder can't be moved into itself
+  pl: Folderu nie można przenieść do niego samego
+rx_archive.gone:
+  en: "The file “%{name}” is no longer in the archive (it was renamed or deleted)"
+  pl: "Pliku „%{name}” nie ma już w archiwum (zmieniono jego nazwę lub go usunięto)"
+rx_archive.rar_readonly:
+  en: ".%{kind} archives can't be changed: only WinRAR creates them"
+  pl: "Archiwów .%{kind} nie da się zmieniać: tworzy je tylko WinRAR"
+rx_archive.list_encrypted:
+  en: the archive's file list is encrypted
+  pl: lista plików archiwum jest zaszyfrowana
+rx_archive.duplicate_entries:
+  en: the archive has two entries with the same name; a change would keep only one of them
+  pl: w archiwum są dwa wpisy o tej samej nazwie; zmiana zostawiłaby jeden z nich
+rx_archive.sfx:
+  en: the archive has data before its first file (self-extracting); a change would remove it
+  pl: archiwum ma dane przed pierwszym plikiem (samorozpakowujące się); zmiana by je usunęła
+rx_archive.legacy_names:
+  en: the file names in this archive use an old encoding (from before UTF-8); a change would garble them
+  pl: nazwy plików w tym archiwum są w starym kodowaniu (sprzed UTF-8); zmiana by je zniekształciła
+rx_archive.device_name_in_folder:
+  en: "the folder holds a file whose name Windows doesn't allow (“%{name}”); renaming would split the folder"
+  pl: "folder zawiera plik o nazwie niedozwolonej w Windows („%{name}”); zmiana nazwy rozdzieliłaby go"
+rx_archive.zipcrypto:
+  en: "the files are encrypted with the old ZIP method (ZipCrypto): a change would damage them; extract the archive to change it"
+  pl: "pliki są zaszyfrowane starą metodą ZIP (ZipCrypto): zmiana by je uszkodziła; wypakuj archiwum, aby zmieniać"
+rx_archive.encrypted_7z:
+  en: an encrypted 7z archive can't be changed
+  pl: zaszyfrowanego archiwum 7z nie da się zmieniać
+rx_archive.bad_names_change:
+  en: "the archive has names Windows can't save (files: %{n}); a change would remove them"
+  pl: "archiwum zawiera nazwy, których Windows nie zapisze (plików: %{n}); zmiana by je usunęła"
+rx_archive.bad_names_copy:
+  en: "the archive has names Windows can't save (files: %{n}); the copy would be incomplete"
+  pl: "archiwum zawiera nazwy, których Windows nie zapisze (plików: %{n}); kopia byłaby niepełna"
+rx_archive.bad_name:
+  en: "bad name: %{name}"
+  pl: "zła nazwa: %{name}"

@@ -46,7 +46,7 @@ pub(crate) fn build_preview(path: &Path, px: u32, read: bool) -> Raw {
     if ext == "pdf" {
         if let Ok((png, pages)) = sys::pdf_first_page(path, px) {
             if let Ok(img) = image::load_from_memory(&png) {
-                return Raw::Image(to_color_image(img), format!("Strona 1 z {pages}"));
+                return Raw::Image(to_color_image(img), t!("preview.pdf_page", pages = pages));
             }
         }
     }
@@ -59,7 +59,7 @@ pub(crate) fn build_preview(path: &Path, px: u32, read: bool) -> Raw {
     }
     match sys::shell_thumbnail(path, 512, false) {
         Some((w, h, px)) => Raw::Image(ColorImage::from_rgba_premultiplied([w, h], &px), String::new()),
-        None => Raw::Nothing("Brak podglądu dla tego pliku".into()),
+        None => Raw::Nothing(t!("preview.none").into()),
     }
 }
 
@@ -75,7 +75,15 @@ fn attr_words(a: u32) -> String {
     if a & !0x20 & (0x1 | 0x2 | 0x4 | 0x800 | 0x1000 | 0x4000) == 0 {
         return String::new();
     }
-    let words = [(0x1, "Tylko do odczytu"), (0x2, "Ukryty"), (0x4, "Systemowy"), (0x20, "Archiwalny"), (0x800, "Skompresowany"), (0x4000, "Zaszyfrowany"), (0x1000, "Offline")];
+    let words = [
+        (0x1, t!("preview.attr.readonly")),
+        (0x2, t!("preview.attr.hidden")),
+        (0x4, t!("preview.attr.system")),
+        (0x20, t!("preview.attr.archive")),
+        (0x800, t!("preview.attr.compressed")),
+        (0x4000, t!("preview.attr.encrypted")),
+        (0x1000, t!("preview.attr.offline")),
+    ];
     words.iter().filter(|&&(m, _)| a & m != 0).map(|&(_, w)| w).collect::<Vec<_>>().join(", ")
 }
 
@@ -117,11 +125,11 @@ impl App {
 
     fn preview_body(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Podgląd").size(14.0).family(FontFamily::Name("semibold".into())).color(pal().dim));
+            ui.label(RichText::new(t!("preview.title")).size(14.0).family(FontFamily::Name("semibold".into())).color(pal().dim));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let r = ui.add(egui::Button::new(icon(ic::CLOSE, 12.0).color(pal().text)).min_size(vec2(32.0, 32.0)));
-                named(&r, egui::Role::Button, "Ukryj podgląd");
-                if r.on_hover_text("Ukryj podgląd (Alt+P)").clicked() {
+                named(&r, egui::Role::Button, t!("preview.hide"));
+                if r.on_hover_text(t!("preview.hide_tip")).clicked() {
                     self.show_preview = false;
                 }
             });
@@ -135,9 +143,14 @@ impl App {
                 let drives = self.pc.as_deref().unwrap_or_default();
                 let free = drives.iter().map(|d| d.3).sum();
                 let total = drives.iter().map(|d| d.4).sum();
-                details(ui, "Ten komputer", "Folder systemowy", vec![("Dyski", group(drives.len() as u64)), ("Wolne", fmt_size(free)), ("Pojemność", fmt_size(total))]);
+                details(
+                    ui,
+                    t!("pc.this"),
+                    t!("preview.system_folder"),
+                    vec![(t!("preview.drives"), group(drives.len() as u64)), (t!("preview.free"), fmt_size(free)), (t!("preview.capacity"), fmt_size(total))],
+                );
                 ui.add_space(10.0);
-                ui.add(egui::Label::new(RichText::new("Zaznacz dysk, aby zobaczyć szczegóły").color(pal().dim)).wrap());
+                ui.add(egui::Label::new(RichText::new(t!("preview.pick_drive")).color(pal().dim)).wrap());
                 return;
             }
             // the current folder in the file metadata layout; counted like the status bar, from the listing
@@ -150,15 +163,15 @@ impl App {
             let name = t.path.file_name().map_or_else(|| t.path.to_string_lossy(), |n| n.to_string_lossy());
             // the list holds search results (or the biggest files), not this folder
             let (name, kind) = if t.biggest {
-                ("Największe pliki".into(), "W tym folderze i podfolderach")
+                (t!("preview.biggest").into(), t!("preview.biggest_where"))
             } else if t.found {
-                ("Wyniki wyszukiwania".into(), "Wszystkie dyski lokalne")
+                (t!("preview.results").into(), t!("preview.all_drives"))
             } else {
-                (name, "Folder plików")
+                (name, t!("preview.file_folder"))
             };
-            details(ui, &name, kind, vec![("Foldery", group(dirs)), ("Pliki", group(files)), ("Rozmiar", fmt_size(bytes))]);
+            details(ui, &name, kind, vec![(t!("preview.folders"), group(dirs)), (t!("preview.files"), group(files)), (t!("preview.size"), fmt_size(bytes))]);
             ui.add_space(10.0);
-            ui.add(egui::Label::new(RichText::new("Zaznacz plik, aby zobaczyć podgląd").color(pal().dim)).wrap());
+            ui.add(egui::Label::new(RichText::new(t!("preview.pick_file")).color(pal().dim)).wrap());
             return;
         };
         let path = path.clone();
@@ -251,8 +264,8 @@ impl App {
                             ui.add_space(box_h / 2.0 - 70.0);
                             let (r, _) = ui.allocate_exact_size(vec2(96.0, 96.0), Sense::hover());
                             paint_icon(ui.painter(), r, Kind::Folder);
-                            ui.label(format!("Folderów: {d}   Plików: {f}"));
-                            ui.label(RichText::new(format!("Pliki w tym folderze: {}", fmt_size(*b))).color(pal().dim));
+                            ui.label(t!("preview.counts", d = d, f = f));
+                            ui.label(RichText::new(t!("preview.files_here", size = fmt_size(*b))).color(pal().dim));
                         });
                     }
                     Shown::Cloud(Some(tex), _) => {
@@ -282,7 +295,7 @@ impl App {
                     let up = STEPS.into_iter().find(|&z| z > zoom);
                     let down = STEPS.into_iter().rev().find(|&z| z < zoom);
                     let mut x = card_rect.right() - 8.0;
-                    for (glyph, name, to) in [(ic::ZOOM_IN, "Powiększ obraz", up), (ic::ZOOM_OUT, "Pomniejsz obraz", down)] {
+                    for (glyph, name, to) in [(ic::ZOOM_IN, t!("preview.zoom_in"), up), (ic::ZOOM_OUT, t!("preview.zoom_out"), down)] {
                         x -= 30.0;
                         let at = egui::Rect::from_min_size(egui::pos2(x, card_rect.top() + 8.0), vec2(30.0, 30.0));
                         let b = egui::Button::new(icon(glyph, 14.0).color(pal().text)).fill(pal().field).stroke(Stroke::new(1.0, pal().line));
@@ -303,9 +316,9 @@ impl App {
             egui::Button::new((icon(glyph, 16.0).color(pal().text), RichText::new(label))).fill(pal().field).stroke(Stroke::new(1.0, pal().line)).min_size(vec2(0.0, 32.0))
         };
         if let Shown::Cloud(_, more) = shown {
-            ui.add(egui::Label::new(RichText::new("Plik jest tylko w chmurze, więc podgląd go nie pobiera.").color(pal().dim)).wrap());
+            ui.add(egui::Label::new(RichText::new(t!("preview.cloud_only")).color(pal().dim)).wrap());
             // only where the content would show: a picture, a PDF, text
-            if *more && ui.add(button(ic::CLOUD, "Pobierz, aby zobaczyć podgląd")).clicked() {
+            if *more && ui.add(button(ic::CLOUD, t!("preview.download"))).clicked() {
                 self.pending.push(Act::CloudFetch(path.clone()));
             }
             ui.add_space(8.0);
@@ -315,7 +328,7 @@ impl App {
             let mut rows = vec![];
             if let Some(s) = e.size {
                 // the exact count only adds something once the short form is rounded (kB and up)
-                rows.push(("Rozmiar", if s < 1024 { fmt_size(s) } else { format!("{}\n{} B", fmt_size(s), group(s)) }));
+                rows.push((t!("preview.size"), if s < 1024 { fmt_size(s) } else { format!("{}\n{} B", fmt_size(s), group(s)) }));
             }
             let when = fmt_time(e.modified);
             let rel = ago(e.modified);
@@ -323,21 +336,21 @@ impl App {
                 // the list may not repaint (Miniatury, recent rows scrolled away), so the preview asks too
                 ui.ctx().request_repaint_after(std::time::Duration::from_secs(60));
             }
-            rows.push(("Zmodyfikowany", rel.map_or(when.clone(), |a| format!("{when}\n{a}"))));
+            rows.push((t!("preview.modified"), rel.map_or(when.clone(), |a| format!("{when}\n{a}"))));
             let attrs = attr_words(e.attrs);
             if !attrs.is_empty() {
-                rows.push(("Atrybuty", attrs));
+                rows.push((t!("preview.attributes"), attrs));
             }
             if let Some(c) = self.cloud_mark(&e) {
                 let at = match c {
-                    Cloud::Online => "Tylko w chmurze\npobierze się przy otwarciu",
-                    Cloud::Local => "Na tym urządzeniu",
-                    Cloud::Pinned => "Zawsze na tym urządzeniu",
+                    Cloud::Online => t!("preview.cloud.online"),
+                    Cloud::Local => t!("preview.cloud.local"),
+                    Cloud::Pinned => t!("preview.cloud.pinned"),
                 };
-                rows.push(("Chmura", at.into()));
+                rows.push((t!("preview.cloud"), at.into()));
             }
             if !extra.is_empty() {
-                rows.push((if e.kind == Kind::Pdf { "Dokument" } else { "Wymiary" }, extra));
+                rows.push((if e.kind == Kind::Pdf { t!("preview.document") } else { t!("preview.dimensions") }, extra));
             }
             details(ui, &e.name, &e.type_name, rows);
             ui.add_space(6.0);
@@ -351,12 +364,12 @@ impl App {
                         v.bg_stroke = Stroke::new(1.0, c);
                     }
                     let ink = pal().on_accent;
-                    ui.add(egui::Button::new((icon(ic::OPEN, 16.0).color(ink), RichText::new("Otwórz").color(ink))).min_size(vec2(0.0, 32.0)))
+                    ui.add(egui::Button::new((icon(ic::OPEN, 16.0).color(ink), RichText::new(t!("preview.open")).color(ink))).min_size(vec2(0.0, 32.0)))
                 });
                 if open.inner.clicked() {
                     self.pending.push(Act::OpenPath(e.path.clone()));
                 }
-                if ui.add(button(ic::INFO, "Właściwości")).clicked() {
+                if ui.add(button(ic::INFO, t!("preview.properties"))).clicked() {
                     self.pending.push(Act::Properties);
                 }
             });

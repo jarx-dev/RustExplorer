@@ -9,3 +9,5 @@ description = "RustExplorer: platform-free rules (sizes, dates, sorting, filters
 chrono = "0.4"
 # SIMD substring search over the whole-drive index (index.rs); already in the tree via egui
 memchr = "2"
+# the UI's texts in English and Polish (i18n.rs, locales/): compiled in from YAML, looked up by t!
+rust-i18n = "=4.2.4"

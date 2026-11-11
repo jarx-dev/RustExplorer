@@ -16,10 +16,11 @@ pub(crate) fn make_tray(ctx: &egui::Context) -> (Option<tray_icon::TrayIcon>, Re
     use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
     use tray_icon::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
     let (tx, rx) = channel();
-    let show = MenuItem::new(format!("Pokaż {APP_NAME}"), true, None);
-    let quit = MenuItem::new("Zakończ", true, None);
+    let show = MenuItem::new(t!("tray.show", app = APP_NAME), true, None);
+    let quit = MenuItem::new(t!("tray.exit"), true, None);
     let menu = Menu::new();
     let _ = menu.append_items(&[&show, &PredefinedMenuItem::separator(), &quit]);
+    TRAY_ITEMS.with(|t| *t.borrow_mut() = Some((show.clone(), quit.clone())));
     let mut builder = TrayIconBuilder::new().with_menu(Box::new(menu)).with_tooltip(APP_NAME).with_menu_on_left_click(false);
     if let Ok(i) = tray_icon::Icon::from_rgba(icon::rgba(32), 32, 32) {
         builder = builder.with_icon(i);
@@ -39,6 +40,21 @@ pub(crate) fn make_tray(ctx: &egui::Context) -> (Option<tray_icon::TrayIcon>, Re
         }
     }));
     (tray, rx)
+}
+
+thread_local! {
+    /// the tray menu's items, made and renamed on the window's thread
+    static TRAY_ITEMS: std::cell::RefCell<Option<(tray_icon::menu::MenuItem, tray_icon::menu::MenuItem)>> = const { std::cell::RefCell::new(None) };
+}
+
+/// The tray menu in the language chosen now (after a switch in Ustawienia).
+pub(crate) fn tray_texts() {
+    TRAY_ITEMS.with(|t| {
+        if let Some((show, quit)) = &*t.borrow() {
+            show.set_text(t!("tray.show", app = APP_NAME));
+            quit.set_text(t!("tray.exit"));
+        }
+    });
 }
 
 impl App {

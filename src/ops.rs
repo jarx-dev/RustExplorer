@@ -76,7 +76,7 @@ fn chart(ui: &mut Ui, j: &Job, col: Color32, shown: Option<f32>) {
         let cy = y(j.speed as f32);
         p.extend(egui::Shape::dashed_line(&[pos2(inner.left(), cy), pos2(inner.right(), cy)], Stroke::new(1.0, pal().dim), 3.0, 3.0));
         let font = egui::TextStyle::Small.resolve(ui.style());
-        p.text(inner.right_bottom() + vec2(-6.0, -2.0), Align2::RIGHT_BOTTOM, format!("Szybkość: {}", fmt_speed(j.speed)), font, pal().dim);
+        p.text(inner.right_bottom() + vec2(-6.0, -2.0), Align2::RIGHT_BOTTOM, t!("ops_panel.speed", v = fmt_speed(j.speed)), font, pal().dim);
     } else if j.total.is_none() && j.running() {
         if j.waiting(Instant::now()).is_some() {
             // waiting its turn, not working: no running bar; the countdown under it moves by the second
@@ -119,21 +119,21 @@ impl App {
             if failed {
                 atoms.push_right(egui::Atom::custom(dot_id, vec2(7.0, 7.0)));
             }
-            format!("Operacje: {text}{}", if failed { "; jedna z operacji zakończyła się błędem" } else { "" })
+            format!("{}{}", t!("ops_panel.a11y", text = text), if failed { t!("ops_panel.a11y_one_failed") } else { "" })
         } else if failed {
             atoms.push_right(icon(ic::CLOSE, 10.0).color(pal().red));
-            atoms.push_right(RichText::new("Błąd operacji").color(pal().red));
-            "Operacje: błąd operacji".to_string()
+            atoms.push_right(RichText::new(t!("ops_panel.failed")).color(pal().red));
+            t!("ops_panel.a11y_failed").to_string()
         } else {
             // what the last one did; its note (as before) is in the status bar too
             let t = match jobs.as_slice() {
                 [j] if j.done > 0 => j.summary(),
                 [j] => j.outcome(),
-                many => format!("Zakończono {}", fmt_count(many.len())),
+                many => t!("ops_panel.done_n", n = fmt_count(many.len())),
             };
             atoms.push_right(icon(ic::CHECK, 10.0).color(pal().new_text));
             atoms.push_right(t.clone());
-            format!("Operacje: zakończono, {t}")
+            t!("ops_panel.a11y_done", t = t)
         };
         atoms.push_right(icon(ic::CHEV_U, 8.0).color(pal().dim));
         // the hover fill of the toolbar, kept while the panel is open (the mock-up's expanded button)
@@ -150,7 +150,7 @@ impl App {
         if let Some(r) = ar.rect(dot_id) {
             ui.painter().circle_filled(r.center(), 3.5, pal().red);
         }
-        let resp = ar.response.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(if open { "Ukryj operacje" } else { "Pokaż operacje" });
+        let resp = ar.response.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(if open { t!("ops_panel.hide") } else { t!("ops_panel.show") });
         resp.widget_info(|| {
             let mut info = egui::WidgetInfo::labeled(egui::Role::Button, true, &label);
             info.value = frac.map(|f| (f as f64 * 100.0).floor());
@@ -167,16 +167,16 @@ impl App {
             .align(egui::RectAlign::TOP_START)
             .gap(6.0)
             .width(PANEL_W)
-            .accessible_name("Operacje")
+            .accessible_name(t!("ops_panel.title"))
             .frame(egui::Frame::popup(ui.style()).inner_margin(Margin::symmetric(12, 10)))
             .show(|ui| {
                 ui.set_width(PANEL_W - 24.0);
                 ui.spacing_mut().item_spacing.y = 4.0;
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("Operacje").font(FontId::new(14.0, FontFamily::Name("semibold".into()))));
+                    ui.label(RichText::new(t!("ops_panel.title")).font(FontId::new(14.0, FontFamily::Name("semibold".into()))));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let n = running.len();
-                        ui.label(RichText::new(if n > 0 { format!("w toku: {n}") } else { "brak aktywnych operacji".into() }).color(pal().dim));
+                        ui.label(RichText::new(if n > 0 { t!("ops_panel.running", n = n) } else { t!("ops_panel.none").into() }).color(pal().dim));
                     });
                 });
                 for j in &jobs {
@@ -210,8 +210,8 @@ impl App {
             ui.add(egui::Label::new(RichText::new(&j.title).font(FontId::new(14.0, FontFamily::Name("semibold".into())))).truncate());
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if err {
-                    let r = ui.add(egui::Button::new(icon(ic::CLOSE, 10.0).color(pal().dim)).frame(false)).on_hover_text("Zamknij");
-                    named(&r, egui::Role::Button, "Zamknij błąd operacji");
+                    let r = ui.add(egui::Button::new(icon(ic::CLOSE, 10.0).color(pal().dim)).frame(false)).on_hover_text(t!("common.close"));
+                    named(&r, egui::Role::Button, t!("ops_panel.close_error"));
                     if r.clicked() {
                         close = Some(j.id);
                     }

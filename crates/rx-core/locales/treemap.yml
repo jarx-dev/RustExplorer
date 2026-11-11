@@ -1,0 +1,44 @@
+# Texts of the disk usage map (app/src/treemap.rs).
+_version: 2
+treemap.loading:
+  en: Loading the drive index…
+  pl: Wczytuję indeks dysków…
+treemap.title:
+  en: Map
+  pl: Mapa
+treemap.hint:
+  en: "· click a tile to go there; right-click: delete to Recycle Bin"
+  pl: "· kliknij kafelek, aby tam przejść; prawy przycisk: usuń do Kosza"
+treemap.not_indexed:
+  en: This folder isn't in the drive index (a network drive or a folder newer than the index)
+  pl: Tego folderu nie ma w indeksie dysków (dysk sieciowy albo folder nowszy niż indeks)
+treemap.empty:
+  en: This folder takes up no space
+  pl: Ten folder nie zajmuje miejsca
+treemap.folder:
+  en: folder
+  pl: folder
+treemap.file:
+  en: file
+  pl: plik
+treemap.tip:
+  en: "%{path}\n%{what} · %{size} · %{pct}% of what is shown here"
+  pl: "%{path}\n%{what} · %{size} · %{pct} % tego, co tu widać"
+treemap.open:
+  en: Open
+  pl: Otwórz
+treemap.reveal:
+  en: Show in list
+  pl: Pokaż na liście
+treemap.copy_path:
+  en: Copy path
+  pl: Kopiuj ścieżkę
+treemap.recycle:
+  en: Delete to Recycle Bin
+  pl: Usuń do Kosza
+treemap.above:
+  en: Folders above it
+  pl: Foldery nad nim
+treemap.recycle_folder:
+  en: Delete folder to Recycle Bin
+  pl: Usuń folder do Kosza

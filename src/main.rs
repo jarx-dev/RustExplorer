@@ -1,6 +1,6 @@
 #![cfg_attr(not(test), windows_subsystem = "windows")]
 //! RustExplorer — a two-click Windows 11 style file manager with a preview pane.
-use rx_core::{col_widths, dyski, foldery, ext_of, fmt_attrs, fmt_size, fmt_time, glob_any, group, icon, kind_of, natural_cmp, Kind, APP_NAME, IMAGE_EXT, TEXT_EXT};
+use rx_core::{col_widths, ext_of, i18n::plural, t, fmt_attrs, fmt_size, fmt_time, glob_any, group, icon, kind_of, natural_cmp, Kind, APP_NAME, IMAGE_EXT, TEXT_EXT};
 use rx_sys as sys;
 use rx_update as update;
 
@@ -47,8 +47,9 @@ const START_SIZE: [f32; 2] = [1600.0, 860.0];
 const MIN_SIZE: [f32; 2] = [420.0, 320.0];
 /// Window widths under which the tree, and the preview, are left out (points).
 const NARROW: [f32; 2] = [480.0, 700.0];
-/// Column widths (Wielkość, Typ, Zmodyfikowany, Atrybuty) a column gets when shown again.
-const DEFAULT_W: [f32; 4] = [90.0, 210.0, 140.0, 80.0];
+/// Column widths (Wielkość, Typ, Zmodyfikowany, Atrybuty) a column gets when shown again. The date
+/// fits the longest English one, "12/31/2026 11:59 PM" (the Polish one is shorter).
+const DEFAULT_W: [f32; 4] = [90.0, 210.0, 160.0, 80.0];
 /// How long a file counts as new / recently changed: 3 hours (owner's setting).
 const RECENT_SECS: u64 = 3 * 60 * 60;
 /// Pseudo-path of the "Ten komputer" (drives) view.
@@ -617,9 +618,10 @@ impl eframe::App for App {
             egui::ThemePreference::Dark => 2,
         };
         let text = format!(
-            "zoom={}\nwidths={},{},{},{}\nnamew={}\nview={view}\ntheme={theme}\npreview={}\nhidden={}\ntraynote={}\nfulltree={}\nsplit={}\ncur={}\nother={}\ntabs={}\nsides={}",
+            "zoom={}\nwidths={},{},{},{}\nnamew={}\nview={view}\ntheme={theme}\npreview={}\nhidden={}\ntraynote={}\nfulltree={}\nsplit={}\ncur={}\nother={}\ntabs={}\nsides={}\nlang={}",
             self.zoom, w[0], w[1], w[2], w[3], self.name_width, self.show_preview as u8, self.show_hidden as u8, self.told_tray as u8, self.tree_full as u8, self.split as u8, self.cur, self.other, tabs.join("|"),
-            self.tabs.iter().map(|t| t.side.to_string()).collect::<Vec<_>>().join(",")
+            self.tabs.iter().map(|t| t.side.to_string()).collect::<Vec<_>>().join(","),
+            rx_core::i18n::lang().code()
         );
         storage.set_string("uklad", text);
         storage.set_string("sortowanie", sorts_to_text(&self.folder_sorts));
@@ -718,7 +720,7 @@ impl eframe::App for App {
             // the first X ever hides to the tray (tray_and_close): a note of the app's own says so
             if !self.told_tray && !self.quitting && self._tray.is_some() && ctx.input(|i| i.viewport().close_requested()) {
                 self.told_tray = true;
-                sys::note::show(&format!("{APP_NAME} działa w zasobniku"), "Kliknij tu lub ikonę przy zegarze, aby wrócić", 6, dark(), ask_to_show);
+                sys::note::show(&t!("main.tray_note.title", app = APP_NAME), t!("main.tray_note.text"), 6, dark(), ask_to_show);
             }
             if !self.tray_and_close(ctx) {
                 self.install_update(ctx);
@@ -832,29 +834,30 @@ impl eframe::App for App {
         let target = self.drop_target.take();
         if self.ext.as_ref().is_some_and(|x| x.2) {
             self.ext = None;
-            self.msg = Some("Tu nie można upuścić tych plików: upuść je na liście innego folderu lub na folderze (nie w archiwum ani w wynikach wyszukiwania)".into());
+            self.msg = Some(t!("main.drop.refused").into());
         }
         let drag = egui::DragAndDrop::payload::<Dragged>(&ctx);
         if let Some(d) = drag.filter(|_| self.drag_out_next.is_none() && !self.drag_out_done) {
             let name = d.0.first().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-            let name = if d.0.len() > 1 { format!("{name} i jeszcze {}", d.0.len() - 1) } else { name };
+            let name = if d.0.len() > 1 { t!("main.drag.and_more", name = name, n = d.0.len() - 1) } else { name };
             let action = match &target {
                 Some((to, mv)) => {
                     ctx.set_cursor_icon(if *mv { egui::CursorIcon::Grabbing } else { egui::CursorIcon::Copy });
-                    format!("{} do „{}”", if *mv { "Przenieś" } else { "Kopiuj" }, to.file_name().map_or_else(|| to.to_string_lossy(), |s| s.to_string_lossy()))
+                    let to = to.file_name().map_or_else(|| to.to_string_lossy(), |s| s.to_string_lossy());
+                    if *mv { t!("main.drag.move_to", to = to) } else { t!("main.drag.copy_to", to = to) }
                 }
-                None => "Upuść na drugim panelu albo na folderze".into(),
+                None => t!("main.drag.hint").into(),
             };
             drag_card(&ctx, d.2, &name, d.0.len(), &action, target.is_some());
         }
         let tab_target = self.tab_target.take();
         if let Some(t) = egui::DragAndDrop::payload::<DraggedTab>(&ctx).filter(|t| t.0 < self.tabs.len()) {
-            let hint = if self.split { "Upuść na drugim panelu" } else { "Upuść po prawej, aby podzielić widok" };
+            let hint = if self.split { t!("main.drag.other_pane") } else { t!("main.drag.split") };
             let kind = if is_pc(&self.tabs[t.0].path) { Kind::Computer } else { Kind::Folder };
             drag_card(&ctx, kind, &self.tab_label(t.0), 1, tab_target.unwrap_or(hint), tab_target.is_some());
         }
         if let Some(d) = egui::DragAndDrop::payload::<DraggedPath>(&ctx) {
-            drag_card(&ctx, Kind::Folder, &self.dname(&d.0), 1, tab_target.unwrap_or("Upuść na Zakładkach w drzewie"), tab_target.is_some());
+            drag_card(&ctx, Kind::Folder, &self.dname(&d.0), 1, tab_target.unwrap_or(t!("main.drag.bookmarks")), tab_target.is_some());
         }
         if self.about {
             let (version, build) = update::version();
@@ -866,25 +869,25 @@ impl eframe::App for App {
                     ui.label(RichText::new(APP_NAME).heading());
                 });
                 ui.add_space(8.0);
-                ui.label(format!("Wersja {version} (build {build})"));
+                ui.label(t!("main.about.version", version = version, build = build));
                 // the version rises after every update
-                ui.label(RichText::new("Wersja to data i godzina zbudowania (rr.mmdd.ggmm); program aktualizuje się sam.").color(pal().dim));
+                ui.label(RichText::new(t!("main.about.version_note")).color(pal().dim));
                 ui.add_space(10.0);
                 ui.horizontal(|ui| {
-                    ui.label("Autor: Jarosław Hartwich,");
+                    ui.label(t!("main.about.author"));
                     ui.hyperlink_to("github.com/jarx-dev", "https://github.com/jarx-dev");
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Kod źródłowy:");
+                    ui.label(t!("main.about.source"));
                     ui.hyperlink_to("github.com/jarx-dev/RustExplorer", "https://github.com/jarx-dev/RustExplorer");
                 });
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("Licencja MIT ·").color(pal().dim));
-                    ui.hyperlink_to("Postaw mi kawę", "https://buymeacoffee.com/jarx");
+                    ui.label(RichText::new(t!("main.about.license")).color(pal().dim));
+                    ui.hyperlink_to(t!("main.about.coffee"), "https://buymeacoffee.com/jarx");
                 });
                 ui.add_space(12.0);
                 ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                    close = ui.add(egui::Button::new("Zamknij").min_size(vec2(96.0, 32.0)).fill(pal().field).stroke(Stroke::new(1.0, pal().line))).clicked();
+                    close = ui.add(egui::Button::new(t!("common.close")).min_size(vec2(96.0, 32.0)).fill(pal().field).stroke(Stroke::new(1.0, pal().line))).clicked();
                 });
             });
             if close || r.should_close() {
@@ -896,23 +899,23 @@ impl eframe::App for App {
             let (mut go, mut cancel) = (false, false);
             let r = egui::Modal::new(egui::Id::unique("haslo")).show(&ctx, |ui| {
                 ui.set_width(380.0);
-                ui.label(RichText::new("Archiwum chronione hasłem").heading());
+                ui.label(RichText::new(t!("main.pw.title")).heading());
                 ui.add_space(6.0);
                 ui.label(arc.file_name().unwrap_or_default().to_string_lossy());
                 ui.add_space(8.0);
-                let e = ui.add(egui::TextEdit::singleline(pw).password(true).hint_text("Hasło").desired_width(f32::INFINITY));
+                let e = ui.add(egui::TextEdit::singleline(pw).password(true).hint_text(t!("main.pw.hint")).desired_width(f32::INFINITY));
                 if !e.has_focus() && !e.lost_focus() {
                     e.request_focus();
                 }
                 go = e.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
                 if *wrong {
-                    ui.label(RichText::new("Złe hasło, spróbuj jeszcze raz").color(pal().red));
+                    ui.label(RichText::new(t!("main.pw.wrong")).color(pal().red));
                 }
                 ui.add_space(12.0);
                 ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                     let plain = |t| egui::Button::new(t).min_size(vec2(96.0, 32.0)).fill(pal().field).stroke(Stroke::new(1.0, pal().line));
-                    cancel = ui.add(plain("Anuluj")).clicked();
-                    go |= ui.add(plain("Wypakuj")).clicked();
+                    cancel = ui.add(plain(t!("common.cancel"))).clicked();
+                    go |= ui.add(plain(t!("main.pw.extract"))).clicked();
                 });
             });
             if go && !pw.is_empty() {
@@ -929,10 +932,10 @@ impl eframe::App for App {
             let kind = &mut self.pack_kind;
             let r = egui::Modal::new(egui::Id::unique("spakuj")).show(&ctx, |ui| {
                 ui.set_width(380.0);
-                ui.label(RichText::new("Spakuj zaznaczone").heading());
+                ui.label(RichText::new(t!("main.pack.title")).heading());
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
-                    let e = ui.add(egui::TextEdit::singleline(name).hint_text("Nazwa archiwum").desired_width(ui.available_width() - 40.0));
+                    let e = ui.add(egui::TextEdit::singleline(name).hint_text(t!("main.pack.name")).desired_width(ui.available_width() - 40.0));
                     if !e.has_focus() && !e.lost_focus() {
                         e.request_focus();
                     }
@@ -941,21 +944,21 @@ impl eframe::App for App {
                 });
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
-                    ui.label("Format:");
-                    ui.radio_value(kind, "zip", "ZIP").on_hover_text("Otworzy go każdy system bez dodatkowych programów");
-                    ui.radio_value(kind, "7z", "7z").on_hover_text("Mniejszy plik, pakowanie trwa dłużej");
+                    ui.label(t!("main.pack.format"));
+                    ui.radio_value(kind, "zip", "ZIP").on_hover_text(t!("main.pack.zip_tip"));
+                    ui.radio_value(kind, "7z", "7z").on_hover_text(t!("main.pack.7z_tip"));
                 });
                 // names Windows refuses; the archive's extension is added by the format
                 let bad = name.trim().is_empty() || name.contains(['\\', '/', ':', '*', '?', '"', '<', '>', '|']);
                 if bad && !name.is_empty() {
-                    ui.label(RichText::new("Nazwa nie może zawierać znaków \\ / : * ? \" < > |").color(pal().red));
+                    ui.label(RichText::new(t!("main.pack.bad_name")).color(pal().red));
                 }
                 go &= !bad;
                 ui.add_space(12.0);
                 ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                     let plain = |t| egui::Button::new(t).min_size(vec2(96.0, 32.0)).fill(pal().field).stroke(Stroke::new(1.0, pal().line));
-                    cancel = ui.add(plain("Anuluj")).clicked();
-                    go |= ui.add_enabled(!bad, plain("Spakuj")).clicked();
+                    cancel = ui.add(plain(t!("common.cancel"))).clicked();
+                    go |= ui.add_enabled(!bad, plain(t!("main.pack.go"))).clicked();
                 });
             });
             if go {
@@ -979,7 +982,7 @@ impl eframe::App for App {
                 ui.add_space(12.0);
                 ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                     let plain = |t: &str| egui::Button::new(t).min_size(vec2(96.0, 32.0)).fill(pal().field).stroke(Stroke::new(1.0, pal().line));
-                    no = ui.add(plain("Anuluj")).clicked();
+                    no = ui.add(plain(t!("common.cancel"))).clicked();
                     let b = ui.add(plain(&q.yes));
                     if !b.has_focus() {
                         b.request_focus();
@@ -1133,7 +1136,7 @@ fn main() -> eframe::Result {
     // a folder given on the command line opens there instead of the saved tabs. Taken by its
     // look (a full path that is no flag's value), not asked of the disk: a share that does not
     // answer would hold the window back for seconds; a path that is no folder says so in its list
-    let valued = ["--screenshot", "--select", "--save-icon", "--find", "--search", "--filter", "--click-type", "--theme", "--size"];
+    let valued = ["--screenshot", "--select", "--save-icon", "--find", "--search", "--filter", "--click-type", "--theme", "--size", "--lang"];
     let given = (1..args.len()).filter(|&i| !valued.contains(&args[i - 1].as_str())).map(|i| PathBuf::from(&args[i])).find(|p| p.is_absolute() || is_pc(p));
     let explicit = given.is_some() || select.is_some();
     // none: Documents, asked for only once no saved tab has taken its place (see below)
@@ -1194,6 +1197,11 @@ fn main() -> eframe::Result {
             if is_shot && args.iter().any(|a| a == "--no-network") {
                 sys::HIDE_NETWORK_DRIVES.store(true, std::sync::atomic::Ordering::Relaxed);
             }
+            let layout = cc.storage.filter(|_| !is_shot).and_then(|st| st.get_string("uklad"));
+            // before the window's texts and the tray menu are made; --lang en|pl sets a screenshot
+            // run's (its throw-away layout has none, so English)
+            let lang = args.iter().position(|a| a == "--lang").and_then(|i| args.get(i + 1)).and_then(|v| rx_core::i18n::Lang::from_code(v));
+            rx_core::i18n::set_lang(lang.unwrap_or_else(|| rx_core::i18n::lang_of_layout(layout.as_deref())));
             let mut app = App::new(&cc.egui_ctx, start.unwrap_or_default(), shot, chan.lock().unwrap().take());
             app.last_window = cc.storage.and_then(|s| s.get_string(WINDOW_KEY)).filter(|w| !w.contains("-32000"));
             // restarted by an update while minimized or in the tray: the window goes there before
@@ -1251,7 +1259,7 @@ fn main() -> eframe::Result {
                 app.theme = if dark { egui::ThemePreference::Dark } else { egui::ThemePreference::Light };
                 cc.egui_ctx.set_theme(app.theme);
             }
-            if let Some(text) = cc.storage.filter(|_| !is_shot).and_then(|st| st.get_string("uklad")) {
+            if let Some(text) = layout {
                 app.restore(&cc.egui_ctx, &text, explicit);
             }
             // not on every start: the shell checks that Documents is there, slow on a share that does not answer

@@ -1,0 +1,368 @@
+# Title bar menus, toolbar, address bar, tab strip and status bar (app/src/bars.rs). The `bars.cmd.*`
+# and `bars.view.*` words are also used by the file list's and the tree's menus.
+_version: 2
+
+# ---------- commands shared by the menus ----------
+bars.cmd.new_tab:
+  en: New tab
+  pl: Nowa karta
+bars.cmd.close_tab:
+  en: Close tab
+  pl: Zamknij kartę
+bars.cmd.new_folder:
+  en: New folder
+  pl: Nowy folder
+bars.cmd.add_bookmark:
+  en: Add to bookmarks
+  pl: Dodaj do zakładek
+bars.cmd.terminal:
+  en: Open in Terminal
+  pl: Otwórz terminal tutaj
+bars.cmd.properties:
+  en: Properties
+  pl: Właściwości
+bars.cmd.cut:
+  en: Cut
+  pl: Wytnij
+bars.cmd.copy:
+  en: Copy
+  pl: Kopiuj
+bars.cmd.paste:
+  en: Paste
+  pl: Wklej
+bars.cmd.rename:
+  en: Rename
+  pl: Zmień nazwę
+bars.cmd.delete:
+  en: Delete
+  pl: Usuń
+bars.cmd.copy_path:
+  en: Copy path
+  pl: Kopiuj ścieżkę
+bars.cmd.select_all:
+  en: Select all
+  pl: Zaznacz wszystko
+bars.cmd.invert:
+  en: Invert selection
+  pl: Odwróć zaznaczenie
+bars.cmd.name_filter:
+  en: Name filter…
+  pl: Filtr nazw…
+bars.cmd.refresh:
+  en: Refresh
+  pl: Odśwież
+bars.cmd.make_bak:
+  en: Create .bak copy
+  pl: Utwórz kopię .bak
+bars.cmd.open:
+  en: Open
+  pl: Otwórz
+bars.cmd.open_new_tab:
+  en: Open in new tab
+  pl: Otwórz w nowej karcie
+bars.cmd.loading:
+  en: Loading…
+  pl: Wczytuję…
+bars.cmd.space_off:
+  en: Turn off disk usage
+  pl: Wyłącz analizę miejsca
+
+# ---------- view ----------
+bars.view.details:
+  en: Details
+  pl: Szczegóły
+bars.view.thumbs:
+  en: Thumbnails
+  pl: Miniatury
+bars.view.details_thumbs:
+  en: Details with thumbnails
+  pl: Szczegóły z miniaturami
+bars.view.preview:
+  en: Preview pane
+  pl: Panel podglądu
+bars.view.preview_tip:
+  en: Preview pane (Alt+P)
+  pl: Panel podglądu (Alt+P)
+bars.view.split:
+  en: Split view
+  pl: Widok z podziałem
+bars.view.split_tip:
+  en: Split view (F3)
+  pl: Widok z podziałem (F3)
+bars.view.flat:
+  en: Flat view
+  pl: Widok płaski
+
+# ---------- title bar menus ----------
+bars.menu.file:
+  en: File
+  pl: Plik
+bars.menu.edit:
+  en: Edit
+  pl: Edycja
+bars.menu.view:
+  en: View
+  pl: Widok
+bars.menu.tools:
+  en: Tools
+  pl: Narzędzia
+bars.file.open_explorer:
+  en: Open in File Explorer
+  pl: Otwórz w Eksploratorze
+bars.file.settings:
+  en: Settings
+  pl: Ustawienia
+bars.file.full_tree:
+  en: Full folder tree
+  pl: Pełne drzewo folderów
+bars.file.lock_format:
+  en: Lock format (keep sorting)
+  pl: Blokada formatu (zachowaj sortowanie)
+bars.file.autostart:
+  en: Start with Windows
+  pl: Uruchamiaj razem z Windows
+bars.file.autostart_error:
+  en: "Start with Windows: %{error}"
+  pl: "Uruchamianie z Windows: %{error}"
+bars.file.vt_key:
+  en: VirusTotal key…
+  pl: Klucz VirusTotal…
+bars.file.about:
+  en: About
+  pl: O programie
+bars.file.exit:
+  en: Exit
+  pl: Zakończ
+bars.file.exit_tip:
+  en: Quits the program (closing the window only minimizes it)
+  pl: Kończy działanie programu (zamknięcie okna tylko je minimalizuje)
+bars.edit.undo:
+  en: Undo
+  pl: Cofnij
+bars.view.switch_pane:
+  en: Switch pane
+  pl: Przełącz panel
+bars.view.show_hidden:
+  en: Show hidden files
+  pl: Pokaż ukryte pliki
+bars.view.zoom_in:
+  en: Zoom in
+  pl: Powiększ
+bars.view.zoom_out:
+  en: Zoom out
+  pl: Pomniejsz
+bars.view.zoom_reset:
+  en: Actual size
+  pl: Rzeczywisty rozmiar
+bars.view.theme:
+  en: Theme
+  pl: Motyw
+bars.view.theme_system:
+  en: System
+  pl: Systemowy
+bars.view.theme_light:
+  en: Light
+  pl: Jasny
+bars.view.theme_dark:
+  en: Dark
+  pl: Ciemny
+bars.tools.space:
+  en: Disk usage (what takes up space)
+  pl: Analiza miejsca (co zajmuje dysk)
+bars.tools.whole_drive:
+  en: "Whole drive %{name}"
+  pl: "Cały dysk %{name}"
+bars.tools.all_drives:
+  en: All drives (This PC)
+  pl: Wszystkie dyski (Ten komputer)
+bars.tools.this_folder:
+  en: "Current folder: %{name}"
+  pl: "Bieżący folder: %{name}"
+bars.tools.calc_sizes:
+  en: Calculate folder sizes
+  pl: Oblicz wielkości folderów
+bars.tools.extract:
+  en: Extract archive (ZIP, 7z, RAR)
+  pl: Wypakuj archiwum (ZIP, 7z, RAR)
+bars.tools.pack:
+  en: Compress… (ZIP or 7z)
+  pl: Spakuj… (ZIP lub 7z)
+
+# ---------- toolbar ----------
+bars.tool.new_folder_tip:
+  en: New folder (Ctrl+Shift+N)
+  pl: Nowy folder (Ctrl+Shift+N)
+bars.tool.cut:
+  en: Cut (Ctrl+X)
+  pl: Wytnij (Ctrl+X)
+bars.tool.copy:
+  en: Copy (Ctrl+C)
+  pl: Kopiuj (Ctrl+C)
+bars.tool.paste:
+  en: Paste (Ctrl+V)
+  pl: Wklej (Ctrl+V)
+bars.tool.rename:
+  en: Rename (F2)
+  pl: Zmień nazwę (F2)
+bars.tool.delete:
+  en: Delete (Delete)
+  pl: Usuń (Delete)
+bars.tool.sort:
+  en: Sort
+  pl: Sortuj
+bars.tool.view:
+  en: View
+  pl: Wyświetl
+bars.sort.asc:
+  en: Ascending
+  pl: Rosnąco
+bars.sort.desc:
+  en: Descending
+  pl: Malejąco
+
+# ---------- address bar and search ----------
+bars.nav.back:
+  en: Back (Alt+←)
+  pl: Wstecz (Alt+←)
+bars.nav.forward:
+  en: Forward (Alt+→)
+  pl: Dalej (Alt+→)
+bars.nav.up:
+  en: Up (Backspace)
+  pl: W górę (Backspace)
+bars.nav.refresh_tip:
+  en: Refresh (F5)
+  pl: Odśwież (F5)
+bars.nav.no_subfolders:
+  en: No subfolders
+  pl: Brak podfolderów
+bars.nav.subfolders:
+  en: Subfolders
+  pl: Podfoldery
+bars.nav.type_path:
+  en: Click to type a path (Ctrl+L)
+  pl: Kliknij, aby wpisać ścieżkę (Ctrl+L)
+bars.search.clear:
+  en: Clear (Esc)
+  pl: Wyczyść (Esc)
+bars.search.filter_lead:
+  en: "Filter:"
+  pl: "Filtr:"
+bars.search.hint_all:
+  en: Search all drives
+  pl: Szukaj na wszystkich dyskach
+bars.search.hint_here:
+  en: "Search %{name}"
+  pl: "Przeszukaj: %{name}"
+bars.search.tip_filter:
+  en: The name filter stays when you change folders
+  pl: Filtr nazw zostaje przy zmianie folderu
+bars.search.tip_all:
+  en: File names on all local drives; with several words all of them must appear, *.pdf searches by extension
+  pl: Nazwy plików na wszystkich dyskach lokalnych; przy kilku słowach muszą wystąpić wszystkie, *.pdf szuka po rozszerzeniu
+bars.search.tip_here:
+  en: Search the current folder (Ctrl+F)
+  pl: Szukaj w bieżącym folderze (Ctrl+F)
+bars.search.everywhere:
+  en: Search everywhere
+  pl: Szukaj wszędzie
+bars.search.everywhere_off_tip:
+  en: Back to searching the current folder
+  pl: Wróć do szukania w bieżącym folderze
+bars.search.everywhere_tip:
+  en: "Search everywhere: on all local drives, like Everything"
+  pl: "Szukaj wszędzie: na wszystkich dyskach lokalnych, jak Everything"
+bars.search.filter_off_tip:
+  en: Back to searching the current folder (Ctrl+F)
+  pl: Wróć do wyszukiwania w bieżącym folderze (Ctrl+F)
+bars.search.filter_tip:
+  en: Name filter, e.g. *.pdf;*.jpg; stays when you change folders (Ctrl+Shift+F)
+  pl: Filtr nazw, np. *.pdf;*.jpg; zostaje przy zmianie folderu (Ctrl+Shift+F)
+bars.search.filter:
+  en: Name filter
+  pl: Filtr nazw
+
+# ---------- tab strip ----------
+bars.tab.new_tip:
+  en: New tab (Ctrl+T)
+  pl: Nowa karta (Ctrl+T)
+bars.tab.middle_click:
+  en: Middle-click closes the tab
+  pl: Środkowy klik zamyka kartę
+
+# ---------- status bar ----------
+bars.status.left_pane:
+  en: "Left pane · "
+  pl: "Lewy panel · "
+bars.status.right_pane:
+  en: "Right pane · "
+  pl: "Prawy panel · "
+bars.status.free_of:
+  en: " free of "
+  pl: " wolne z "
+bars.status.local:
+  en: " (local)"
+  pl: " (lokalnie)"
+bars.status.largest:
+  en: "Largest files: "
+  pl: "Największe pliki: "
+bars.status.results:
+  en: "Results: "
+  pl: "Wyniki: "
+bars.status.of:
+  en: " of "
+  pl: " z "
+bars.status.in_folder:
+  en: " in this folder"
+  pl: " w tym folderze"
+bars.status.folders:
+  en: "Folders: "
+  pl: "Foldery: "
+bars.status.files:
+  en: " · Files: "
+  pl: " · Pliki: "
+bars.status.selected:
+  en: " · Selected: "
+  pl: " · Zaznaczono: "
+bars.status.total:
+  en: " · Total: "
+  pl: " · Razem: "
+bars.status.hidden_shown:
+  en: "hidden shown: %{n}"
+  pl: "ukryte widoczne: %{n}"
+bars.status.hidden:
+  en: "hidden: %{n}"
+  pl: "ukrytych: %{n}"
+bars.status.hidden_hide_tip:
+  en: Click to hide hidden files again (Ctrl+H)
+  pl: Kliknij, aby znów ukryć ukryte pliki (Ctrl+H)
+bars.status.hidden_show_tip:
+  en: Click to show hidden files (Ctrl+H)
+  pl: Kliknij, aby pokazać ukryte pliki (Ctrl+H)
+bars.status.hidden_none_tip:
+  en: No hidden files; click to always show them (Ctrl+H)
+  pl: Brak ukrytych plików; kliknij, aby pokazywać je zawsze (Ctrl+H)
+bars.status.disk_free:
+  en: "%{free} free of %{total}"
+  pl: "%{free} wolne z %{total}"
+bars.status.filter:
+  en: "Filter: %{filter}"
+  pl: "Filtr: %{filter}"
+bars.status.filter_tip:
+  en: Click to clear the filter
+  pl: Kliknij, aby wyczyścić filtr
+bars.status.lock:
+  en: Format lock
+  pl: Blokada formatu
+bars.status.lock_tip:
+  en: Click to turn off format lock
+  pl: Kliknij, aby wyłączyć blokadę formatu
+bars.status.flat_tip:
+  en: Click to turn off flat view
+  pl: Kliknij, aby wyłączyć widok płaski
+bars.status.indexing:
+  en: Refreshing the drive index…
+  pl: Odświeżam indeks dysków…
+bars.status.indexing_tip:
+  en: Results come from the previous indexing; new files will appear when it finishes
+  pl: Wyniki pochodzą z poprzedniego indeksowania; nowe pliki dojdą po jego zakończeniu

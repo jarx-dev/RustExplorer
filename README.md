@@ -18,11 +18,11 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/main.png" alt="Main window in the dark theme: a tree with the path to the folder, the file list and a note preview">
+  <img src="docs/screenshots/en/main.png" alt="Main window in the dark theme: a tree with the path to the folder, the file list and a note preview">
   <br><sub>All screenshots show a folder of demo data (made-up files).</sub>
 </p>
 
-> **Note:** the interface is currently in Polish. Menu and button labels are quoted in Polish below, with the English meaning in parentheses on first use.
+> **Note:** the interface is in English by default; Polish is one click away in File ▸ Settings ▸ Language / Język. Labels below are quoted as the English interface shows them.
 
 ---
 
@@ -41,13 +41,13 @@ You open ZIP, 7z and RAR files with a double-click, like any folder: browse them
 open them without extracting the whole archive. ZIP and 7z can also be modified in place: you add
 files by dragging or pasting, delete them and rename them, and the program rewrites the archive in
 the background. When you save a file opened from an archive in another program, RustExplorer asks
-whether to update it in the archive. RAR is read-only and extract-only. „Wypakuj tutaj” (Extract here),
-„Wypakuj do folderu” (Extract to folder) and „Spakuj…” (Compress…, as ZIP or 7z) are in the right-click
+whether to update it in the archive. RAR is read-only and extract-only. "Extract here",
+"Extract to folder" and "Compress…" (as ZIP or 7z) are in the right-click
 menu; an encrypted archive asks for its password. Everything runs inside the program itself
-(the `rx-archive` crate), without 7-Zip and without `tar.exe`, and progress shows in the „Operacje”
-(Operations) panel.
+(the `rx-archive` crate), without 7-Zip and without `tar.exe`, and progress shows in the "Operations"
+panel.
 
-<img src="docs/screenshots/archive.png" alt="Contents of a ZIP archive shown like a folder, in the path bar and in the tree">
+<img src="docs/screenshots/en/archive.png" alt="Contents of a ZIP archive shown like a folder, in the path bar and in the tree">
 
 ### Search everywhere
 
@@ -58,31 +58,30 @@ at most every 10 minutes and frees it from memory 5 minutes after the last query
 3 million files a query takes a few milliseconds, Polish diacritics do not matter (`zolw` finds `żółw`),
 and each result shows its folder.
 
-<img src="docs/screenshots/find.png" alt="Search results across all drives with the folder of each file">
+<img src="docs/screenshots/en/find.png" alt="Search results across all drives with the folder of each file">
 
 ### Disk space analysis
 
-Tools ▸ „Analiza miejsca” (Disk space analysis) asks for a scope: the whole drive or the current folder. The list is
+Tools ▸ "Disk usage" asks for a scope: the whole drive or the current folder. The list is
 sorted by size and expands like a tree, and below it a tile map shows what takes up the space.
-Clicking a tile jumps to that folder, right-clicking sends it to the Recycle Bin, and „Największe pliki”
-(Largest files) lists them together, regardless of folder. The map uses the drive index, so the whole
+Clicking a tile jumps to that folder, right-clicking sends it to the Recycle Bin, and "Largest files"
+lists them together, regardless of folder. The map uses the drive index, so the whole
 drive is not scanned again.
 
-<img src="docs/screenshots/space.png" alt="Disk space analysis: a list by size and a tile map">
+<img src="docs/screenshots/en/space.png" alt="Disk space analysis: a list by size and a tile map">
 
 ### A tree without clutter
 
 The tree on the left shows only the path to the current folder. The rest of each level is collapsed
-into „… jeszcze N folderów” (… N more folders) and expands with a click, so even in a deep folder the tree fits
-on the screen. You can turn on the full tree in Plik ▸ Ustawienia ▸ Pełne drzewo folderów
-(File ▸ Settings ▸ Full folder tree).
+into "… N more folders" and expands with a click, so even in a deep folder the tree fits
+on the screen. You can turn on the full tree in File ▸ Settings ▸ Full folder tree.
 
 ### Two panes
 
 `F3` splits the window into two panes, each with its own tabs, filter and search. You drag files
 between the panes, or tabs onto the split.
 
-<img src="docs/screenshots/split.png" alt="Two panes side by side in the dark theme">
+<img src="docs/screenshots/en/split.png" alt="Two panes side by side in the dark theme">
 
 ### Fresh files in green
 
@@ -94,10 +93,10 @@ sort by date to see what has just changed.
 
 ### Sorting remembered per folder
 
-Each folder remembers its own sort order: sort „Pobrane” (Downloads) newest first and „Faktury” (Invoices) by
+Each folder remembers its own sort order: sort "Downloads" newest first and "Invoices" by
 name, and each opens the way you left it, even after a restart. A folder sorted the plain way
 (Name ascending) remembers nothing. If you want to carry one sort order over to subsequent folders,
-Plik ▸ Ustawienia ▸ „Blokada formatu (zachowaj sortowanie)” (Format lock: keep sorting) keeps it while you
+File ▸ Settings ▸ "Lock format (keep sorting)" keeps it while you
 navigate; the badge on the status bar turns the lock off.
 
 ## What it can do
@@ -105,23 +104,23 @@ navigate; the badge on the status bar turns the lock off.
 | | |
 |---|---|
 | 🗂️ **Tabs and split** | Browser-style tabs (`Ctrl+T`, `Ctrl+W`), a split view with two panes (`F3`), each with its own tabs. The layout comes back after a restart. |
-| 👁️ **Preview** | Images (PNG, JPG, GIF, BMP, WebP, ICO, TIFF), the first page of a PDF, text and code files, a folder summary, and for everything else a thumbnail from the Windows shell. A file that exists only in the cloud is not downloaded for the preview: you see its thumbnail and a „Pobierz, aby zobaczyć podgląd” (Download to see the preview) button. |
+| 👁️ **Preview** | Images (PNG, JPG, GIF, BMP, WebP, ICO, TIFF), the first page of a PDF, text and code files, a folder summary, and for everything else a thumbnail from the Windows shell. A file that exists only in the cloud is not downloaded for the preview: you see its thumbnail and a "Download to preview" button. |
 | 🖼️ **Three views** | Details, thumbnails, and details with thumbnails. You resize each column by dragging its border in the header (a double-click on the Name border restores fill mode); in a narrow pane the columns hide on their own. |
-| 🔢 **Natural sorting** | `Zeszyt2` before `Zeszyt10`, case-insensitive; each folder remembers its own sort order. |
-| 🔍 **Search and filter** | A search box for the current folder; the funnel next to it turns it into a filter such as `*.pdf;*.jpg` or simply `faktura` (matches anywhere in the name), which applies only to the current tab (in the two-pane view each pane has its own) and stays when you change folder. |
+| 🔢 **Natural sorting** | `Report2` before `Report10`, case-insensitive; each folder remembers its own sort order. |
+| 🔍 **Search and filter** | A search box for the current folder; the funnel next to it turns it into a filter such as `*.pdf;*.jpg` or simply `invoice` (matches anywhere in the name), which applies only to the current tab (in the two-pane view each pane has its own) and stays when you change folder. |
 | 🟩 **What's new?** | Files created or modified in the last 3 hours have green text and "N min ago" instead of a date. |
 | 🌙 **Dark theme** | View ▸ Theme: System (follows the Windows setting, including changes made while running), Light or Dark. The colours of both themes are in `crates/rx-core/src/palette.rs`, and a test checks text contrast (WCAG, at least 4.5:1 in the dark theme). |
 | 📏 **Folder sizes** | One click, in the background, without blocking the window. |
 | 🪜 **Flat view** | All files from subfolders in a single list (up to 20,000), with filtering and sorting. |
 | 💽 **This PC** | Drives with a usage bar (red above 90%), file system, network drives. |
 | ⭐ **Bookmarks** | Favourite folders in the tree on the left, next to quick access. |
-| 🌳 **Path tree** | The tree on the left shows only the path to the current folder; „… jeszcze N folderów” (… N more folders) expands that level, and Plik ▸ Ustawienia ▸ Pełne drzewo folderów (File ▸ Settings ▸ Full folder tree) shows them all. |
-| 🧰 **Tools** | A `.bak` copy with one shortcut (`Ctrl+B`), ZIP extraction, a terminal in the current folder, copying the path (from a Samba network drive as a Linux path `/home/<user>/…`), „Blokada formatu (zachowaj sortowanie)” (Format lock: keep sorting). |
+| 🌳 **Path tree** | The tree on the left shows only the path to the current folder; "… N more folders" expands that level, and File ▸ Settings ▸ Full folder tree shows them all. |
+| 🧰 **Tools** | A `.bak` copy with one shortcut (`Ctrl+B`), ZIP extraction, a terminal in the current folder, copying the path (from a Samba network drive as a Linux path `/home/<user>/…`), "Lock format (keep sorting)". |
 | 📋 **Clipboard and dragging** | Copy and Cut put files on the Windows clipboard (like Explorer), so you can paste them in Explorer, on the desktop or in a mail client, and files copied there can be pasted here; archive items stay in the program's own clipboard. You drop files from other programs onto the list or onto a folder (copy; with `Shift`, move), and a row dragged outside the window carries on as an ordinary Windows drag. |
-| 🪟 **Windows menu** | „Więcej opcji Windows…” (More Windows options…) at the end of the right-click menu (or `Shift`+right-click) shows Explorer's own menu for the selection: „Wyślij do” (Send to), „Otwórz za pomocą” (Open with), 7-Zip, Git, „Zwolnij miejsce” (Free up space) and „Zawsze zachowuj na tym urządzeniu” (Always keep on this device) in OneDrive. |
+| 🪟 **Windows menu** | "Show more options…" at the end of the right-click menu (or `Shift`+right-click) shows Explorer's own menu for the selection: "Send to", "Open with", 7-Zip, Git, "Free up space" and "Always keep on this device" in OneDrive. |
 | ↩️ **Undo** | `Ctrl+Z` undoes the most recent operations (up to 30): deleting to the Recycle Bin (restores from the Bin), a move (moves back), a copy (the copies go to the Bin, newly created ones only), a rename, a new folder and a `.bak` copy; it never overwrites anything and skips an item that has changed since. What cannot be undone (deleting from disk without the Bin, changes inside archives, files replaced during a copy) is reported by the status bar; commands from the Windows menu are not undone by the program. |
 | 🔄 **Self-update** | A new version installs itself when you are idle; if it fails to start, the previous one comes back. Details below. |
-| 📌 **Tray** | An icon next to the clock; clicking it shows or hides the window. Closing the window hides it to the tray (no taskbar button), and starting the program again restores it; „Zakończ” (Quit) exits the program. |
+| 📌 **Tray** | An icon next to the clock; clicking it shows or hides the window. Closing the window hides it to the tray (no taskbar button), and starting the program again restores it; "Exit" exits the program. |
 
 Copying, moving and deleting go through the Windows shell, so you get the same progress windows and
 conflict prompts as in Explorer. `Delete` sends to the Recycle Bin without asking, as in Windows 11;
@@ -178,8 +177,8 @@ flowchart LR
   folders in the tree, and the drives with their names and free space are read by separate
   threads; the result comes back as a message carrying a request number, and only the reply to the
   latest request counts (`rx_core::Asked`), so a late listing of a folder we have already left
-  overwrites nothing. Until the listing arrives, the tab shows the previous rows or „Wczytuję…”
-  (Loading…), and selecting the new folder, a file after a rename, or the folder we came up from
+  overwrites nothing. Until the listing arrives, the tab shows the previous rows or "Loading…",
+  and selecting the new folder, a file after a rename, or the folder we came up from
   waits for it as a saved intent (`rx_core::Select`). Tabs from the previous session open without
   asking the disk, so an unavailable network drive does not hold up startup: its tab shows an error
   in the list once the system stops waiting for it. The preview is built by a separate thread (of a
@@ -198,7 +197,7 @@ flowchart LR
   minimized or in the tray, downloads a newer build, verifies its size, SHA-256 and EXE header, and
   replaces the program only when the window is minimized, hidden or unused and nothing is working:
   neither the program's own copying nor a thread the shell started inside the process for a Windows
-  menu command (e.g. „Wyślij do” (Send to) on a USB stick; the program gives the shell a reference to the
+  menu command (e.g. "Send to" on a USB stick; the program gives the shell a reference to the
   process through `SHSetInstanceExplorer` and sees that it is being held).
   The old version stays on as a "guard": if the new one does not draw its window within 3 minutes,
   the previous one comes back, and a failed build is not installed a second time. Plain HTTP is
@@ -211,7 +210,7 @@ flowchart LR
 - **Manifest** (`rustexplorer.manifest`, embedded by `build.rs` together with the icon): `asInvoker`
   (no administrator rights), Windows 10/11 compatibility and `longPathAware` (when `LongPathsEnabled`
   is turned on in Windows). This entry lifts the 260-character limit only for direct Win32 calls
-  (undoing a rename, „Zawsze zachowuj na tym urządzeniu” (Always keep on this device), the folder
+  (undoing a rename, "Always keep on this device", the folder
   watcher); listing, new folder and rename go through `std::fs`, which gets around the limit even
   without the manifest. Deleting, copying and moving (`SHFileOperationW`), opening, properties, the
   Windows menu and thumbnails are shell calls that this entry does not cover: with paths over 260
@@ -271,7 +270,7 @@ The program uses OpenGL. If the OpenGL driver fails to start, it switches to Dir
 The ready-made EXE is in the [releases](https://github.com/jarx-dev/RustExplorer/releases/latest). Just
 download and run it, no installation (Windows 10 or 11). The program fetches later releases by itself.
 The file is not signed, so the first time Windows may warn about an unknown publisher:
-„Więcej informacji” (More info) → „Uruchom mimo to” (Run anyway).
+"More info" → "Run anyway".
 
 ## Building
 
@@ -323,7 +322,7 @@ points them elsewhere. The update progress is logged in `%APPDATA%\RustExplorer\
 ## About the author
 
 RustExplorer was written by **Jarosław Hartwich** ([github.com/jarx-dev](https://github.com/jarx-dev)).
-You can find the same in the program: File → „O programie” (About).
+You can find the same in the program: File → "About".
 
 If RustExplorer is useful to you, you can [buy me a coffee](https://buymeacoffee.com/jarx) ☕
 
