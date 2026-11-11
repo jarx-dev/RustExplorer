@@ -459,7 +459,12 @@ impl App {
                 for (k, p) in chain.into_iter().enumerate() {
                     let name = self.dname(&p);
                     let text = if k == last { here(name) } else { RichText::new(name).color(pal().text) };
-                    if inner.add(egui::Button::new(text).min_size(vec2(0.0, 24.0))).clicked() {
+                    let r = inner.add(egui::Button::new(text).min_size(vec2(0.0, 24.0)).sense(Sense::click_and_drag()));
+                    // dragged onto Zakładki in the tree, the folder becomes a bookmark (as a browser's address)
+                    if r.drag_started_by(egui::PointerButton::Primary) {
+                        r.dnd_set_drag_payload(DraggedPath(p.clone()));
+                    }
+                    if r.clicked() {
                         self.pending.push(Act::Goto(p.clone()));
                     }
                     // the separator after a folder lists its subfolders, as in Explorer; a 16x24
