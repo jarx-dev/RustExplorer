@@ -31,11 +31,11 @@ fn same_version(a: Option<SystemTime>, b: Option<SystemTime>) -> bool {
 /// The verdict in words, for the preview and the status bar.
 fn verdict(r: &Report) -> String {
     if r.clean() {
-        format!("Bezpieczny: żaden z {} silników nic nie wykrył", r.engines)
+        t!("scan.clean", n = r.engines)
     } else if r.malicious > 0 {
-        format!("Zagrożenie: {} z {} silników wykryło złośliwy kod", r.malicious, r.engines)
+        t!("scan.malicious", m = r.malicious, n = r.engines)
     } else {
-        format!("Podejrzany: {} z {} silników ma zastrzeżenia", r.suspicious, r.engines)
+        t!("scan.suspicious", m = r.suspicious, n = r.engines)
     }
 }
 
@@ -47,9 +47,9 @@ fn file_name(p: &Path) -> String {
 fn outcome(p: &Path, v: &Vt) -> Option<Result<String, String>> {
     let name = file_name(p);
     Some(match v {
-        Vt::Known(_, r) => Ok(format!("VirusTotal, {name}: {}", verdict(r))),
-        Vt::Unknown(_) => Ok(format!("VirusTotal nie zna pliku {name}: można go tam wysłać z podglądu")),
-        Vt::Failed(e) => Err(format!("VirusTotal, {name}: {e}")),
+        Vt::Known(_, r) => Ok(t!("scan.known", name = name, verdict = verdict(r))),
+        Vt::Unknown(_) => Ok(t!("scan.unknown", name = name)),
+        Vt::Failed(e) => Err(t!("scan.failed", name = name, e = e)),
         Vt::Checking | Vt::Sending => return None,
     })
 }
@@ -130,13 +130,13 @@ impl App {
         let stamp = std::fs::metadata(&p).and_then(|m| m.modified()).ok();
         self.vt.insert(p.clone(), (stamp, Vt::Checking));
         let (tx, ctx, ops) = (self.tx.clone(), ctx.clone(), self.ops.clone());
-        let id = ops.start("Sprawdzanie w VirusTotal".into(), file_name(&p));
+        let id = ops.start(t!("scan.checking_job").into(), file_name(&p));
         std::thread::spawn(move || {
             let mut wait = |t| {
                 ops.queue(id, t);
                 ctx.request_repaint();
             };
-            let r = rx_scan::sha256(&p).map_err(|e| format!("nie można odczytać pliku: {e}")).and_then(|sha| {
+            let r = rx_scan::sha256(&p).map_err(|e| t!("scan.cant_read", e = e)).and_then(|sha| {
                 Ok(match rx_scan::lookup(&key, &sha, &mut wait)? {
                     Some(rep) => Vt::Known(sha, rep),
                     None => Vt::Unknown(sha),
@@ -153,7 +153,7 @@ impl App {
         let (stamp, sha) = (*stamp, sha.clone());
         self.vt.insert(p.clone(), (stamp, Vt::Sending));
         let (tx, ctx, ops) = (self.tx.clone(), ctx.clone(), self.ops.clone());
-        let job = ops.start("Wysyłanie do VirusTotal".into(), file_name(&p));
+        let job = ops.start(t!("scan.sending_job").into(), file_name(&p));
         std::thread::spawn(move || {
             let r = (|| {
                 let id = rx_scan::upload(&key, &p, &mut |t| {
@@ -168,7 +168,7 @@ impl App {
                         return Ok(Vt::Known(sha.clone(), rep));
                     }
                 }
-                Err("VirusTotal analizuje plik dłużej niż zwykle: sprawdź go ponownie za kilka minut".to_string())
+                Err(t!("scan.slow").to_string())
             })();
             done(&ops, job, &tx, &ctx, p, r.unwrap_or_else(Vt::Failed));
         });
@@ -198,20 +198,20 @@ impl App {
         };
         match self.vt.get(p).filter(|(stamp, _)| same_version(*stamp, modified)).map(|(_, v)| v) {
             None => {
-                if button(ui, "Sprawdź w VirusTotal") {
+                if button(ui, t!("scan.check")) {
                     self.pending.push(Act::VtCheck(p.to_path_buf()));
                 }
             }
             Some(Vt::Checking) => {
                 ui.horizontal(|ui| {
                     ui.spinner();
-                    ui.label(RichText::new("Sprawdzam w VirusTotal…").color(pal().dim));
+                    ui.label(RichText::new(t!("scan.checking")).color(pal().dim));
                 });
             }
             Some(Vt::Sending) => {
                 ui.horizontal_wrapped(|ui| {
                     ui.spinner();
-                    ui.label(RichText::new("Wysłano do VirusTotal, silniki sprawdzają plik (zwykle 1–3 minuty)…").color(pal().dim));
+                    ui.label(RichText::new(t!("scan.sent")).color(pal().dim));
                 });
             }
             Some(Vt::Known(sha, r)) => {
@@ -222,20 +222,20 @@ impl App {
                     ui.add_space(w + 8.0);
                     ui.add(egui::Label::new(RichText::new(text).color(color)).wrap());
                 });
-                if ui.link("Pełny raport w VirusTotal").clicked() {
+                if ui.link(t!("scan.report")).clicked() {
                     sys::open(Path::new(&page));
                 }
             }
             Some(Vt::Unknown(_)) => {
-                line(ui, "VirusTotal nie zna tego pliku".into(), pal().dim);
-                ui.add(egui::Label::new(RichText::new("Wysłany plik trafia do VirusTotal i firm antywirusowych: nie wysyłaj prywatnych dokumentów.").size(12.0).color(pal().dim)).wrap());
-                if button(ui, "Wyślij do VirusTotal") {
+                line(ui, t!("scan.not_known").into(), pal().dim);
+                ui.add(egui::Label::new(RichText::new(t!("scan.upload_warning")).size(12.0).color(pal().dim)).wrap());
+                if button(ui, t!("scan.upload")) {
                     self.pending.push(Act::VtSend(p.to_path_buf()));
                 }
             }
             Some(Vt::Failed(e)) => {
                 line(ui, e.clone(), pal().red);
-                if button(ui, "Sprawdź ponownie") {
+                if button(ui, t!("scan.check_again")) {
                     self.pending.push(Act::VtCheck(p.to_path_buf()));
                 }
             }
@@ -249,14 +249,14 @@ impl App {
         let (mut save, mut remove, mut cancel) = (false, false, false);
         let r = egui::Modal::new(egui::Id::unique("klucz_virustotal")).show(ctx, |ui| {
             ui.set_width(420.0);
-            ui.label(RichText::new("Klucz API VirusTotal").heading());
+            ui.label(RichText::new(t!("scan.key.title")).heading());
             ui.add_space(6.0);
-            ui.add(egui::Label::new("Darmowy klucz znajdziesz po zalogowaniu na virustotal.com. Program trzyma go w Menedżerze poświadczeń Windows.").wrap());
-            if ui.link("Otwórz stronę z kluczem").clicked() {
+            ui.add(egui::Label::new(t!("scan.key.info")).wrap());
+            if ui.link(t!("scan.key.page")).clicked() {
                 sys::open(Path::new(KEY_PAGE));
             }
             ui.add_space(8.0);
-            let hint = if had { "Nowy klucz (jeden już jest zapisany)" } else { "Klucz API" };
+            let hint = if had { t!("scan.key.hint_new") } else { t!("scan.key.hint") };
             let e = ui.add(egui::TextEdit::singleline(text).password(true).hint_text(hint).desired_width(f32::INFINITY));
             if !e.has_focus() && !e.lost_focus() {
                 e.request_focus();
@@ -265,10 +265,10 @@ impl App {
             ui.add_space(12.0);
             ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                 let plain = |t| egui::Button::new(t).min_size(vec2(96.0, 32.0)).fill(pal().field).stroke(Stroke::new(1.0, pal().line));
-                cancel = ui.add(plain("Anuluj")).clicked();
-                save |= ui.add(plain("Zapisz")).clicked();
+                cancel = ui.add(plain(t!("common.cancel"))).clicked();
+                save |= ui.add(plain(t!("scan.key.save"))).clicked();
                 if had {
-                    remove = ui.add(plain("Usuń klucz")).clicked();
+                    remove = ui.add(plain(t!("scan.key.remove"))).clicked();
                 }
             });
         });
@@ -278,7 +278,7 @@ impl App {
             self.ask_vt_key = None;
             match sys::set_secret(KEY_NAME, Some(&key)) {
                 Ok(()) => {
-                    self.msg = Some("Klucz VirusTotal zapisany".into());
+                    self.msg = Some(t!("scan.key.saved").into());
                     if let Some(p) = then {
                         self.vt_check(p, ctx);
                     }
@@ -287,7 +287,7 @@ impl App {
             }
         } else if remove {
             self.ask_vt_key = None;
-            self.msg = Some(sys::set_secret(KEY_NAME, None).map_or_else(|e| e, |_| "Klucz VirusTotal usunięty".into()));
+            self.msg = Some(sys::set_secret(KEY_NAME, None).map_or_else(|e| e, |_| t!("scan.key.removed").into()));
         } else if cancel || r.should_close() {
             self.ask_vt_key = None;
         }

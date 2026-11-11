@@ -10,26 +10,40 @@ pub const CAP: usize = 30;
 pub enum Undo {
     /// renamed from the first to the second
     Rename(PathBuf, PathBuf),
-    /// made by the operation (named by the noun, "kopiowanie"), each as it was then: taken back to
-    /// the Recycle Bin only while still the same item
+    /// made by the operation (named by its `undo.what.*` key, "undo.what.copy"), each as it was
+    /// then: taken back to the Recycle Bin only while still the same item
     Created(Vec<(PathBuf, Stamp)>, &'static str),
     /// moved: (where it is now, where it was)
     Moved(Vec<(PathBuf, PathBuf)>),
     /// sent to the Recycle Bin between these two times: restored from there
     Recycled(Vec<PathBuf>, SystemTime, SystemTime),
-    /// an operation that cannot be taken back, named in the genitive ("usunięcia na stałe")
+    /// an operation that cannot be taken back, by its `undo.what.*` key ("undo.what.no_bin")
     Blocked(&'static str),
 }
 
 impl Undo {
+    fn what(&self) -> &'static str {
+        match self {
+            Undo::Rename(..) => t!("undo.what.rename"),
+            Undo::Created(_, what) | Undo::Blocked(what) => crate::i18n::tr(what),
+            Undo::Moved(_) => t!("undo.what.move"),
+            Undo::Recycled(..) => t!("undo.what.delete"),
+        }
+    }
+
     /// The menu item for it.
     pub fn label(&self) -> String {
         match self {
-            Undo::Rename(..) => "Cofnij zmianę nazwy".into(),
-            Undo::Created(_, what) => format!("Cofnij {what}"),
-            Undo::Moved(_) => "Cofnij przeniesienie".into(),
-            Undo::Recycled(..) => "Cofnij usunięcie".into(),
-            Undo::Blocked(what) => format!("Nie da się cofnąć {what}"),
+            Undo::Blocked(_) => t!("undo.cant", what = self.what()),
+            _ => t!("undo.do", what = self.what()),
+        }
+    }
+
+    /// The note once it was taken back.
+    pub fn done(&self) -> String {
+        match self {
+            Undo::Blocked(_) => self.label(),
+            _ => t!("undo.done", what = self.what()),
         }
     }
 }
@@ -120,9 +134,9 @@ pub fn transferred(srcs: &[PathBuf], dir: &Path, cut: bool, before: &[bool], ren
         }
     }
     let u = match cut {
-        _ if left > 0 && made.is_empty() && moved.is_empty() => Undo::Blocked(if cut { "przeniesienia na zajęte nazwy" } else { "kopiowania na zajęte nazwy" }),
+        _ if left > 0 && made.is_empty() && moved.is_empty() => Undo::Blocked(if cut { "undo.what.move_taken" } else { "undo.what.copy_taken" }),
         true => Undo::Moved(moved),
-        false => Undo::Created(made, "kopiowanie"),
+        false => Undo::Created(made, "undo.what.copy"),
     };
     (u, left)
 }
@@ -134,8 +148,8 @@ pub fn deleted(paths: &[PathBuf], gone: impl Fn(&Path) -> bool, has_bin: impl Fn
     let (binned, lost): (Vec<PathBuf>, Vec<PathBuf>) = paths.iter().filter(|p| gone(p)).cloned().partition(|p| has_bin(p));
     match (binned.is_empty(), lost.is_empty()) {
         (_, true) => (Undo::Recycled(binned, since, until), None),
-        (true, false) => (Undo::Blocked("usunięcia z dysku bez Kosza"), Some("Usunięto na stałe (ten dysk nie ma Kosza): tego nie da się cofnąć")),
-        (false, false) => (Undo::Recycled(binned, since, until), Some("Część usunięto na stałe (dysk bez Kosza): Ctrl+Z przywróci tylko to, co jest w Koszu")),
+        (true, false) => (Undo::Blocked("undo.what.no_bin"), Some(t!("undo.note.no_bin"))),
+        (false, false) => (Undo::Recycled(binned, since, until), Some(t!("undo.note.part_no_bin"))),
     }
 }
 
@@ -182,11 +196,11 @@ mod tests {
         let before = [false, true, true, false];
         let stamp = |q: &Path| ONE.filter(|_| q != Path::new("/b/skipped.txt"));
         let (u, left) = transferred(&srcs, Path::new("/b"), false, &before, &renamed, stamp);
-        assert_eq!(u, Undo::Created(vec![(p("/b/new.txt"), ONE), (p("/b/same (2).txt"), ONE)], "kopiowanie"));
+        assert_eq!(u, Undo::Created(vec![(p("/b/new.txt"), ONE), (p("/b/same (2).txt"), ONE)], "undo.what.copy"));
         assert_eq!(left, 1);
         // all of it onto taken names: nothing to take back, said so instead of an older record's undo
         let (u, left) = transferred(&srcs[1..2], Path::new("/b"), false, &[true], &[], stamp);
-        assert_eq!((u, left), (Undo::Blocked("kopiowania na zajęte nazwy"), 1));
+        assert_eq!((u, left), (Undo::Blocked("undo.what.copy_taken"), 1));
     }
 
     #[test]
@@ -220,7 +234,7 @@ mod tests {
         assert_eq!(u, Undo::Recycled(vec![p("C:/a")], t, t));
         assert!(note.is_some());
         let (u, note) = deleted(&paths[1..2], gone, bin, t, t);
-        assert_eq!(u, Undo::Blocked("usunięcia z dysku bez Kosza"));
+        assert_eq!(u, Undo::Blocked("undo.what.no_bin"));
         assert!(note.is_some());
     }
 
@@ -235,6 +249,10 @@ mod tests {
         assert_eq!(s.0.len(), CAP);
         assert_eq!(s.0[0], Undo::Rename(p("5"), p("x")));
         assert_eq!(s.top().unwrap().label(), "Cofnij zmianę nazwy");
+        assert_eq!(s.top().unwrap().done(), "Cofnięto zmianę nazwy");
+        assert_eq!(Undo::Blocked("undo.what.archive").done(), "Nie da się cofnąć operacji na archiwum");
+        crate::i18n::set_lang(crate::i18n::Lang::En);
+        assert_eq!(s.top().unwrap().label(), "Undo rename");
     }
 
     #[test]

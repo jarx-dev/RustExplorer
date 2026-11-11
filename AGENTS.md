@@ -1,6 +1,8 @@
 # RustExplorer
 
-A tabbed, dual-pane file manager for Windows 11 in Rust (eframe/egui 0.37). One EXE; Polish UI.
+A tabbed, dual-pane file manager for Windows 11 in Rust (eframe/egui 0.37). One EXE; English UI by default, Polish in Settings.
+
+Every text the UI shows is a key in `crates/rx-core/locales/*.yml` (both `en` and `pl`), read with `t!`/`plural` (`rx_core::i18n`); `cargo test -p rx-core i18n` fails on a key used in the sources without a text. A layout stored without `lang=` (from before the choice) keeps Polish.
 
 ## Commands
 
@@ -20,13 +22,13 @@ A tabbed, dual-pane file manager for Windows 11 in Rust (eframe/egui 0.37). One 
 - Never commit addresses of private machines or networks, user names or paths, keys or tokens. This repository is public.
 - Never put the archive password on a command line. It travels in `RX_PW`.
 - Never kill processes by name. The installed copy, its update guard (`--update-guard`) and the copy under test may all be running.
-- Never call the installed Everything (SDK, IPC or `es.exe`) for search. "Szukaj wszędzie" uses its own index (`rx_core::index`), loaded only on demand and dropped from RAM after use.
+- Never call the installed Everything (SDK, IPC or `es.exe`) for search. "Search everywhere" uses its own index (`rx_core::index`), loaded only on demand and dropped from RAM after use.
 
 ## Owner habits (keep them through any UX cleanup)
 
 - Files created or changed in the last 3 hours show green text (`RECENT_SECS`). A badge or a coloured date alone is not enough.
 - The status bar always shows the number of hidden files, in red while some are hidden; one click toggles them.
-- "Utwórz kopię .bak" stays in the right-click menu and on `Ctrl+B`, not on the toolbar.
+- "Create .bak copy" stays in the right-click menu and on `Ctrl+B`, not on the toolbar.
 
 ## Traps
 

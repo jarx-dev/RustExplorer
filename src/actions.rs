@@ -42,7 +42,7 @@ impl App {
                 std::thread::spawn(move || {
                     sys::init_com();
                     // a panic in a decoder must not leave the preview "loading"
-                    let raw = std::panic::catch_unwind(|| build_preview(&p, px, read)).unwrap_or_else(|_| Raw::Nothing("Brak podglądu dla tego pliku".into()));
+                    let raw = std::panic::catch_unwind(|| build_preview(&p, px, read)).unwrap_or_else(|_| Raw::Nothing(t!("actions.no_preview").into()));
                     let _ = done.send(tx.send(Msg::Preview(p, raw)).is_ok());
                     ctx.request_repaint();
                 });
@@ -87,7 +87,9 @@ impl App {
                 ctx.request_repaint();
             })
         };
+        // a screenshot run shows no bookmarks of the machine's owner (README pictures show nothing of it)
         let bookmarks = bookmarks_file()
+            .filter(|_| shot.is_none())
             .and_then(|f| std::fs::read_to_string(f).ok())
             .map(|s| s.lines().filter(|l| !l.trim().is_empty()).map(PathBuf::from).collect())
             .unwrap_or_default();
@@ -151,7 +153,7 @@ impl App {
             // right-click menu shows it
             widths: [DEFAULT_W[0], DEFAULT_W[1], DEFAULT_W[2], 0.0],
             name_width: 0.0,
-            names: [(PathBuf::from(PC), "Ten komputer".to_string())].into_iter().collect(),
+            names: HashMap::new(),
             tree_open: [PathBuf::from("::home"), PathBuf::from("::zakladki"), PathBuf::from("::pc")].into_iter().collect(),
             tree_kids: HashMap::new(),
             tree_asked: HashMap::new(),
@@ -308,6 +310,10 @@ impl App {
     }
 
     pub(crate) fn dname(&mut self, p: &Path) -> String {
+        // first: its name follows the language, and "::pc" has a parent ("") like a folder
+        if is_pc(p) {
+            return t!("pc.this").into();
+        }
         if let Some(n) = self.names.get(p) {
             return n.clone();
         }
@@ -324,7 +330,7 @@ impl App {
 
     pub(crate) fn display_path(&mut self, p: &Path) -> String {
         if is_pc(p) {
-            return "Ten komputer".into();
+            return t!("pc.this").into();
         }
         let mut parts: Vec<String> = vec![];
         for a in p.ancestors() {
@@ -341,7 +347,7 @@ impl App {
     pub(crate) fn tab_label(&mut self, i: usize) -> String {
         let p = self.tabs[i].path.clone();
         if is_pc(&p) {
-            return "Ten komputer".into();
+            return t!("pc.this").into();
         }
         // just the folder name, as in Explorer; the drive only tells apart two tabs of the same name
         let name = self.dname(&p);
@@ -389,6 +395,10 @@ impl App {
     }
 
     pub(crate) fn save_bookmarks(&self) {
+        // nor does it write them: its empty list would replace the real one
+        if self.shot.is_some() {
+            return;
+        }
         if let Some(f) = bookmarks_file() {
             let _ = std::fs::create_dir_all(f.parent().unwrap());
             let text: Vec<String> = self.bookmarks.iter().map(|p| p.display().to_string()).collect();
@@ -454,7 +464,7 @@ impl App {
         }
         // a results list has no folder of its own; the one behind it is not on screen
         if self.tabs[self.cur].found && matches!(a, Act::Paste | Act::NewFolder | Act::Pack | Act::PackAs(..)) {
-            self.msg = Some("To są wyniki wyszukiwania: otwórz folder, aby w nim wkleić lub utworzyć".into());
+            self.msg = Some(t!("actions.results_no_folder").into());
             return;
         }
         // files copied or cut in another program (or before this one started) come from the
@@ -462,14 +472,14 @@ impl App {
         if matches!(a, Act::Paste) && self.clip.is_empty() && self.clip_files {
             // Windows offers a cut until its move here ends: a second paste meanwhile would move the same files again
             if self.pasting.as_ref().is_some_and(|(s, job)| *s == sys::clip::seq() && Arc::strong_count(job) > 1) {
-                self.msg = Some("Wycięte pliki są jeszcze przenoszone: wklej ponownie, gdy przenoszenie się skończy".into());
+                self.msg = Some(t!("actions.cut_still_moving").into());
                 return;
             }
             match sys::clip::files() {
                 // reading another program's cut renders it, which may change the number paste_done compares
                 Some((paths, cut)) => (self.clip, self.cut, self.clip_sys, self.clip_seq) = (paths, cut, true, sys::clip::seq()),
                 None => {
-                    self.msg = Some("Schowek Windows jest zajęty przez inny program: wklej jeszcze raz za chwilę".into());
+                    self.msg = Some(t!("actions.clipboard_busy").into());
                     return;
                 }
             }
@@ -480,7 +490,7 @@ impl App {
             if let Some((arc, into)) = archive::split_archive(&self.tabs[self.cur].path) {
                 match &a {
                     Act::Pack | Act::PackAs(..) | Act::MakeBak => {
-                        self.msg = Some("Tego polecenia nie ma wewnątrz archiwum: wypakuj pliki (Kopiuj, Wklej) i użyj go na nich".into());
+                        self.msg = Some(t!("actions.not_in_archive").into());
                         return;
                     }
                     Act::NewFolder => return self.change_archive(arc, rx_archive::Change::NewFolder { into }, true, ctx),
@@ -502,11 +512,11 @@ impl App {
                         if !rx_archive::can_update(&arc) || archive::is_temp(&arc) {
                             return self.change_archive(arc, change, false, ctx);
                         }
-                        let what = if n == 1 { "zaznaczoną pozycję".to_string() } else { format!("zaznaczone pozycje ({n})") };
+                        let name = arc.file_name().unwrap_or_default().to_string_lossy().into_owned();
                         self.ask = Some(archive::Ask {
-                            title: "Usunąć z archiwum?".into(),
-                            text: format!("Usunąć {what} z archiwum „{}”? Usuniętych z archiwum nie ma w Koszu.", arc.file_name().unwrap_or_default().to_string_lossy()),
-                            yes: "Usuń".into(),
+                            title: t!("actions.arc_delete_title").into(),
+                            text: if n == 1 { t!("actions.arc_delete_text_1", name = name) } else { t!("actions.arc_delete_text_n", n = n, name = name) },
+                            yes: t!("actions.delete").into(),
                             act: Act::ArchiveChange(arc, change, false),
                         });
                         return;
@@ -580,19 +590,19 @@ impl App {
             }
             Act::NewFolder => {
                 let mut n = 1;
-                let mut p = dir.join("Nowy folder");
+                let mut p = dir.join(t!("actions.new_folder_name"));
                 while p.exists() {
                     n += 1;
-                    p = dir.join(format!("Nowy folder ({n})"));
+                    p = dir.join(t!("actions.new_folder_name_n", n = n));
                 }
                 match std::fs::create_dir(&p) {
                     Ok(()) => {
-                        self.undo.push(Undo::Created(vec![(p.clone(), rx_core::undo::stamp(&p))], "utworzenie folderu"));
+                        self.undo.push(Undo::Created(vec![(p.clone(), rx_core::undo::stamp(&p))], "undo.what.new_folder"));
                         self.after_fs_change();
                         // selected, with its name being edited, once the list has it
                         self.then_select(rx_core::Select { paths: vec![p], rename: true, listed: false });
                     }
-                    Err(e) => self.msg = Some(format!("Nie można utworzyć folderu: {e}")),
+                    Err(e) => self.msg = Some(t!("actions.cant_create_folder", e = e)),
                 }
             }
             Act::Rename => {
@@ -606,12 +616,12 @@ impl App {
                     if self.space {
                         self.space_forget(&sel);
                     }
-                    self.background(ctx, "Przenoszenie do Kosza".into(), names(&sel), move |_| recycled(sel));
+                    self.background(ctx, t!("actions.job.recycle").into(), names(&sel), move |_| recycled(sel));
                 }
             }
             Act::Recycle(paths) => {
                 self.space_forget(&paths);
-                self.background(ctx, "Przenoszenie do Kosza".into(), names(&paths), move |_| recycled(paths));
+                self.background(ctx, t!("actions.job.recycle").into(), names(&paths), move |_| recycled(paths));
             }
             Act::Reveal(p) => {
                 if let Some(dir) = p.parent().map(Path::to_path_buf) {
@@ -673,7 +683,7 @@ impl App {
                     self.msg = Some(match google_link(&p) {
                         Ok(link) => {
                             ctx.copy_text(link);
-                            "Skopiowano link Google Drive".into()
+                            t!("actions.google_link_copied").into()
                         }
                         Err(e) => e,
                     });
@@ -682,7 +692,7 @@ impl App {
                     std::thread::spawn(move || {
                         sys::init_com();
                         // OneDrive makes the link and puts it on the clipboard itself, a moment later
-                        let note = sys::onedrive_copy_link(&p, owner).map_or_else(|e| e, |_| "OneDrive kopiuje link do schowka…".into());
+                        let note = sys::onedrive_copy_link(&p, owner).map_or_else(|e| e, |_| t!("actions.onedrive_copying_link").into());
                         let _ = tx.send(Msg::Note(note));
                         ctx.request_repaint();
                     });
@@ -691,13 +701,13 @@ impl App {
             Act::CloudKeep(keep) => {
                 let (tx, ctx) = (self.tx.clone(), ctx.clone());
                 if keep {
-                    self.msg = Some("Pobieram na to urządzenie…".into());
+                    self.msg = Some(t!("actions.keep_downloading").into());
                 }
                 std::thread::spawn(move || {
                     let note = match sel.iter().try_for_each(|p| sys::cloud_keep(p, keep)) {
-                        Ok(()) if keep => "Pobrane, zostaje na tym urządzeniu".into(),
-                        Ok(()) => "Oznaczone do zwolnienia: chmura usunie kopię z tego urządzenia".into(),
-                        Err(e) => format!("Chmura nie przyjęła zmiany: {e}"),
+                        Ok(()) if keep => t!("actions.kept").into(),
+                        Ok(()) => t!("actions.freed").into(),
+                        Err(e) => t!("actions.cloud_refused", e = e),
                     };
                     let _ = tx.send(Msg::Note(note));
                     ctx.request_repaint();
@@ -705,7 +715,7 @@ impl App {
             }
             Act::CloudFetch(p) => {
                 let (tx, ctx) = (self.tx.clone(), ctx.clone());
-                self.msg = Some("Pobieram plik z chmury…".into());
+                self.msg = Some(t!("actions.fetching").into());
                 // the card waits with a spinner; Msg::Fetched has the preview built again
                 if let Some(shown) = self.preview.as_mut().filter(|x| x.0 == p) {
                     shown.1 = Shown::Loading;
@@ -713,8 +723,8 @@ impl App {
                 std::thread::spawn(move || {
                     let fetched = sys::cloud_fetch(&p);
                     let note = match &fetched {
-                        Ok(()) => "Pobrane z chmury".into(),
-                        Err(e) => format!("Nie udało się pobrać pliku z chmury: {e}"),
+                        Ok(()) => t!("actions.fetched").into(),
+                        Err(e) => t!("actions.fetch_failed", e = e),
                     };
                     let _ = tx.send(Msg::Note(note));
                     let _ = tx.send(Msg::Fetched(p, fetched.is_ok()));
@@ -733,10 +743,10 @@ impl App {
                 let mut paths = if sel.contains(&p) { sel } else { vec![p.clone()] };
                 if paths.iter().any(|q| q.parent() != p.parent()) {
                     paths = vec![p];
-                    self.msg = Some("Zaznaczone są w różnych folderach: menu Windows dotyczy tylko elementu pod kursorem".into());
+                    self.msg = Some(t!("actions.menu_mixed_folders").into());
                 }
                 if paths.iter().any(|q| archive::is_inside(q)) {
-                    self.msg = Some("Elementy archiwum nie mają menu Windows: wypakuj je najpierw".into());
+                    self.msg = Some(t!("actions.menu_in_archive").into());
                     return;
                 }
                 let ppp = ctx.pixels_per_point();
@@ -771,9 +781,11 @@ impl App {
                     }
                     self.msg = Some(if self.clip_sys && !sys::clip::put(&sel, cut) {
                         self.clip_sys = false;
-                        "Schowek Windows jest zajęty przez inny program: wkleić można tylko w tym programie".into()
+                        t!("actions.clipboard_busy_local").into()
+                    } else if cut {
+                        t!("actions.cut_to_clip", n = sel.len())
                     } else {
-                        format!("{} do schowka: {}", if cut { "Wycięto" } else { "Skopiowano" }, sel.len())
+                        t!("actions.copied_to_clip", n = sel.len())
                     });
                     // a clip only this program can paste hides an older list on the Windows clipboard
                     (self.clip_seq, self.clip_files) = (sys::clip::seq(), self.clip_sys);
@@ -792,7 +804,7 @@ impl App {
                         let seq = self.clip_seq;
                         let job = Arc::new(());
                         self.pasting = Some((seq, job.clone()));
-                        self.background(ctx, format!("Przenoszenie do {}", place(&dir)), names(&clip), move |p| {
+                        self.background(ctx, t!("actions.job.move", place = place(&dir)), names(&clip), move |p| {
                             let _running = job;
                             let done = sys::copy_into_with(&clip, &dir, true, p);
                             if done.0 {
@@ -860,11 +872,11 @@ impl App {
                     }
                     match std::fs::copy(p, &dst) {
                         Ok(_) => made.push((dst.clone(), rx_core::undo::stamp(&dst))),
-                        Err(e) => self.msg = Some(format!("Kopia .bak nie powiodła się: {e}")),
+                        Err(e) => self.msg = Some(t!("actions.bak_failed", e = e)),
                     }
                 }
                 if !made.is_empty() {
-                    self.undo.push(Undo::Created(made, "kopię .bak"));
+                    self.undo.push(Undo::Created(made, "undo.what.bak"));
                     self.after_fs_change();
                 }
             }
@@ -876,7 +888,7 @@ impl App {
                 let here = matches!(a, Act::ExtractHere);
                 let arcs: Vec<PathBuf> = sel.into_iter().filter(|p| rx_archive::can_extract(p)).collect();
                 if arcs.is_empty() {
-                    self.msg = Some("Zaznacz archiwum .zip, .7z lub .rar, aby je wypakować".into());
+                    self.msg = Some(t!("actions.select_archive").into());
                 }
                 // "a.zip" and "a.7z" in one batch unpack into "a" and "a (2)", not both into "a"
                 let mut taken = Vec::new();
@@ -886,7 +898,7 @@ impl App {
             }
             Act::Pack => {
                 if sel.is_empty() {
-                    self.msg = Some("Zaznacz pliki lub foldery do spakowania".into());
+                    self.msg = Some(t!("actions.select_to_pack").into());
                 } else {
                     // one item gives its name to the archive ("raport.csv" -> raport.zip), several the folder's
                     let stem = match sel.as_slice() {
@@ -894,7 +906,7 @@ impl App {
                         [one] => one.file_stem(),
                         _ => dir.file_name(),
                     };
-                    self.ask_pack = Some(stem.map_or("Archiwum".into(), |s| s.to_string_lossy().into_owned()));
+                    self.ask_pack = Some(stem.map_or(t!("actions.archive_stem").into(),|s| s.to_string_lossy().into_owned()));
                 }
             }
             Act::ArchiveChange(arc, change, rename) => self.change_archive(arc, change, rename, ctx),
@@ -904,9 +916,9 @@ impl App {
                     let dest = free_name(&dir, &stem, kind, &[]);
                     let name = dest.file_name().unwrap_or_default().to_string_lossy().into_owned();
                     let base = dir.clone();
-                    self.archive_job(format!("Pakowanie do {name}"), names(&sel), ctx, move |p| {
+                    self.archive_job(t!("actions.job.pack", name = name), names(&sel), ctx, move |p| {
                         let files = rx_archive::pack(&sel, &base, &dest, p)?;
-                        Ok(format!("Spakowano do „{name}” (plików: {files})"))
+                        Ok(t!("actions.packed", name = name, files = files))
                     });
                 }
             }
@@ -926,18 +938,18 @@ impl App {
             }
             // one at a time, after the operations it may depend on: a held Ctrl+Z took back dependent
             // records at once and out of order, and one during a paste took back the one before it
-            Act::Undo if self.busy.load(AO::SeqCst) > 0 => self.msg = Some("Poprzednia operacja jeszcze trwa: Ctrl+Z zadziała po jej zakończeniu".into()),
+            Act::Undo if self.busy.load(AO::SeqCst) > 0 => self.msg = Some(t!("actions.undo.busy").into()),
             Act::Undo => match self.undo.pop() {
                 Some(u @ Undo::Blocked(_)) => self.msg = Some(u.label()),
                 Some(u) => {
                     self.msg = Some(format!("{}…", u.label()));
-                    // the note says how it went; only "Cofnięto…" is a full success
-                    self.background(ctx, "Cofanie".into(), String::new(), move |_| {
-                        let n = undo(u);
-                        (n.starts_with("Cofnięto"), vec![Msg::Note(n)])
+                    // the note says how it went; undo() says whether it was a full success
+                    self.background(ctx, t!("actions.job.undo").into(), String::new(), move |_| {
+                        let (ok, n) = undo(u);
+                        (ok, vec![Msg::Note(n)])
                     });
                 }
-                None => self.msg = Some("Nie ma nic do cofnięcia".into()),
+                None => self.msg = Some(t!("actions.undo.nothing").into()),
             },
             Act::Back => {
                 let t = self.tab();
@@ -997,7 +1009,7 @@ impl App {
                 if p.is_absolute() || is_pc(&p) {
                     self.navigate(p);
                 } else {
-                    self.msg = Some(format!("Nie znaleziono folderu: {}", p.display()));
+                    self.msg = Some(t!("actions.folder_not_found", path = p.display()));
                 }
             }
             Act::AddBookmark(p) => {
@@ -1026,7 +1038,7 @@ impl App {
                 };
                 let text: Vec<String> = if sel.is_empty() { vec![shown(&dir)] } else { sel.iter().map(shown).collect() };
                 ctx.copy_text(text.join("\r\n"));
-                self.msg = Some("Skopiowano ścieżkę".into());
+                self.msg = Some(t!("actions.path_copied").into());
             }
             Act::Exit => self.quit(ctx),
         }
@@ -1060,12 +1072,12 @@ impl App {
         let tx = self.tx.clone();
         if here {
             let at = at.to_path_buf();
-            let title = format!("Wypakowywanie do {}", place(&at));
+            let title = t!("actions.job.extract", place = place(&at));
             self.archive_job(title, names(std::slice::from_ref(&a)), ctx, move |p| match rx_archive::extract_here(&a, &at, pw.as_deref(), p) {
                 Ok((files, skipped, placed)) => {
-                    let unsafe_note = if skipped > 0 { format!("; pominięte niebezpieczne nazwy: {skipped}") } else { String::new() };
+                    let unsafe_note = if skipped > 0 { t!("actions.unsafe_skipped", n = skipped) } else { String::new() };
                     let _ = tx.send(Msg::Changed(placed, false));
-                    Ok(format!("Wypakowano tutaj (plików: {files}){unsafe_note}"))
+                    Ok(t!("actions.extracted_here", files = files) + &unsafe_note)
                 }
                 Err(rx_archive::Fail::Password) => {
                     let _ = tx.send(Msg::AskPassword(a, pw.is_some(), true));
@@ -1077,12 +1089,12 @@ impl App {
         }
         let dest = free_name(at, &stem.to_string_lossy(), "", taken);
         let picked = dest.clone();
-        let title = format!("Wypakowywanie do {}", place(&dest));
+        let title = t!("actions.job.extract", place = place(&dest));
         self.archive_job(title, names(std::slice::from_ref(&a)), ctx, move |p| match rx_archive::extract(&a, &dest, pw.as_deref(), p) {
             Ok((files, skipped)) => {
                 let to = dest.file_name().unwrap_or_default().to_string_lossy().into_owned();
-                let unsafe_note = if skipped > 0 { format!("; pominięte niebezpieczne nazwy: {skipped}") } else { String::new() };
-                Ok(format!("Wypakowano do „{to}” (plików: {files}){unsafe_note}"))
+                let unsafe_note = if skipped > 0 { t!("actions.unsafe_skipped", n = skipped) } else { String::new() };
+                Ok(t!("archive.extracted_to", dest = to, n = files) + &unsafe_note)
             }
             Err(rx_archive::Fail::Password) => {
                 let _ = tx.send(Msg::AskPassword(a, pw.is_some(), false));
@@ -1107,11 +1119,11 @@ impl App {
                 }
             };
             // a panic in a decoder must still end the job, or "file operations running" stays on for good
-            let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(&mut report))).unwrap_or_else(|_| Err("przerwano przez wewnętrzny błąd".into()));
+            let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(&mut report))).unwrap_or_else(|_| Err(t!("actions.archive_internal_error").into()));
             // an empty note: the job ended in a question (the password dialog) or only opened a
             // file, not an outcome; an error may still have changed an archive half way
             let done = !matches!(&r, Ok(n) if n.is_empty());
-            let r = r.map_err(|e| format!("Błąd archiwum: {e}"));
+            let r = r.map_err(|e| t!("actions.archive_error", e = e));
             if done {
                 ops.finish(id, r.clone());
             } else {
@@ -1122,7 +1134,7 @@ impl App {
                 let _ = tx.send(Msg::Note(note));
             }
             if done {
-                let _ = tx.send(Msg::Undo(Undo::Blocked("operacji na archiwum")));
+                let _ = tx.send(Msg::Undo(Undo::Blocked("undo.what.archive")));
             }
             // after the record: a Ctrl+Z waits for this job (Act::Undo), then finds it on top
             busy.fetch_sub(1, AO::SeqCst);
@@ -1139,7 +1151,7 @@ impl App {
             self.unpack_into(&packed, &dir, cut, ctx);
         }
         if !plain.is_empty() {
-            let title = format!("{} do {}", if cut { "Przenoszenie" } else { "Kopiowanie" }, place(&dir));
+            let title = if cut { t!("actions.job.move", place = place(&dir)) } else { t!("actions.job.copy", place = place(&dir)) };
             self.background(ctx, title, names(&plain), move |p| transferred(sys::copy_into_with(&plain, &dir, cut, p)));
         }
     }
@@ -1245,7 +1257,7 @@ impl App {
                     msgs
                 }
                 Err(_) => {
-                    ops.finish(id, Err("Operację przerwał wewnętrzny błąd".into()));
+                    ops.finish(id, Err(t!("actions.internal_error").into()));
                     vec![]
                 }
             };
@@ -1310,7 +1322,7 @@ impl App {
             return;
         }
         if new_name.contains(['\\', '/', ':', '*', '?', '"', '<', '>', '|']) {
-            self.msg = Some("Nazwa nie może zawierać znaków: \\ / : * ? \" < > |".into());
+            self.msg = Some(t!("actions.bad_name_chars").into());
             return;
         }
         // an entry of an archive: renamed in the archive (a folder with what is inside it)
@@ -1324,7 +1336,7 @@ impl App {
         }
         let new = r.path.with_file_name(new_name);
         if new.exists() && !new_name.eq_ignore_ascii_case(&old_name) {
-            self.msg = Some(format!("„{new_name}” już istnieje"));
+            self.msg = Some(t!("actions.name_exists", name = new_name));
             return;
         }
         match std::fs::rename(&r.path, &new) {
@@ -1333,7 +1345,7 @@ impl App {
                 self.after_fs_change();
                 self.then_select(rx_core::Select { paths: vec![new], rename: false, listed: false });
             }
-            Err(e) => self.msg = Some(format!("Nie można zmienić nazwy: {e}")),
+            Err(e) => self.msg = Some(t!("actions.cant_rename", e = e)),
         }
     }
 
@@ -1413,9 +1425,9 @@ impl App {
                 Msg::AskPassword(p, wrong, here) => self.ask_pw = Some((p, String::new(), wrong, here)),
                 Msg::Reload => self.after_fs_change(),
                 Msg::ShellMenu(items, at, asked) => match items {
-                    Err(e) => self.msg = Some(format!("Menu Windows: plik lub folder nie odpowiada ({e})")),
+                    Err(e) => self.msg = Some(t!("actions.menu_no_answer", e = e)),
                     // a menu popping up long after the click would land on whatever the user does now
-                    Ok(_) if asked.elapsed() > std::time::Duration::from_secs(3) => self.msg = Some("Folder odpowiedział zbyt późno: otwórz menu Windows jeszcze raz".into()),
+                    Ok(_) if asked.elapsed() > std::time::Duration::from_secs(3) => self.msg = Some(t!("actions.menu_too_late").into()),
                     Ok(items) => {
                         self.shell_menu_next = Some((items, at));
                         ctx.request_repaint();
@@ -1457,7 +1469,7 @@ impl App {
                             // not read again: a drive that is gone has nothing to list
                             t.all.clear();
                             t.sel.clear();
-                            (t.error, t.dirty) = (Some("Folder jest niedostępny (usunięty albo dysk odłączony)".into()), true);
+                            (t.error, t.dirty) = (Some(t!("actions.folder_gone").into()), true);
                         } else {
                             // asked anew even when rows are on their way: those may have been
                             // read before this change
@@ -1937,42 +1949,43 @@ pub(crate) fn place(p: &Path) -> String {
 /// A copy or move's undo record, and a note when some items cannot be taken back; with whether
 /// nothing was cancelled or failed.
 fn transferred((ok, u, left): (bool, Undo, usize)) -> (bool, Vec<Msg>) {
-    let note = (left > 0).then(|| Msg::Note(format!("Ctrl+Z nie cofnie elementów, które trafiły na zajęte nazwy (zastąpione, scalone lub pominięte): {left}")));
+    let note = (left > 0).then(|| Msg::Note(t!("actions.taken_names_note", n = left)));
     (ok, std::iter::once(Msg::Undo(u)).chain(note).collect())
 }
 
-/// Takes back one operation (off the UI thread), never overwriting anything; the note says how it went.
-fn undo(u: Undo) -> String {
-    let what = u.label().replacen("Cofnij", "Cofnięto", 1);
+/// Takes back one operation (off the UI thread), never overwriting anything; the note says how it
+/// went, with whether it was a full success.
+fn undo(u: Undo) -> (bool, String) {
+    let what = u.done();
     let failed = |f: Vec<(PathBuf, &str)>, n: usize| match f.first() {
-        None => what.clone(),
-        Some((p, why)) => format!("Nie cofnięto {} z {n}: „{}” {why}", f.len(), p.file_name().unwrap_or_default().to_string_lossy()),
+        None => (true, what.clone()),
+        Some((p, why)) => (false, t!("actions.undo.failed", k = f.len(), n = n, name = p.file_name().unwrap_or_default().to_string_lossy(), why = why)),
     };
     match u {
-        Undo::Rename(old, new) => sys::rename_new(&new, &old).map_or_else(|e| format!("Nie można cofnąć zmiany nazwy: {e}"), |_| what),
+        Undo::Rename(old, new) => sys::rename_new(&new, &old).map_or_else(|e| (false, t!("actions.undo.rename_failed", e = e)), |_| (true, what)),
         Undo::Created(items, noun) => {
             // something else put at a recorded path since (a move with replacing, Explorer) is not
             // what this operation made, so it stays
             let (there, changed) = rx_core::undo::unchanged(items, rx_core::undo::stamp);
-            let skipped = if changed > 0 { format!("; pominięte, bo zmienione od tamtej pory: {changed}") } else { String::new() };
+            let skipped = if changed > 0 { t!("actions.undo.skipped_changed", n = changed) } else { String::new() };
             if there.is_empty() {
-                if changed > 0 { format!("Nie cofnięto: elementy zmieniono lub zastąpiono od tamtej pory ({changed})") } else { "Nie ma czego cofnąć: utworzonych elementów już nie ma".into() }
-            } else if noun == "kopiowanie" && !there.iter().all(|p| sys::has_bin(p)) {
+                (false, if changed > 0 { t!("actions.undo.all_changed", n = changed) } else { t!("actions.undo.none_left").into() })
+            } else if noun == "undo.what.copy" && !there.iter().all(|p| sys::has_bin(p)) {
                 // the bin is the only safe way back for copies; a new folder or .bak gets the shell's
                 // warning before a delete for good, as before Ctrl+Z had a stack
-                "Nie można cofnąć: ten dysk nie ma Kosza, a cofnięcie usunęłoby pliki na stałe".into()
+                (false, t!("actions.undo.no_bin").into())
             } else if sys::recycle(&there) {
-                format!("{what} (do Kosza: {}){skipped}", there.len())
+                (true, t!("actions.undo.to_bin", what = what, n = there.len()) + &skipped)
             } else {
-                "Cofanie przerwane: część elementów mogła zostać".into()
+                (false, t!("actions.undo.stopped").into())
             }
         }
         Undo::Moved(items) => failed(sys::move_back(&items), items.len()),
         Undo::Recycled(paths, since, until) => match sys::bin::restore(&paths, since, until) {
             Ok(f) => failed(f, paths.len()),
-            Err(e) => format!("Nie można cofnąć usunięcia: Kosz nie odpowiada ({e})"),
+            Err(e) => (false, t!("actions.undo.bin_no_answer", e = e)),
         },
         // taken on the UI thread
-        Undo::Blocked(_) => what,
+        Undo::Blocked(_) => (false, what),
     }
 }

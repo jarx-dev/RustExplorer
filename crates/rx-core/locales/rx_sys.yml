@@ -1,0 +1,35 @@
+# rx-sys: why an undo could not put an item back, and errors of Windows calls the window shows.
+_version: 2
+rx_sys.internal:
+  en: internal error
+  pl: wewnętrzny błąd
+rx_sys.place_taken:
+  en: the place is taken
+  pl: miejsce jest zajęte
+rx_sys.not_in_bin:
+  en: it isn't in the Recycle Bin
+  pl: nie ma go w Koszu
+rx_sys.not_restored:
+  en: it didn't come back from the Recycle Bin
+  pl: nie wrócił z Kosza
+rx_sys.moved_away:
+  en: it's no longer where it was moved to
+  pl: nie ma go już tam, dokąd został przeniesiony
+rx_sys.move_failed:
+  en: the move failed
+  pl: przeniesienie nie powiodło się
+rx_sys.onedrive_link:
+  en: "OneDrive didn't copy the link: %{e}"
+  pl: "OneDrive nie skopiował linku: %{e}"
+rx_sys.no_memory:
+  en: out of memory
+  pl: brak pamięci
+rx_sys.registry:
+  en: "Registry: %{e}"
+  pl: "rejestr: %{e}"
+rx_sys.credentials:
+  en: "Credential Manager: %{e}"
+  pl: "Menedżer poświadczeń: %{e}"
+rx_sys.menu:
+  en: "Windows menu: %{e}"
+  pl: "Menu Windows: %{e}"

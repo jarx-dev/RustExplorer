@@ -1,0 +1,161 @@
+# The file list (app/src/list.rs): column headers, right-click menus, Ten komputer, Analiza miejsca, empty states.
+# Menu words shared with the title bar are `bars.cmd.*` / `bars.view.*`.
+_version: 2
+
+# ---------- columns ----------
+list.col.name:
+  en: Name
+  pl: Nazwa
+list.col.size:
+  en: Size
+  pl: Rozmiar
+list.col.type:
+  en: Type
+  pl: Typ
+list.col.modified:
+  en: Date modified
+  pl: Zmodyfikowany
+list.col.attrs:
+  en: Attributes
+  pl: Atrybuty
+list.col.tip:
+  en: Click to sort; right-click to choose columns
+  pl: Kliknij, aby sortować; kliknij prawym, aby wybrać kolumny
+
+# ---------- right-click menu of an item ----------
+list.menu.open_with:
+  en: Open with…
+  pl: Otwórz za pomocą…
+list.menu.extract_to:
+  en: Extract to folder
+  pl: Wypakuj do folderu
+list.menu.extract_here:
+  en: Extract here
+  pl: Wypakuj tutaj
+list.menu.pack:
+  en: Compress…
+  pl: Spakuj…
+list.menu.cloud:
+  en: Cloud
+  pl: Chmura
+list.menu.copy_link:
+  en: Copy link
+  pl: Kopiuj link
+list.menu.keep:
+  en: Always keep on this device
+  pl: Zawsze zachowuj na tym urządzeniu
+list.menu.free:
+  en: Free up space
+  pl: Zwolnij miejsce
+list.menu.more:
+  en: Show more options…
+  pl: Więcej opcji Windows…
+list.menu.more_key:
+  en: Shift+right-click
+  pl: Shift+prawy klik
+
+# ---------- Analiza miejsca strip ----------
+list.space.title:
+  en: Disk usage
+  pl: Analiza miejsca
+list.space.biggest_here:
+  en: largest files in this folder and its subfolders
+  pl: największe pliki w tym folderze i podfolderach
+list.space.this_folder:
+  en: "this folder:"
+  pl: "ten folder:"
+list.space.hidden:
+  en: "+ hidden %{size}"
+  pl: "+ ukryte %{size}"
+list.space.hidden_tip:
+  en: Hidden files and folders take up space too; click to show them (Ctrl+H)
+  pl: Ukryte pliki i foldery też zajmują miejsce; kliknij, aby je pokazać (Ctrl+H)
+list.space.counting:
+  en: counting sizes…
+  pl: liczę rozmiary…
+list.space.counting_tip:
+  en: The drive index is being refreshed; folder sizes will fill in on their own
+  pl: Indeks dysków jest odświeżany; rozmiary folderów uzupełnią się same
+list.space.back:
+  en: Back to folder
+  pl: Wróć do folderu
+list.space.back_tip:
+  en: The folder's list with sizes (Alt+←)
+  pl: Lista folderu z rozmiarami (Alt+←)
+list.space.biggest:
+  en: Largest files
+  pl: Największe pliki
+list.space.biggest_tip:
+  en: The 1000 largest files in this folder and all its subfolders
+  pl: 1000 największych plików w tym folderze i wszystkich podfolderach
+
+# ---------- empty and error states ----------
+list.cant_open:
+  en: "Can't open the folder:\n%{error}"
+  pl: "Nie można otworzyć folderu:\n%{error}"
+list.indexing:
+  en: Indexing local drives… The first time takes up to about a minute.
+  pl: Indeksuję dyski lokalne… Pierwszy raz trwa to do ok. minuty.
+list.empty:
+  en: This folder is empty.
+  pl: Ten folder jest pusty.
+list.no_match:
+  en: No items match your search.
+  pl: Brak elementów pasujących do wyszukiwania.
+
+# ---------- Ten komputer (Pojemność: preview.capacity) ----------
+list.pc.free:
+  en: Free space
+  pl: Wolne miejsce
+list.pc.used:
+  en: Used
+  pl: Zajęte
+list.pc.fs:
+  en: File system
+  pl: System plików
+list.pc.hard:
+  en: Hard drives
+  pl: Dyski twarde
+list.pc.hard_type:
+  en: Local Disk
+  pl: Dysk lokalny
+list.pc.removable:
+  en: Removable devices
+  pl: Urządzenia wymienne
+list.pc.removable_type:
+  en: Removable Disk
+  pl: Dysk wymienny
+list.pc.optical:
+  en: Optical drives
+  pl: Napędy optyczne
+list.pc.optical_type:
+  en: CD/DVD Drive
+  pl: Napęd CD/DVD
+list.pc.network:
+  en: Network locations
+  pl: Lokalizacje sieciowe
+list.pc.network_type:
+  en: Network Drive
+  pl: Dysk sieciowy
+
+# ---------- drag a tab onto a pane ----------
+list.tab.move_here:
+  en: Move tab to this pane
+  pl: Przenieś kartę na ten panel
+list.tab.open_split:
+  en: Open alongside, in split view
+  pl: Otwórz obok, w podziale widoku
+
+# ---------- what a screen reader reads after a name ----------
+list.a11y.new:
+  en: "%{name}, new"
+  pl: "%{name}, nowy"
+list.a11y.online:
+  en: ", online-only"
+  pl: ", tylko w chmurze"
+list.a11y.local:
+  en: ", available on this device"
+  pl: ", na tym urządzeniu"
+list.a11y.pinned:
+  en: ", always available on this device"
+  pl: ", zawsze na tym urządzeniu"

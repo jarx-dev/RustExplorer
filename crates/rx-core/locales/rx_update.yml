@@ -1,0 +1,5 @@
+# rx-update: its errors go only to update.log (Polish); this is the one text the window shows.
+_version: 2
+rx_update.local:
+  en: "%{v} (local)"
+  pl: "%{v} lokalna"

@@ -1,0 +1,193 @@
+# Texts of the app's commands (actions.rs): status notes, operation titles, questions and errors.
+_version: 2
+
+actions.no_preview:
+  en: No preview for this file
+  pl: Brak podglądu dla tego pliku
+actions.results_no_folder:
+  en: "These are search results: open a folder to paste or create items in it"
+  pl: "To są wyniki wyszukiwania: otwórz folder, aby w nim wkleić lub utworzyć"
+actions.cut_still_moving:
+  en: "The cut files are still being moved: paste again when the move finishes"
+  pl: "Wycięte pliki są jeszcze przenoszone: wklej ponownie, gdy przenoszenie się skończy"
+actions.clipboard_busy:
+  en: "Another program is using the Windows clipboard: paste again in a moment"
+  pl: "Schowek Windows jest zajęty przez inny program: wklej jeszcze raz za chwilę"
+actions.clipboard_busy_local:
+  en: "Another program is using the Windows clipboard: you can paste only in this program"
+  pl: "Schowek Windows jest zajęty przez inny program: wkleić można tylko w tym programie"
+actions.not_in_archive:
+  en: "This command isn't available inside an archive: extract the files (Copy, Paste) and use it on them"
+  pl: "Tego polecenia nie ma wewnątrz archiwum: wypakuj pliki (Kopiuj, Wklej) i użyj go na nich"
+actions.arc_delete_title:
+  en: Delete from archive?
+  pl: Usunąć z archiwum?
+actions.arc_delete_text_1:
+  en: "Delete the selected item from the archive “%{name}”? Items deleted from an archive don't go to the Recycle Bin."
+  pl: "Usunąć zaznaczoną pozycję z archiwum „%{name}”? Usuniętych z archiwum nie ma w Koszu."
+actions.arc_delete_text_n:
+  en: "Delete the selected items (%{n}) from the archive “%{name}”? Items deleted from an archive don't go to the Recycle Bin."
+  pl: "Usunąć zaznaczone pozycje (%{n}) z archiwum „%{name}”? Usuniętych z archiwum nie ma w Koszu."
+actions.delete:
+  en: Delete
+  pl: Usuń
+actions.new_folder_name:
+  en: New folder
+  pl: Nowy folder
+actions.new_folder_name_n:
+  en: New folder (%{n})
+  pl: Nowy folder (%{n})
+actions.cant_create_folder:
+  en: "Can't create the folder: %{e}"
+  pl: "Nie można utworzyć folderu: %{e}"
+actions.google_link_copied:
+  en: Google Drive link copied
+  pl: Skopiowano link Google Drive
+actions.onedrive_copying_link:
+  en: OneDrive is copying the link to the clipboard…
+  pl: OneDrive kopiuje link do schowka…
+actions.keep_downloading:
+  en: Downloading to this device…
+  pl: Pobieram na to urządzenie…
+actions.kept:
+  en: Downloaded, kept on this device
+  pl: Pobrane, zostaje na tym urządzeniu
+actions.freed:
+  en: "Marked to free up space: the cloud will remove the copy from this device"
+  pl: "Oznaczone do zwolnienia: chmura usunie kopię z tego urządzenia"
+actions.cloud_refused:
+  en: "The cloud didn't accept the change: %{e}"
+  pl: "Chmura nie przyjęła zmiany: %{e}"
+actions.fetching:
+  en: Downloading the file from the cloud…
+  pl: Pobieram plik z chmury…
+actions.fetched:
+  en: Downloaded from the cloud
+  pl: Pobrane z chmury
+actions.fetch_failed:
+  en: "Couldn't download the file from the cloud: %{e}"
+  pl: "Nie udało się pobrać pliku z chmury: %{e}"
+actions.menu_mixed_folders:
+  en: "The selected items are in different folders: the Windows menu applies only to the item under the pointer"
+  pl: "Zaznaczone są w różnych folderach: menu Windows dotyczy tylko elementu pod kursorem"
+actions.menu_in_archive:
+  en: "Archive items have no Windows menu: extract them first"
+  pl: "Elementy archiwum nie mają menu Windows: wypakuj je najpierw"
+actions.menu_no_answer:
+  en: "Windows menu: the file or folder isn't responding (%{e})"
+  pl: "Menu Windows: plik lub folder nie odpowiada (%{e})"
+actions.menu_too_late:
+  en: "The folder responded too late: open the Windows menu again"
+  pl: "Folder odpowiedział zbyt późno: otwórz menu Windows jeszcze raz"
+actions.cut_to_clip:
+  en: "Cut to clipboard: %{n}"
+  pl: "Wycięto do schowka: %{n}"
+actions.copied_to_clip:
+  en: "Copied to clipboard: %{n}"
+  pl: "Skopiowano do schowka: %{n}"
+actions.bak_failed:
+  en: "Couldn't create the .bak copy: %{e}"
+  pl: "Kopia .bak nie powiodła się: %{e}"
+actions.select_archive:
+  en: Select a .zip, .7z or .rar archive to extract it
+  pl: Zaznacz archiwum .zip, .7z lub .rar, aby je wypakować
+actions.select_to_pack:
+  en: Select files or folders to compress
+  pl: Zaznacz pliki lub foldery do spakowania
+actions.archive_stem:
+  en: Archive
+  pl: Archiwum
+actions.packed:
+  en: "Compressed to “%{name}” (files: %{files})"
+  pl: "Spakowano do „%{name}” (plików: %{files})"
+actions.extracted_here:
+  en: "Extracted here (files: %{files})"
+  pl: "Wypakowano tutaj (plików: %{files})"
+actions.unsafe_skipped:
+  en: "; unsafe names skipped: %{n}"
+  pl: "; pominięte niebezpieczne nazwy: %{n}"
+actions.archive_internal_error:
+  en: stopped by an internal error
+  pl: przerwano przez wewnętrzny błąd
+actions.archive_error:
+  en: "Archive error: %{e}"
+  pl: "Błąd archiwum: %{e}"
+actions.internal_error:
+  en: An internal error stopped the operation
+  pl: Operację przerwał wewnętrzny błąd
+actions.folder_not_found:
+  en: "Folder not found: %{path}"
+  pl: "Nie znaleziono folderu: %{path}"
+actions.path_copied:
+  en: Path copied
+  pl: Skopiowano ścieżkę
+actions.folder_gone:
+  en: The folder isn't available (deleted, or the drive was disconnected)
+  pl: Folder jest niedostępny (usunięty albo dysk odłączony)
+actions.bad_name_chars:
+  en: 'A name can''t contain these characters: \ / : * ? " < > |'
+  pl: 'Nazwa nie może zawierać znaków: \ / : * ? " < > |'
+actions.name_exists:
+  en: "“%{name}” already exists"
+  pl: "„%{name}” już istnieje"
+actions.cant_rename:
+  en: "Can't rename: %{e}"
+  pl: "Nie można zmienić nazwy: %{e}"
+actions.taken_names_note:
+  en: "Ctrl+Z won't undo items that went onto names already in use (replaced, merged or skipped): %{n}"
+  pl: "Ctrl+Z nie cofnie elementów, które trafiły na zajęte nazwy (zastąpione, scalone lub pominięte): %{n}"
+
+# ---------- operation titles (the Operacje panel) ----------
+actions.job.recycle:
+  en: Moving to the Recycle Bin
+  pl: Przenoszenie do Kosza
+actions.job.copy:
+  en: Copying to %{place}
+  pl: Kopiowanie do %{place}
+actions.job.move:
+  en: Moving to %{place}
+  pl: Przenoszenie do %{place}
+actions.job.pack:
+  en: Compressing to %{name}
+  pl: Pakowanie do %{name}
+actions.job.extract:
+  en: Extracting to %{place}
+  pl: Wypakowywanie do %{place}
+actions.job.undo:
+  en: Undoing
+  pl: Cofanie
+
+# ---------- Ctrl+Z ----------
+actions.undo.busy:
+  en: "The previous operation is still running: Ctrl+Z will work when it finishes"
+  pl: "Poprzednia operacja jeszcze trwa: Ctrl+Z zadziała po jej zakończeniu"
+actions.undo.nothing:
+  en: Nothing to undo
+  pl: Nie ma nic do cofnięcia
+actions.undo.failed:
+  en: "Couldn't undo %{k} of %{n}: “%{name}” %{why}"
+  pl: "Nie cofnięto %{k} z %{n}: „%{name}” %{why}"
+actions.undo.rename_failed:
+  en: "Can't undo the rename: %{e}"
+  pl: "Nie można cofnąć zmiany nazwy: %{e}"
+actions.undo.skipped_changed:
+  en: "; skipped because changed since: %{n}"
+  pl: "; pominięte, bo zmienione od tamtej pory: %{n}"
+actions.undo.all_changed:
+  en: "Not undone: the items were changed or replaced since (%{n})"
+  pl: "Nie cofnięto: elementy zmieniono lub zastąpiono od tamtej pory (%{n})"
+actions.undo.none_left:
+  en: "Nothing to undo: the created items are gone"
+  pl: "Nie ma czego cofnąć: utworzonych elementów już nie ma"
+actions.undo.no_bin:
+  en: "Can't undo: this drive has no Recycle Bin, and undoing would delete the files permanently"
+  pl: "Nie można cofnąć: ten dysk nie ma Kosza, a cofnięcie usunęłoby pliki na stałe"
+actions.undo.to_bin:
+  en: "%{what} (to the Recycle Bin: %{n})"
+  pl: "%{what} (do Kosza: %{n})"
+actions.undo.stopped:
+  en: "Undo stopped: some items may remain"
+  pl: "Cofanie przerwane: część elementów mogła zostać"
+actions.undo.bin_no_answer:
+  en: "Can't undo the delete: the Recycle Bin isn't responding (%{e})"
+  pl: "Nie można cofnąć usunięcia: Kosz nie odpowiada (%{e})"

@@ -5,6 +5,7 @@
 //! Unpacking writes only below the target folder: entry names that are absolute or climb out with
 //! ".." are skipped ("zip slip").
 
+use rx_core::t;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
 use std::path::{Component, Path, PathBuf};
@@ -88,7 +89,7 @@ pub fn extract(archive: &Path, dest: &Path, password: Option<&str>, progress: Pr
 /// files written, the entries skipped as unsafe, and the items placed in `dir`.
 pub fn extract_here(archive: &Path, dir: &Path, pw: Option<&str>, progress: Progress) -> Result<(usize, usize, Vec<PathBuf>), Fail> {
     let stem = archive.file_stem().unwrap_or_default().to_string_lossy();
-    let work = free(dir, &format!(".{stem} (wypakowywanie)"), true);
+    let work = free(dir, &t!("rx_archive.work_dir", stem = stem), true);
     let (files, skipped) = extract(archive, &work, pw, progress)?;
     let mut placed = vec![];
     for item in items_of(&work) {
@@ -97,7 +98,7 @@ pub fn extract_here(archive: &Path, dir: &Path, pw: Option<&str>, progress: Prog
         // there in between (MOVEFILE_REPLACE_EXISTING), a race with another program only
         let to = free(dir, &name, item.is_dir());
         if let Err(e) = std::fs::rename(&item, &to) {
-            return Err(Fail::Other(format!("{}: {e}; reszta została w „{}”", to.display(), work.display())));
+            return Err(Fail::Other(t!("rx_archive.rest_left", to = to.display(), e = e, work = work.display())));
         }
         placed.push(to);
     }
@@ -126,9 +127,9 @@ fn run(archive: &Path, map: Map, password: Option<&str>, progress: Progress) -> 
         "zip" => extract_zip(archive, map, password, progress),
         "7z" => extract_7z(archive, map, password, progress),
         "rar" => extract_rar(archive, map, password, progress),
-        e => Err(Fail::Other(format!("Nieobsługiwany format: .{e}"))),
+        e => Err(Fail::Other(t!("rx_archive.unsupported", ext = e))),
     });
-    std::panic::catch_unwind(go).unwrap_or_else(|_| Err(Fail::Other("uszkodzone archiwum (przerwano)".into())))
+    std::panic::catch_unwind(go).unwrap_or_else(|_| Err(Fail::Other(t!("rx_archive.damaged_stopped").into())))
 }
 
 /// An entry's name as '/'-separated parts, or None when unpacking would refuse it (inside()).
@@ -161,9 +162,9 @@ pub fn list(archive: &Path) -> Result<Vec<Entry>, Fail> {
         "zip" => list_zip(archive),
         "7z" => list_7z(archive),
         "rar" => list_rar(archive),
-        e => Err(Fail::Other(format!("Nieobsługiwany format: .{e}"))),
+        e => Err(Fail::Other(t!("rx_archive.unsupported", ext = e))),
     });
-    std::panic::catch_unwind(go).unwrap_or_else(|_| Err(Fail::Other("uszkodzone archiwum".into())))
+    std::panic::catch_unwind(go).unwrap_or_else(|_| Err(Fail::Other(t!("rx_archive.damaged").into())))
 }
 
 fn list_zip(archive: &Path) -> Result<Vec<Entry>, Fail> {
@@ -247,7 +248,7 @@ pub fn folder(entries: &[Entry], base: &str) -> Vec<Entry> {
 /// left out as names Windows cannot hold; a pick naming no entry makes nothing.
 pub fn extract_entries(archive: &Path, picks: &[(String, PathBuf)], password: Option<&str>, progress: Progress) -> Result<(usize, usize), Fail> {
     if let Some((_, to)) = picks.iter().find(|(_, to)| to.exists()) {
-        return Err(Fail::Other(format!("{} już istnieje", to.display())));
+        return Err(Fail::Other(t!("rx_archive.exists", path = to.display())));
     }
     // each pick unpacks into a folder of its own claimed next to its target (create_dir), then
     // moves into place: two jobs never write into one another's output, and a failure removes
@@ -293,7 +294,7 @@ pub fn extract_entries(archive: &Path, picks: &[(String, PathBuf)], password: Op
             }
             // rename would replace a file: the target is checked once more right before
             if to.exists() {
-                return Err(Fail::Other(format!("{} już istnieje", to.display())));
+                return Err(Fail::Other(t!("rx_archive.exists", path = to.display())));
             }
             std::fs::rename(&made, to).map_err(|e| format!("{}: {e}", to.display()))?;
         }
@@ -316,7 +317,7 @@ fn bad_password(password: Option<&str>, e: &io::Error) -> bool {
 /// 7z change would then drop the lost one from the archive).
 fn create_new(path: &Path) -> io::Result<File> {
     File::create_new(path).map_err(|e| match e.kind() {
-        io::ErrorKind::AlreadyExists => io::Error::new(e.kind(), "w archiwum są dwa pliki o tej samej nazwie (Windows nie rozróżnia wielkości liter)"),
+        io::ErrorKind::AlreadyExists => io::Error::new(e.kind(), t!("rx_archive.same_name_files")),
         _ => e,
     })
 }
@@ -588,7 +589,7 @@ fn gather(paths: &[PathBuf], base: &Path, skip: &Path) -> Result<Vec<(PathBuf, S
         } else if md.is_file() {
             out.push((p, name, false));
         } else {
-            return Err(fail(&p, &"to skrót systemowy (dowiązanie), którego archiwum nie obejmie"));
+            return Err(fail(&p, &t!("rx_archive.link")));
         }
     }
     Ok(out)
@@ -600,7 +601,7 @@ fn gather(paths: &[PathBuf], base: &Path, skip: &Path) -> Result<Vec<(PathBuf, S
 pub fn pack(paths: &[PathBuf], base: &Path, dest: &Path, progress: Progress) -> Result<usize, String> {
     let kind = ext(dest);
     if kind != "zip" && kind != "7z" {
-        return Err(format!("Nie umiem tworzyć archiwów .{kind}"));
+        return Err(t!("rx_archive.cant_create", kind = kind));
     }
     let file = File::create_new(dest).map_err(|e| format!("{}: {e}", dest.display()))?;
     let run = std::panic::AssertUnwindSafe(|| {
@@ -608,7 +609,7 @@ pub fn pack(paths: &[PathBuf], base: &Path, dest: &Path, progress: Progress) -> 
         let total: u64 = items.iter().filter(|i| !i.2).filter_map(|i| std::fs::metadata(&i.0).ok()).map(|m| m.len()).sum();
         if kind == "zip" { pack_zip(&items, file, total, progress) } else { pack_7z(&items, file, total, progress) }
     });
-    let r = std::panic::catch_unwind(run).unwrap_or_else(|_| Err("przerwano przez wewnętrzny błąd".into()));
+    let r = std::panic::catch_unwind(run).unwrap_or_else(|_| Err(t!("rx_archive.internal").into()));
     if r.is_err() {
         let _ = std::fs::remove_file(dest);
     }
@@ -649,7 +650,7 @@ fn zip_add(w: &mut ZipOut, path: Option<&Path>, name: &str, dir: bool) -> Result
         w.add_directory(name, opts).map_err(|e| err(&e))?;
         return Ok(0);
     }
-    let path = path.ok_or("brak pliku do dodania")?;
+    let path = path.ok_or(t!("rx_archive.no_file"))?;
     let len = md.map_or(0, |m| m.len());
     w.start_file(name, opts.large_file(len >= 0xFFFF_FFFF)).map_err(|e| err(&e))?;
     let mut f = File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -791,31 +792,31 @@ fn plan(all: &[Entry], change: &Change, archive: &Path) -> Result<Plan, String> 
         Change::Remove(names) => p.drop = names.clone(),
         Change::Rename { from, to } => {
             if !taken.contains(&from.to_lowercase()) {
-                return Err(format!("W archiwum nie ma „{}”", leaf(from)));
+                return Err(t!("rx_archive.not_in_archive", name = leaf(from)));
             }
             // a name the list would not show (a device, a trailing dot…) would hide the entry
             if slash(Path::new(to)).as_deref() != Some(to.as_str()) {
-                return Err(format!("Nazwy „{}” nie da się zapisać w Windows", leaf(to)));
+                return Err(t!("rx_archive.bad_windows_name", name = leaf(to)));
             }
             // a change of letter case only is a rename too
             if to.to_lowercase() != from.to_lowercase() && taken.contains(&to.to_lowercase()) {
-                return Err(format!("„{}” już jest w tym folderze archiwum", leaf(to)));
+                return Err(t!("rx_archive.name_taken", name = leaf(to)));
             }
             if under(to, from) {
-                return Err("Folderu nie można przenieść do niego samego".into());
+                return Err(t!("rx_archive.into_itself").into());
             }
             p.rename = Some((from.clone(), to.clone()));
             p.made.push(to.clone());
         }
         Change::NewFolder { into } => {
-            let name = free_in(&mut taken, into, "Nowy folder", true);
+            let name = free_in(&mut taken, into, t!("rx_archive.new_folder"), true);
             p.add.push((None, name.clone(), true));
             p.made.push(name);
         }
         Change::Replace { name, from } => {
             // renamed or deleted since it was opened: writing it back would bring it back
             if !all.iter().any(|e| e.name == *name && !e.dir) {
-                return Err(format!("Pliku „{}” nie ma już w archiwum (zmieniono jego nazwę lub go usunięto)", leaf(name)));
+                return Err(t!("rx_archive.gone", name = leaf(name)));
             }
             p.drop.push(name.clone());
             p.add.push((Some(from.clone()), name.clone(), false));
@@ -849,10 +850,10 @@ fn plan(all: &[Entry], change: &Change, archive: &Path) -> Result<Plan, String> 
 pub fn update(archive: &Path, change: &Change, progress: Progress) -> Result<Vec<String>, String> {
     let kind = ext(archive);
     if !can_update(archive) {
-        return Err(format!("Archiwów .{kind} nie da się zmieniać: tworzy je tylko WinRAR"));
+        return Err(t!("rx_archive.rar_readonly", kind = kind));
     }
     let all = list(archive).map_err(|e| match e {
-        Fail::Password => "lista plików archiwum jest zaszyfrowana".to_string(),
+        Fail::Password => t!("rx_archive.list_encrypted").to_string(),
         Fail::Other(e) => e,
     })?;
     let plan = plan(&all, change, archive)?;
@@ -865,7 +866,7 @@ pub fn update(archive: &Path, change: &Change, progress: Progress) -> Result<Vec
     // a renamed file whose data never got written
     let synced = |()| File::options().write(true).open(&tmp).and_then(|f| f.sync_all()).map_err(|e| format!("{}: {e}", tmp.display()));
     let r = std::panic::catch_unwind(go)
-        .unwrap_or_else(|_| Err("przerwano przez wewnętrzny błąd".into()))
+        .unwrap_or_else(|_| Err(t!("rx_archive.internal").into()))
         .and_then(synced)
         .and_then(|()| std::fs::rename(&tmp, archive).map_err(|e| format!("{}: {e}", archive.display())));
     if r.is_err() {
@@ -880,10 +881,10 @@ fn update_zip(archive: &Path, tmp: &Path, plan: &Plan, progress: Progress) -> Re
     let mut z = zip::ZipArchive::new(BufReader::new(File::open(archive).map_err(|e| e.to_string())?)).map_err(err)?;
     // what a rewrite could not keep is refused before anything is written
     if z.has_duplicate_names() {
-        return Err("w archiwum są dwa wpisy o tej samej nazwie; zmiana zostawiłaby jeden z nich".into());
+        return Err(t!("rx_archive.duplicate_entries").into());
     }
     if z.offset() > 0 {
-        return Err("archiwum ma dane przed pierwszym plikiem (samorozpakowujące się); zmiana by je usunęła".into());
+        return Err(t!("rx_archive.sfx").into());
     }
     let out = File::create_new(tmp).map_err(|e| format!("{}: {e}", tmp.display()))?;
     let mut w = zip::ZipWriter::new(BufWriter::new(out));
@@ -894,7 +895,7 @@ fn update_zip(archive: &Path, tmp: &Path, plan: &Plan, progress: Progress) -> Re
         // a name zip writes back as UTF-8: an old code-page name (CP852 from old Windows tools)
         // would come back mangled once renamed or replaced
         let legacy = !f.name_raw().is_ascii() && std::str::from_utf8(f.name_raw()).is_err();
-        let legacy_note = || "nazwy plików w tym archiwum są w starym kodowaniu (sprzed UTF-8); zmiana by je zniekształciła".to_string();
+        let legacy_note = || t!("rx_archive.legacy_names").to_string();
         let kept = match zip_name(&f) {
             Some(n) if plan.drops(&n) => {
                 if legacy && plan.add.iter().any(|a| a.1 == n) {
@@ -915,7 +916,7 @@ fn update_zip(archive: &Path, tmp: &Path, plan: &Plan, progress: Progress) -> Re
                 if plan.drops(raw) {
                     None
                 } else if plan.renamed(raw).is_some() {
-                    return Err(format!("folder zawiera plik o nazwie niedozwolonej w Windows („{raw}”); zmiana nazwy rozdzieliłaby go"));
+                    return Err(t!("rx_archive.device_name_in_folder", name = raw));
                 } else {
                     Some(None)
                 }
@@ -925,7 +926,7 @@ fn update_zip(archive: &Path, tmp: &Path, plan: &Plan, progress: Progress) -> Re
             // ZipCrypto (the old ZIP password) loses its flags in a raw copy and the entry would no
             // longer open; AES entries keep theirs
             if f.encrypted() && f.get_metadata().aes_settings().is_none() {
-                return Err("pliki są zaszyfrowane starą metodą ZIP (ZipCrypto): zmiana by je uszkodziła; wypakuj archiwum, aby zmieniać".into());
+                return Err(t!("rx_archive.zipcrypto").into());
             }
             match rename {
                 Some(to) => w.raw_copy_file_rename(f, to).map_err(err)?,
@@ -958,14 +959,14 @@ fn update_7z(archive: &Path, tmp: &Path, plan: &Plan, progress: Progress) -> Res
     let _ = std::fs::remove_dir_all(&dir);
     let mut work = || -> Result<(), String> {
         let (_, skipped) = extract(archive, &dir, None, &mut |d, t| progress(d, t * 2)).map_err(|e| match e {
-            Fail::Password => "zaszyfrowanego archiwum 7z nie da się zmieniać".to_string(),
+            Fail::Password => t!("rx_archive.encrypted_7z").to_string(),
             Fail::Other(e) => e,
         })?;
         // a 7z is packed again from what was unpacked: an entry Windows cannot hold would be lost
         if skipped > 0 {
-            return Err(format!("archiwum zawiera nazwy, których Windows nie zapisze (plików: {skipped}); zmiana by je usunęła"));
+            return Err(t!("rx_archive.bad_names_change", n = skipped));
         }
-        let at = |n: &str| inside(&dir, Path::new(n)).ok_or_else(|| format!("zła nazwa: {n}"));
+        let at = |n: &str| inside(&dir, Path::new(n)).ok_or_else(|| t!("rx_archive.bad_name", name = n));
         let io = |e: io::Error| e.to_string();
         for d in &plan.drop {
             let p = at(d)?;
@@ -991,7 +992,7 @@ fn update_7z(archive: &Path, tmp: &Path, plan: &Plan, progress: Progress) -> Res
             if let Some(up) = p.parent() {
                 std::fs::create_dir_all(up).map_err(io)?;
             }
-            let src = src.as_deref().ok_or("brak pliku do dodania")?;
+            let src = src.as_deref().ok_or(t!("rx_archive.no_file"))?;
             std::fs::copy(src, &p).map_err(|e| format!("{}: {e}", src.display()))?;
         }
         pack(&items_of(&dir), &dir, tmp, &mut |d, t| progress(t + d, t * 2)).map(|_| ())
@@ -1008,7 +1009,7 @@ pub fn convert(archive: &Path, dest: &Path, password: Option<&str>, progress: Pr
     let _ = std::fs::remove_dir_all(&dir);
     let r = extract(archive, &dir, password, &mut |d, t| progress(d, t * 2)).and_then(|(_, skipped)| {
         if skipped > 0 {
-            return Err(Fail::Other(format!("archiwum zawiera nazwy, których Windows nie zapisze (plików: {skipped}); kopia byłaby niepełna")));
+            return Err(Fail::Other(t!("rx_archive.bad_names_copy", n = skipped)));
         }
         pack(&items_of(&dir), &dir, dest, &mut |d, t| progress(t + d, t * 2)).map_err(Fail::Other)
     });
@@ -1179,8 +1180,8 @@ mod tests {
         assert_eq!(update(&arc, &add(vec![extra.join("RAPORT.CSV"), extra.join("Folder")], ""), none).unwrap(), ["RAPORT (2).CSV", "Folder"]);
         assert_eq!(update(&arc, &add(vec![extra.join("RAPORT.CSV")], "Dokumenty"), none).unwrap(), ["Dokumenty/RAPORT.CSV"]);
         let folder = Change::NewFolder { into: "Dokumenty".into() };
-        assert_eq!(update(&arc, &folder, none).unwrap(), ["Dokumenty/Nowy folder"]);
-        assert_eq!(update(&arc, &folder, none).unwrap(), ["Dokumenty/Nowy folder (2)"]);
+        assert_eq!(update(&arc, &folder, none).unwrap(), ["Dokumenty/New folder"]);
+        assert_eq!(update(&arc, &folder, none).unwrap(), ["Dokumenty/New folder (2)"]);
         update(&arc, &Change::Rename { from: "Dokumenty".into(), to: "Papiery".into() }, none).unwrap();
         let before = std::fs::read(&arc).unwrap();
         for bad in [
@@ -1197,13 +1198,13 @@ mod tests {
         update(&arc, &Change::Replace { name: "Papiery/Żółw.txt".into(), from: edited }, none).unwrap();
         assert_eq!(
             names(&arc),
-            ["Papiery", "Papiery/Nowy folder", "Papiery/Nowy folder (2)", "Papiery/RAPORT.CSV", "Papiery/pusty", "Papiery/Żółw.txt", "RAPORT (2).CSV"]
+            ["Papiery", "Papiery/New folder", "Papiery/New folder (2)", "Papiery/RAPORT.CSV", "Papiery/pusty", "Papiery/Żółw.txt", "RAPORT (2).CSV"]
         );
         let out = d.join("out");
         extract(&arc, &out, None, none).unwrap();
         assert_eq!(std::fs::read_to_string(out.join("Papiery/Żółw.txt")).unwrap(), "poprawione");
         assert_eq!(std::fs::read_to_string(out.join("RAPORT (2).CSV")).unwrap(), "nowy");
-        assert!(out.join("Papiery/Nowy folder (2)").is_dir());
+        assert!(out.join("Papiery/New folder (2)").is_dir());
         // nothing of the work is left next to the archive
         let left: Vec<_> = std::fs::read_dir(&d).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| n.starts_with('~')).collect();
         assert!(left.is_empty(), "{left:?}");

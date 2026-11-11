@@ -27,7 +27,11 @@
 > archives browsed and edited like folders (ZIP, 7z; RAR read-only), instant file-name search
 > across all local drives, a disk space map, natural sorting, wildcard filter, folder sizes, flat view, the Windows clipboard, drag and drop
 > both ways, Explorer's own context menu, undo, a dark theme, and a self-updater that pulls new
-> releases from GitHub (or from your own server). The UI is in Polish.
+> releases from GitHub (or from your own server). The UI is in English by default, with Polish in
+> File ▸ Settings ▸ Language / Język.
+>
+> Interfejs jest domyślnie po angielsku; polski wybierzesz w Plik ▸ Ustawienia ▸ Language / Język
+> (kto używał programu przed tą zmianą, zostaje przy polskim).
 
 ---
 

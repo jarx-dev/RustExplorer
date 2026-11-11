@@ -1,0 +1,26 @@
+# rx-scan: VirusTotal's errors in words the person can act on.
+_version: 2
+rx_scan.bad_answer:
+  en: "VirusTotal's answer: %{e}"
+  pl: "odpowiedź VirusTotal: %{e}"
+rx_scan.bad_key:
+  en: "VirusTotal didn't accept the API key: check it in Settings"
+  pl: "VirusTotal nie przyjął klucza API: sprawdź go w Ustawieniach"
+rx_scan.quota:
+  en: "VirusTotal's daily limit is used up: check it at virustotal.com/gui/my-apikey"
+  pl: "wyczerpany dzienny limit VirusTotal: sprawdź go na virustotal.com/gui/my-apikey"
+rx_scan.status:
+  en: "VirusTotal answered %{c}"
+  pl: "VirusTotal odpowiedział %{c}"
+rx_scan.offline:
+  en: "can't connect to VirusTotal: %{e}"
+  pl: "brak połączenia z VirusTotal: %{e}"
+rx_scan.too_big:
+  en: VirusTotal accepts files up to 650 MB
+  pl: VirusTotal przyjmuje pliki do 650 MB
+rx_scan.no_upload_url:
+  en: VirusTotal didn't give an address to upload the file to
+  pl: VirusTotal nie podał adresu do wysłania pliku
+rx_scan.not_taken:
+  en: VirusTotal didn't accept the file
+  pl: VirusTotal nie przyjął pliku

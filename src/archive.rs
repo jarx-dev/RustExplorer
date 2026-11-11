@@ -48,8 +48,8 @@ fn entries(arc: &Path) -> Result<Arc<Vec<rx_archive::Entry>>, String> {
         return Ok(hit.2.clone());
     }
     let list = Arc::new(rx_archive::list(arc).map_err(|e| match e {
-        rx_archive::Fail::Password => "Lista plików tego archiwum jest zaszyfrowana: użyj Wypakuj, aby podać hasło".to_string(),
-        rx_archive::Fail::Other(e) => format!("Nie można otworzyć archiwum: {e}"),
+        rx_archive::Fail::Password => t!("archive.list_encrypted").to_string(),
+        rx_archive::Fail::Other(e) => t!("archive.cant_open", e = e),
     })?);
     let mut c = cache.lock().unwrap();
     c.retain(|x| x.0 != arc);
@@ -78,7 +78,7 @@ pub(crate) fn list(arc: &Path, inner: &str) -> Result<Vec<Entry>, String> {
     let all = entries(arc)?;
     let kids = rx_archive::folder(&all, inner);
     if kids.is_empty() && !inner.is_empty() && !has_folder(&all, inner) {
-        return Err(format!("W archiwum nie ma folderu „{inner}”"));
+        return Err(t!("archive.no_folder", inner = inner));
     }
     Ok(kids
         .into_iter()
@@ -126,7 +126,7 @@ fn picks(paths: &[PathBuf], dir: &Path) -> Vec<(PathBuf, Vec<(String, PathBuf)>)
 
 fn fail_text(e: rx_archive::Fail) -> String {
     match e {
-        rx_archive::Fail::Password => "pliki są zaszyfrowane: użyj Wypakuj na całym archiwum, aby podać hasło".into(),
+        rx_archive::Fail::Password => t!("archive.files_encrypted").into(),
         rx_archive::Fail::Other(e) => e,
     }
 }
@@ -152,14 +152,14 @@ fn hash_of(x: impl std::hash::Hash) -> String {
 /// of the archive, then reused while it still is the entry. A copy edited since is never deleted
 /// (its changes may not be in the archive yet): a fresh one goes into the next free folder.
 pub(crate) fn temp_copy(p: &Path, progress: rx_archive::Progress) -> Result<PathBuf, String> {
-    let (arc, inner) = split_archive(p).filter(|(_, i)| !i.is_empty()).ok_or("to nie jest plik w archiwum")?;
+    let (arc, inner) = split_archive(p).filter(|(_, i)| !i.is_empty()).ok_or(t!("archive.not_inside"))?;
     let md = std::fs::metadata(&arc).map_err(|e| e.to_string())?;
     let version = temp_root().join(hash_of((&arc, md.len(), md.modified().ok())));
     std::fs::create_dir_all(&version).map_err(|e| e.to_string())?;
     // used now: clean_temp keeps it for a day from here
     let _ = std::fs::write(version.join(".uzyte"), b"");
-    let entry = entries(&arc)?.iter().find(|e| e.name == inner).cloned().ok_or("nie ma tego pliku w archiwum")?;
-    let name = p.file_name().ok_or("bez nazwy")?;
+    let entry = entries(&arc)?.iter().find(|e| e.name == inner).cloned().ok_or(t!("archive.no_file"))?;
+    let name = p.file_name().ok_or(t!("archive.no_name"))?;
     // a folder per entry: "A.txt" and "a.txt" of one archive are two files, not one on Windows
     let key = hash_of(&inner);
     for k in 0..100 {
@@ -179,11 +179,11 @@ pub(crate) fn temp_copy(p: &Path, progress: rx_archive::Progress) -> Result<Path
         return match rx_archive::extract_entries(&arc, &[(inner, to.clone())], None, progress) {
             // another job (the preview, Open) may have unpacked it at the same moment
             _ if to.exists() => Ok(to),
-            Ok(_) => Err("nie ma tego pliku w archiwum".into()),
+            Ok(_) => Err(t!("archive.no_file").into()),
             Err(e) => Err(fail_text(e)),
         };
     }
-    Err("za dużo zmienionych kopii tego pliku".into())
+    Err(t!("archive.too_many_copies").into())
 }
 
 /// The preview of a path inside an archive: a folder's counts from the list; a picture, PDF or
@@ -203,16 +203,16 @@ pub(crate) fn preview(p: &Path, px: u32) -> Raw {
     }
     let ext = ext_of(&inner);
     if !(IMAGE_EXT.contains(&ext.as_str()) || TEXT_EXT.contains(&ext.as_str()) || ext == "pdf") {
-        return Raw::Nothing("Otwórz plik (Enter), aby go zobaczyć".into());
+        return Raw::Nothing(t!("archive.open_to_see").into());
     }
     let size = entries(&arc).ok().and_then(|all| all.iter().find(|e| e.name == inner).map(|e| e.size));
     let streamed = !ext_of(&arc.to_string_lossy()).eq("zip") && std::fs::metadata(&arc).is_ok_and(|m| m.len() > 64 << 20);
     if size.is_some_and(|s| s > 64 << 20) || streamed {
-        return Raw::Nothing("Podgląd z dużego archiwum trwałby długo; otwórz plik (Enter)".into());
+        return Raw::Nothing(t!("archive.too_big").into());
     }
     match temp_copy(p, &mut |_, _| {}) {
         Ok(copy) => build_preview(&copy, px, false),
-        Err(e) => Raw::Nothing(format!("Brak podglądu: {e}")),
+        Err(e) => Raw::Nothing(t!("archive.no_preview", e = e)),
     }
 }
 
@@ -272,7 +272,7 @@ impl App {
         if groups.is_empty() {
             return;
         }
-        let title = format!("Wypakowywanie do {}", crate::actions::place(dir));
+        let title = t!("archive.extracting_to", place = crate::actions::place(dir));
         self.archive_job(title, crate::actions::names(paths), ctx, move |p| {
             // a cut holds the lock from unpacking to removing, so no save lands in between and is lost
             let _one = cut.then(|| WRITING.lock().unwrap_or_else(|e| e.into_inner()));
@@ -282,15 +282,15 @@ impl App {
                 files += n;
                 kept.push(left_out);
             }
-            let mut note = format!("Wypakowano plików: {files}");
+            let mut note = t!("archive.extracted", n = files);
             if kept.iter().any(|&n| n > 0) {
-                note += &format!("; pominięte nazwy niedozwolone w Windows: {}", kept.iter().sum::<usize>());
+                note += &t!("archive.skipped_more", n = kept.iter().sum::<usize>());
             }
             if cut {
                 for ((arc, picks), left_out) in groups.iter().zip(kept) {
                     // what could not be written stays in the archive, and so does its folder
                     if left_out > 0 || !rx_archive::can_update(arc) || is_temp(arc) {
-                        note += "; oryginały zostały w archiwum";
+                        note += t!("archive.originals_kept");
                         continue;
                     }
                     rx_archive::update(arc, &Change::Remove(picks.iter().map(|x| x.0.clone()).collect()), p)?;
@@ -306,7 +306,7 @@ impl App {
     pub(crate) fn open_from_archive(&self, p: PathBuf, ctx: &egui::Context) {
         let tx = self.tx.clone();
         let source = p.file_name().unwrap_or_default().to_string_lossy().into_owned();
-        self.archive_job("Otwieranie z archiwum".into(), source, ctx, move |prog| {
+        self.archive_job(t!("archive.opening").into(), source, ctx, move |prog| {
             let copy = temp_copy(&p, prog)?;
             if let Some((arc, inner)) = split_archive(&p) {
                 if rx_archive::can_update(&arc) && !is_temp(&arc) && !rx_archive::can_extract(&copy) {
@@ -338,9 +338,9 @@ impl App {
                 let file = w.copy.file_name().unwrap_or_default().to_string_lossy();
                 let arc = w.arc.file_name().unwrap_or_default().to_string_lossy();
                 self.ask = Some(Ask {
-                    title: "Zapisać zmiany w archiwum?".into(),
-                    text: format!("Plik „{file}” otwarty z archiwum „{arc}” został zapisany. Zaktualizować go w archiwum?"),
-                    yes: "Zapisz w archiwum".into(),
+                    title: t!("archive.save.title").into(),
+                    text: t!("archive.save.text", file = file, arc = arc),
+                    yes: t!("archive.save.yes").into(),
                     act: Act::ArchiveChange(w.arc.clone(), Change::Replace { name: w.inner.clone(), from: w.copy.clone() }, false),
                 });
                 return;
@@ -353,27 +353,27 @@ impl App {
     /// A RAR asks to make a ZIP copy instead; an archive opened from an archive cannot be changed.
     pub(crate) fn change_archive(&mut self, arc: PathBuf, change: Change, rename: bool, ctx: &egui::Context) {
         if is_temp(&arc) {
-            self.msg = Some("To archiwum jest otwarte z innego archiwum: zmiany nie trafiłyby do niego. Wypakuj je, aby je zmieniać".into());
+            self.msg = Some(t!("archive.nested").into());
             return;
         }
         if !rx_archive::can_update(&arc) {
             let inner = split_archive(&self.tabs[self.cur].path).map(|x| x.1).unwrap_or_default();
             self.ask = Some(Ask {
-                title: "Archiwum RAR można tylko czytać".into(),
-                text: "Pliki RAR tworzy tylko WinRAR. Utworzyć kopię tego archiwum jako ZIP i przejść do niej? Potem powtórz zmianę.".into(),
-                yes: "Utwórz kopię ZIP".into(),
+                title: t!("archive.rar.title").into(),
+                text: t!("archive.rar.text").into(),
+                yes: t!("archive.rar.yes").into(),
                 act: Act::ConvertArchive(arc, inner),
             });
             return;
         }
         let tx = self.tx.clone();
         let name = arc.file_name().unwrap_or_default().to_string_lossy().into_owned();
-        self.archive_job("Zapisywanie zmian w archiwum".into(), name.clone(), ctx, move |p| {
+        self.archive_job(t!("archive.saving").into(), name.clone(), ctx, move |p| {
             let _one = WRITING.lock().unwrap_or_else(|e| e.into_inner());
             let made = rx_archive::update(&arc, &change, p)?;
             let _ = tx.send(Msg::Changed(made.iter().map(|n| path_of(&arc, n)).collect(), rename));
             // a note is an outcome: archive_job then records that Ctrl+Z cannot take it back
-            Ok(format!("Zapisano zmiany w „{name}”"))
+            Ok(t!("archive.saved", name = name))
         });
     }
 
@@ -395,7 +395,7 @@ impl App {
         if plain.iter().any(|p| arc_real.starts_with(real(p)))
             || packed.iter().filter_map(own).any(|i| into_low == low(&i) || into_low.starts_with(&(low(&i) + "/")))
         {
-            self.msg = Some("Folderu nie można wkleić do niego samego".into());
+            self.msg = Some(t!("archive.into_itself").into());
             return;
         }
         if cut {
@@ -416,7 +416,7 @@ impl App {
         let groups = picks(&packed, &work);
         let tx = self.tx.clone();
         let name = arc.file_name().unwrap_or_default().to_string_lossy().into_owned();
-        self.archive_job("Wklejanie do archiwum".into(), name.clone(), ctx, move |p| {
+        self.archive_job(t!("archive.pasting").into(), name.clone(), ctx, move |p| {
             // held from unpacking to removing the cut originals, so no save in between is lost
             let _one = WRITING.lock().unwrap_or_else(|e| e.into_inner());
             let _running = &job;
@@ -430,7 +430,7 @@ impl App {
                 }
                 let made = rx_archive::update(&arc, &Change::Add { from: from.clone(), into: into.clone() }, p)?;
                 if kept.iter().any(|&n| n > 0) {
-                    note = format!("Pominięte nazwy niedozwolone w Windows: {}", kept.iter().sum::<usize>());
+                    note = t!("archive.skipped", n = kept.iter().sum::<usize>());
                 }
                 if cut {
                     let mut stayed = false;
@@ -443,7 +443,7 @@ impl App {
                         }
                     }
                     if stayed {
-                        note += if note.is_empty() { "Oryginały zostały w archiwum źródłowym" } else { "; oryginały zostały w archiwum źródłowym" };
+                        note += if note.is_empty() { t!("archive.originals_kept_source") } else { t!("archive.originals_kept_source_more") };
                     }
                 }
                 Ok::<_, String>(made)
@@ -460,7 +460,7 @@ impl App {
             }
             let _ = tx.send(Msg::Changed(made.iter().map(|n| path_of(&arc, n)).collect(), false));
             // a note is an outcome: archive_job then records that Ctrl+Z cannot take it back
-            Ok(if note.is_empty() { format!("Wklejono do „{name}”") } else { note })
+            Ok(if note.is_empty() { t!("archive.pasted", name = name) } else { note })
         });
     }
 
@@ -470,39 +470,39 @@ impl App {
         let dir = self.tabs[self.cur].path.clone();
         let out = on_disk(&dir);
         if split_archive(&dir).is_some_and(|(arc, _)| is_temp(&arc)) {
-            self.msg = Some("To archiwum jest otwarte z innego archiwum: zaznacz pliki, Kopiuj, i Wklej je w wybranym folderze".into());
+            self.msg = Some(t!("archive.nested_extract").into());
             return;
         }
         if let [one] = sel.as_slice() {
             if rx_archive::can_extract(one) {
                 let (p, tx) = (one.clone(), self.tx.clone());
-                let title = format!("Wypakowywanie do {}", crate::actions::place(&out));
+                let title = t!("archive.extracting_to", place = crate::actions::place(&out));
                 self.archive_job(title, crate::actions::names(std::slice::from_ref(&p)), ctx, move |prog| {
                     let copy = temp_copy(&p, prog)?;
                     let stem = p.file_stem().unwrap_or_default().to_string_lossy().into_owned();
                     let dest = crate::actions::free_name(&out, &stem, "", &[]);
                     let (files, _) = rx_archive::extract(&copy, &dest, None, prog).map_err(fail_text)?;
                     let _ = tx.send(Msg::Reload);
-                    Ok(format!("Wypakowano do „{}” (plików: {files})", dest.display()))
+                    Ok(t!("archive.extracted_to", dest = dest.display(), n = files))
                 });
                 return;
             }
         }
         let picked = if sel.is_empty() { self.tab().all.iter().map(|e| e.path.clone()).collect() } else { sel };
         self.unpack_into(&picked, &out, false, ctx);
-        self.msg = Some(format!("Wypakowuję do {}", out.display()));
+        self.msg = Some(t!("archive.extracting_msg", dir = out.display()));
     }
 
     /// A RAR made into a ZIP next to it, and the list moves to the same folder in the copy.
     pub(crate) fn convert_archive(&mut self, arc: PathBuf, inner: String, ctx: &egui::Context) {
         let tx = self.tx.clone();
         let source = arc.file_name().unwrap_or_default().to_string_lossy().into_owned();
-        self.archive_job("Tworzenie kopii ZIP".into(), source, ctx, move |p| {
-            let (dir, stem) = (arc.parent().ok_or("brak folderu")?, arc.file_stem().unwrap_or_default().to_string_lossy().into_owned());
+        self.archive_job(t!("archive.converting").into(), source, ctx, move |p| {
+            let (dir, stem) = (arc.parent().ok_or(t!("archive.no_parent"))?, arc.file_stem().unwrap_or_default().to_string_lossy().into_owned());
             let dest = crate::actions::free_name(dir, &stem, "zip", &[]);
             let files = rx_archive::convert(&arc, &dest, None, p).map_err(fail_text)?;
             let _ = tx.send(Msg::Open(path_of(&dest, &inner)));
-            Ok(format!("Utworzono „{}” (plików: {files}); teraz możesz je zmieniać", dest.file_name().unwrap_or_default().to_string_lossy()))
+            Ok(t!("archive.converted", name = dest.file_name().unwrap_or_default().to_string_lossy(), n = files))
         });
     }
 }

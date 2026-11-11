@@ -1,0 +1,14 @@
+# Texts of the shared widgets (app/src/theme.rs).
+_version: 2
+theme.caption.close:
+  en: Close
+  pl: Zamknij
+theme.caption.restore:
+  en: Restore Down
+  pl: Przywróć
+theme.caption.maximize:
+  en: Maximize
+  pl: Maksymalizuj
+theme.caption.minimize:
+  en: Minimize
+  pl: Minimalizuj

@@ -67,7 +67,7 @@ pub fn restore(paths: &[PathBuf], since: SystemTime, until: SystemTime) -> Resul
         r
     })
     .join()
-    .unwrap_or_else(|_| Err("wewnętrzny błąd".into()))
+    .unwrap_or_else(|_| Err(rx_core::t!("rx_sys.internal").into()))
 }
 
 fn restore_here(paths: &[PathBuf], since: SystemTime, until: SystemTime) -> windows::core::Result<Vec<(PathBuf, &'static str)>> {
@@ -75,7 +75,7 @@ fn restore_here(paths: &[PathBuf], since: SystemTime, until: SystemTime) -> wind
     let mut want = vec![];
     for p in paths {
         if p.symlink_metadata().is_ok() {
-            failed.push((p.clone(), "miejsce jest zajęte"));
+            failed.push((p.clone(), rx_core::t!("rx_sys.place_taken")));
         } else {
             want.push(p);
         }
@@ -103,9 +103,9 @@ fn restore_here(paths: &[PathBuf], since: SystemTime, until: SystemTime) -> wind
     }
     for (k, p) in want.into_iter().enumerate() {
         if found[k].is_none() {
-            failed.push((p.clone(), "nie ma go w Koszu"));
+            failed.push((p.clone(), rx_core::t!("rx_sys.not_in_bin")));
         } else if p.symlink_metadata().is_err() {
-            failed.push((p.clone(), "nie wrócił z Kosza"));
+            failed.push((p.clone(), rx_core::t!("rx_sys.not_restored")));
         }
     }
     Ok(failed)

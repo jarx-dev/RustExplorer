@@ -1,0 +1,26 @@
+# Texts of reading folders into the list (app/src/listing.rs).
+_version: 2
+listing.type.folder:
+  en: File folder
+  pl: Folder plików
+listing.type.file:
+  en: File
+  pl: Plik
+listing.type.ext:
+  en: "%{ext} File"
+  pl: "Plik %{ext}"
+listing.read_crashed:
+  en: reading stopped by an internal error
+  pl: odczyt przerwany przez wewnętrzny błąd
+listing.drive_no_link:
+  en: Google Drive didn't give this file's address
+  pl: Google Drive nie podał adresu tego pliku
+listing.drive_not_uploaded:
+  en: The file isn't uploaded to Google Drive yet
+  pl: Plik nie jest jeszcze wysłany na Dysk Google
+listing.index_loading:
+  en: Loading the drive index, try again in a moment
+  pl: Wczytuję indeks dysków, spróbuj za chwilę
+listing.not_indexed:
+  en: This folder isn't in the drive index (e.g. a network drive or a folder newer than the index)
+  pl: Tego folderu nie ma w indeksie dysków (np. dysk sieciowy albo folder nowszy niż indeks)

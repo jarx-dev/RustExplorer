@@ -1,0 +1,197 @@
+# Texts of rx-core's own rules (formatting, plurals, undo, operations) and words the whole app shares.
+# Each key has `en` and `pl`; a plural key has the forms of each language: en one/other, pl one/few/many.
+_version: 2
+
+# ---------- shared ----------
+pc.this:
+  en: This PC
+  pl: Ten komputer
+common.cancel:
+  en: Cancel
+  pl: Anuluj
+common.close:
+  en: Close
+  pl: Zamknij
+
+# ---------- plurals (the word after a number) ----------
+drives.one:
+  en: drive
+  pl: dysk
+drives.few:
+  pl: dyski
+drives.many:
+  pl: dysków
+drives.other:
+  en: drives
+folders.one:
+  en: folder
+  pl: folder
+folders.few:
+  pl: foldery
+folders.many:
+  pl: folderów
+folders.other:
+  en: folders
+operations.one:
+  en: operation
+  pl: operacja
+operations.few:
+  pl: operacje
+operations.many:
+  pl: operacji
+operations.other:
+  en: operations
+
+# ---------- how long ago ----------
+ago.now:
+  en: just now
+  pl: przed chwilą
+ago.min:
+  en: "%{m} min ago"
+  pl: "%{m} min temu"
+ago.hr:
+  en: "%{h} hr ago"
+  pl: "%{h} godz. temu"
+ago.hr_min:
+  en: "%{h} hr %{m} min ago"
+  pl: "%{h} godz. %{m} min temu"
+
+# ---------- file types (they win over the shell's, which mix languages) ----------
+type.pdf:
+  en: PDF Document
+  pl: Dokument PDF
+type.word:
+  en: Word Document
+  pl: Dokument Word
+type.excel:
+  en: Excel Worksheet
+  pl: Arkusz Excel
+type.powerpoint:
+  en: PowerPoint Presentation
+  pl: Prezentacja PowerPoint
+type.odt:
+  en: OpenDocument Text
+  pl: Dokument tekstowy OpenDocument
+type.ods:
+  en: OpenDocument Spreadsheet
+  pl: Arkusz OpenDocument
+type.txt:
+  en: Text Document
+  pl: Dokument tekstowy
+type.md:
+  en: Markdown Document
+  pl: Dokument Markdown
+type.csv:
+  en: CSV File
+  pl: Plik CSV
+type.json:
+  en: JSON File
+  pl: Plik JSON
+type.yaml:
+  en: YAML File
+  pl: Plik YAML
+type.toml:
+  en: TOML File
+  pl: Plik TOML
+type.log:
+  en: Log File
+  pl: Dziennik (log)
+type.ps1:
+  en: PowerShell Script
+  pl: Skrypt PowerShell
+type.bat:
+  en: Batch File
+  pl: Skrypt wsadowy
+type.bak:
+  en: Backup File
+  pl: Kopia zapasowa
+type.png:
+  en: PNG Image
+  pl: Obraz PNG
+type.jpeg:
+  en: JPEG Image
+  pl: Obraz JPEG
+type.gif:
+  en: GIF Image
+  pl: Obraz GIF
+type.svg:
+  en: SVG Image
+  pl: Obraz SVG
+type.mp4:
+  en: MP4 Video
+  pl: Wideo MP4
+type.mp3:
+  en: MP3 Audio
+  pl: Dźwięk MP3
+type.zip:
+  en: Compressed (zipped) Folder
+  pl: Folder skompresowany (zip)
+
+# ---------- file operations ----------
+ops.queued:
+  en: "Queued: starts in %{t}"
+  pl: "W kolejce: start za %{t}"
+ops.of:
+  en: "%{done} of %{total}"
+  pl: "%{done} z %{total}"
+ops.summary:
+  en: "%{size} · %{took} · avg %{speed}"
+  pl: "%{size} · %{took} · śr. %{speed}"
+ops.done:
+  en: "Done: %{title}"
+  pl: "Zakończono: %{title}"
+ops.finishing:
+  en: finishing…
+  pl: kończę…
+ops.left:
+  en: "%{t} left"
+  pl: "zostało %{t}"
+
+# ---------- Ctrl+Z ----------
+undo.do:
+  en: "Undo %{what}"
+  pl: "Cofnij %{what}"
+undo.done:
+  en: "Undone: %{what}"
+  pl: "Cofnięto %{what}"
+undo.cant:
+  en: "Can't undo %{what}"
+  pl: "Nie da się cofnąć %{what}"
+# what Undo::label names (Polish: accusative after Cofnij)
+undo.what.rename:
+  en: rename
+  pl: zmianę nazwy
+undo.what.move:
+  en: move
+  pl: przeniesienie
+undo.what.delete:
+  en: delete
+  pl: usunięcie
+undo.what.copy:
+  en: copy
+  pl: kopiowanie
+undo.what.new_folder:
+  en: new folder
+  pl: utworzenie folderu
+undo.what.bak:
+  en: .bak copy
+  pl: kopię .bak
+# what cannot be taken back (Polish: genitive after "Nie da się cofnąć")
+undo.what.copy_taken:
+  en: a copy onto names already in use
+  pl: kopiowania na zajęte nazwy
+undo.what.move_taken:
+  en: a move onto names already in use
+  pl: przeniesienia na zajęte nazwy
+undo.what.no_bin:
+  en: a delete from a drive without a Recycle Bin
+  pl: usunięcia z dysku bez Kosza
+undo.what.archive:
+  en: an archive operation
+  pl: operacji na archiwum
+undo.note.no_bin:
+  en: "Deleted permanently (this drive has no Recycle Bin): this can't be undone"
+  pl: "Usunięto na stałe (ten dysk nie ma Kosza): tego nie da się cofnąć"
+undo.note.part_no_bin:
+  en: "Some items were deleted permanently (drive without a Recycle Bin): Ctrl+Z restores only what is in the Recycle Bin"
+  pl: "Część usunięto na stałe (dysk bez Kosza): Ctrl+Z przywróci tylko to, co jest w Koszu"

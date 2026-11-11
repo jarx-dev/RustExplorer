@@ -1,0 +1,128 @@
+# Texts of the preview pane (app/src/preview.rs).
+_version: 2
+preview.pdf_page:
+  en: "Page 1 of %{pages}"
+  pl: "Strona 1 z %{pages}"
+preview.none:
+  en: No preview for this file
+  pl: Brak podglądu dla tego pliku
+preview.attr.readonly:
+  en: Read-only
+  pl: Tylko do odczytu
+preview.attr.hidden:
+  en: Hidden
+  pl: Ukryty
+preview.attr.system:
+  en: System
+  pl: Systemowy
+preview.attr.archive:
+  en: Archive
+  pl: Archiwalny
+preview.attr.compressed:
+  en: Compressed
+  pl: Skompresowany
+preview.attr.encrypted:
+  en: Encrypted
+  pl: Zaszyfrowany
+preview.attr.offline:
+  en: Offline
+  pl: Offline
+preview.title:
+  en: Preview
+  pl: Podgląd
+preview.hide:
+  en: Hide preview
+  pl: Ukryj podgląd
+preview.hide_tip:
+  en: Hide preview (Alt+P)
+  pl: Ukryj podgląd (Alt+P)
+preview.system_folder:
+  en: System folder
+  pl: Folder systemowy
+preview.drives:
+  en: Drives
+  pl: Dyski
+preview.free:
+  en: Free
+  pl: Wolne
+preview.capacity:
+  en: Capacity
+  pl: Pojemność
+preview.pick_drive:
+  en: Select a drive to see its details
+  pl: Zaznacz dysk, aby zobaczyć szczegóły
+preview.biggest:
+  en: Largest files
+  pl: Największe pliki
+preview.biggest_where:
+  en: In this folder and subfolders
+  pl: W tym folderze i podfolderach
+preview.results:
+  en: Search results
+  pl: Wyniki wyszukiwania
+preview.all_drives:
+  en: All local drives
+  pl: Wszystkie dyski lokalne
+preview.file_folder:
+  en: File folder
+  pl: Folder plików
+preview.folders:
+  en: Folders
+  pl: Foldery
+preview.files:
+  en: Files
+  pl: Pliki
+preview.size:
+  en: Size
+  pl: Rozmiar
+preview.pick_file:
+  en: Select a file to see its preview
+  pl: Zaznacz plik, aby zobaczyć podgląd
+preview.counts:
+  en: "Folders: %{d}   Files: %{f}"
+  pl: "Folderów: %{d}   Plików: %{f}"
+preview.files_here:
+  en: "Files in this folder: %{size}"
+  pl: "Pliki w tym folderze: %{size}"
+preview.zoom_in:
+  en: Zoom in
+  pl: Powiększ obraz
+preview.zoom_out:
+  en: Zoom out
+  pl: Pomniejsz obraz
+preview.cloud_only:
+  en: This file is only in the cloud, so the preview doesn't download it.
+  pl: Plik jest tylko w chmurze, więc podgląd go nie pobiera.
+preview.download:
+  en: Download to preview
+  pl: Pobierz, aby zobaczyć podgląd
+preview.modified:
+  en: Date modified
+  pl: Zmodyfikowany
+preview.attributes:
+  en: Attributes
+  pl: Atrybuty
+preview.cloud.online:
+  en: "Only in the cloud\ndownloads when opened"
+  pl: "Tylko w chmurze\npobierze się przy otwarciu"
+preview.cloud.local:
+  en: On this device
+  pl: Na tym urządzeniu
+preview.cloud.pinned:
+  en: Always on this device
+  pl: Zawsze na tym urządzeniu
+preview.cloud:
+  en: Cloud
+  pl: Chmura
+preview.document:
+  en: Document
+  pl: Dokument
+preview.dimensions:
+  en: Dimensions
+  pl: Wymiary
+preview.open:
+  en: Open
+  pl: Otwórz
+preview.properties:
+  en: Properties
+  pl: Właściwości

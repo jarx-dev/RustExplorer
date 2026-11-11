@@ -6,6 +6,8 @@ license = "MIT"
 description = "RustExplorer: packing and unpacking archives in-process (ZIP and 7z both ways, RAR unpack only)"
 
 [dependencies]
+# the error texts in the UI's language (t!)
+rx-core = { path = "../rx-core" }
 # versions pinned to releases at least two weeks old; only the methods real archives use
 zip = { version = "=9.1.2", default-features = false, features = ["deflate-flate2", "deflate64", "lzma", "aes-crypto"] }
 # zip's deflate through miniz_oxide, which the app already builds for PNG

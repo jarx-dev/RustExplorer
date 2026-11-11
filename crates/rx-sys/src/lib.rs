@@ -377,9 +377,9 @@ pub fn move_back(items: &[(PathBuf, PathBuf)]) -> Vec<(PathBuf, &'static str)> {
     let (mut from, mut to) = (vec![], vec![]);
     for (now, was) in items {
         if was.symlink_metadata().is_ok() {
-            failed.push((was.clone(), "miejsce jest zajęte"));
+            failed.push((was.clone(), rx_core::t!("rx_sys.place_taken")));
         } else if now.symlink_metadata().is_err() {
-            failed.push((was.clone(), "nie ma go już tam, dokąd został przeniesiony"));
+            failed.push((was.clone(), rx_core::t!("rx_sys.moved_away")));
         } else {
             from.push(now.clone());
             to.push(was.clone());
@@ -388,7 +388,7 @@ pub fn move_back(items: &[(PathBuf, PathBuf)]) -> Vec<(PathBuf, &'static str)> {
     if !from.is_empty() {
         // no FOF_NOCONFIRMATION: should a place be taken meanwhile, the shell asks rather than replaces
         shell_op(FO_MOVE, &from, &to, FOF_MULTIDESTFILES.0);
-        failed.extend(to.into_iter().filter(|w| w.symlink_metadata().is_err()).map(|w| (w, "przeniesienie nie powiodło się")));
+        failed.extend(to.into_iter().filter(|w| w.symlink_metadata().is_err()).map(|w| (w, rx_core::t!("rx_sys.move_failed"))));
     }
     failed
 }
@@ -465,7 +465,7 @@ pub fn onedrive_copy_link(path: &Path, owner: isize) -> Result<(), String> {
     const FILE_SYNC_CLIENT: GUID = GUID::from_u128(0x7b37e4e2_c62f_4914_9620_8fb5062718cc);
     const IFILE_SYNC_CLIENT9: GUID = GUID::from_u128(0xee15bbbb_9e60_4c52_abcb_7540ff3df6b3);
     type Invoke = unsafe extern "system" fn(*mut std::ffi::c_void, *const windows::Win32::System::Com::SAFEARRAY, i32, i32, i32, i64) -> HRESULT;
-    let fail = |e: windows::core::Error| format!("OneDrive nie skopiował linku: {e}");
+    let fail = |e: windows::core::Error| rx_core::t!("rx_sys.onedrive_link", e = e);
     unsafe {
         let client: IUnknown = CoCreateInstance(&FILE_SYNC_CLIENT, None, CLSCTX_LOCAL_SERVER).map_err(fail)?;
         let mut raw = std::ptr::null_mut();
@@ -473,7 +473,7 @@ pub fn onedrive_copy_link(path: &Path, owner: isize) -> Result<(), String> {
         let nine = IUnknown::from_raw(raw);
         let paths = SafeArrayCreateVector(VT_BSTR, 0, 1);
         if paths.is_null() {
-            return Err("brak pamięci".into());
+            return Err(rx_core::t!("rx_sys.no_memory").into());
         }
         let wide: Vec<u16> = path.as_os_str().encode_wide().collect();
         let name = BSTR::from_wide(&wide);
@@ -835,7 +835,7 @@ pub fn set_run_at_sign_in(name: &str, cmd: Option<&str>) -> Result<(), String> {
             e => e,
         },
     };
-    r.ok().map_err(|e| format!("rejestr: {}", e.message()))
+    r.ok().map_err(|e| rx_core::t!("rx_sys.registry", e = e.message()))
 }
 
 /// A secret kept for this user by Windows (Menedżer poświadczeń), not in the app's files.
@@ -876,7 +876,7 @@ pub fn set_secret(name: &str, value: Option<&str>) -> Result<(), String> {
             r => r,
         },
     };
-    r.map_err(|e| format!("Menedżer poświadczeń: {}", e.message()))
+    r.map_err(|e| rx_core::t!("rx_sys.credentials", e = e.message()))
 }
 
 /// Window `hwnd` on screen: visible, not minimized (not hidden in the tray either) and on a monitor.

@@ -2,6 +2,7 @@
 //! SHA-256, which sends nothing of the file itself; only [`upload`], asked for in so many words,
 //! sends the file, and VirusTotal then shares it with security companies.
 
+use rx_core::t;
 use sha2::{Digest, Sha256};
 use std::io::Read;
 use std::collections::VecDeque;
@@ -100,13 +101,13 @@ fn call(req: ureq::Request, body: Option<(String, u64, Box<dyn Read>)>, wait: &m
         None => req.call(),
     };
     match r {
-        Ok(resp) => serde_json::from_reader(resp.into_reader().take(4 << 20)).map(Some).map_err(|e| format!("odpowiedź VirusTotal: {e}")),
+        Ok(resp) => serde_json::from_reader(resp.into_reader().take(4 << 20)).map(Some).map_err(|e| t!("rx_scan.bad_answer", e = e)),
         Err(ureq::Error::Status(404, _)) => Ok(None),
-        Err(ureq::Error::Status(401, _)) => Err("VirusTotal nie przyjął klucza API: sprawdź go w Ustawieniach".into()),
+        Err(ureq::Error::Status(401, _)) => Err(t!("rx_scan.bad_key").into()),
         // the program keeps to 4 a minute itself, so this is the day's (or month's) allowance
-        Err(ureq::Error::Status(429, _)) => Err("wyczerpany dzienny limit VirusTotal: sprawdź go na virustotal.com/gui/my-apikey".into()),
-        Err(ureq::Error::Status(c, _)) => Err(format!("VirusTotal odpowiedział {c}")),
-        Err(e) => Err(format!("brak połączenia z VirusTotal: {e}")),
+        Err(ureq::Error::Status(429, _)) => Err(t!("rx_scan.quota").into()),
+        Err(ureq::Error::Status(c, _)) => Err(t!("rx_scan.status", c = c)),
+        Err(e) => Err(t!("rx_scan.offline", e = e)),
     }
 }
 
@@ -122,12 +123,12 @@ pub fn lookup(key: &str, sha: &str, wait: &mut dyn FnMut(Instant)) -> Result<Opt
 pub fn upload(key: &str, path: &Path, wait: &mut dyn FnMut(Instant)) -> Result<String, String> {
     let len = std::fs::metadata(path).map_err(|e| e.to_string())?.len();
     if len > MAX_UPLOAD {
-        return Err("VirusTotal przyjmuje pliki do 650 MB".into());
+        return Err(t!("rx_scan.too_big").into());
     }
     let agent = agent()?;
     let url = if len > 32 * 1024 * 1024 {
         let j = call(agent.get(&format!("{API}/files/upload_url")).set("x-apikey", key), None, wait)?.unwrap_or_default();
-        j["data"].as_str().ok_or("VirusTotal nie podał adresu do wysłania pliku")?.to_string()
+        j["data"].as_str().ok_or(t!("rx_scan.no_upload_url"))?.to_string()
     } else {
         format!("{API}/files")
     };
@@ -139,7 +140,7 @@ pub fn upload(key: &str, path: &Path, wait: &mut dyn FnMut(Instant)) -> Result<S
     let total = head.len() as u64 + len + tail.len() as u64;
     let body: Box<dyn Read> = Box::new(std::io::Cursor::new(head.into_bytes()).chain(file.take(len)).chain(std::io::Cursor::new(tail.into_bytes())));
     let j = call(agent.post(&url).set("x-apikey", key), Some((format!("multipart/form-data; boundary={boundary}"), total, body)), wait)?.unwrap_or_default();
-    j["data"]["id"].as_str().map(str::to_string).ok_or_else(|| "VirusTotal nie przyjął pliku".into())
+    j["data"]["id"].as_str().map(str::to_string).ok_or_else(|| t!("rx_scan.not_taken").into())
 }
 
 /// The verdict of an analysis started by [`upload`]; `None` while the engines are still at it.
