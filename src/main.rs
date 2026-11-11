@@ -866,6 +866,19 @@ impl eframe::App for App {
                 ui.label(format!("Wersja {version} (build {build})"));
                 // the version rises after every update
                 ui.label(RichText::new("Wersja to data i godzina zbudowania (rr.mmdd.ggmm); program aktualizuje się sam.").color(pal().dim));
+                ui.add_space(10.0);
+                ui.horizontal(|ui| {
+                    ui.label("Autor: Jarosław Hartwich,");
+                    ui.hyperlink_to("github.com/jarx-dev", "https://github.com/jarx-dev");
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Kod źródłowy:");
+                    ui.hyperlink_to("github.com/jarx-dev/RustExplorer", "https://github.com/jarx-dev/RustExplorer");
+                });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Licencja MIT ·").color(pal().dim));
+                    ui.hyperlink_to("Postaw mi kawę", "https://buymeacoffee.com/jarx");
+                });
                 ui.add_space(12.0);
                 ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                     close = ui.add(egui::Button::new("Zamknij").min_size(vec2(96.0, 32.0)).fill(pal().field).stroke(Stroke::new(1.0, pal().line))).clicked();
@@ -1260,6 +1273,7 @@ fn main() -> eframe::Result {
             }
             // test runs: "Analiza miejsca" from the start, optionally with the biggest files listed
             app.space = is_shot && args.iter().any(|a| a == "--space");
+            app.about = is_shot && args.iter().any(|a| a == "--about");
             app.shot_biggest = app.space && args.iter().any(|a| a == "--biggest");
             if let Some(s) = select {
                 if app.space {
