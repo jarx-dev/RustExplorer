@@ -1,151 +1,158 @@
 <p align="center">
-  <img src="shots/ikona.png" width="112" alt="Ikona RustExplorer: niebieski kafelek z żółtym folderem podzielonym na dwa panele">
+  <b>English</b> | <a href="README.pl.md">Polski</a>
+</p>
+
+<p align="center">
+  <img src="shots/ikona.png" width="112" alt="RustExplorer icon: a blue tile with a yellow folder split into two panes">
 </p>
 
 <h1 align="center">RustExplorer</h1>
 
 <p align="center">
-  <b>Szybki, dwupanelowy menedżer plików dla Windows 11, napisany w Rust.</b><br>
-  Jeden plik <code>.exe</code> (~18 MB), bez instalatora, bez .NET, bez Electrona.
+  <b>A fast, dual-pane file manager for Windows 11, written in Rust.</b><br>
+  A single <code>.exe</code> (~18 MB): no installer, no .NET, no Electron.
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/main.png" alt="Okno główne w ciemnym motywie: drzewo ze ścieżką do folderu, lista plików i podgląd notatki">
-  <br><sub>Wszystkie zrzuty pokazują folder z danymi demonstracyjnymi (zmyślone pliki).</sub>
+  <b><a href="https://github.com/jarx-dev/RustExplorer/releases/latest">Download the latest version</a></b>
 </p>
 
-> **English in short:** a fast tabbed, dual-pane file manager for Windows 11 written in Rust with
-> [egui](https://github.com/emilk/egui). Single ~18 MB EXE, preview pane for images, PDFs and text,
-> archives browsed and edited like folders (ZIP, 7z; RAR read-only), instant file-name search
-> across all local drives, a disk space map, natural sorting, wildcard filter, folder sizes, flat view, the Windows clipboard, drag and drop
-> both ways, Explorer's own context menu, undo, a dark theme, and a self-updater that pulls new
-> releases from GitHub (or from your own server). The UI is in Polish.
+<p align="center">
+  <img src="docs/screenshots/main.png" alt="Main window in the dark theme: a tree with the path to the folder, the file list and a note preview">
+  <br><sub>All screenshots show a folder of demo data (made-up files).</sub>
+</p>
+
+> **Note:** the interface is currently in Polish. Menu and button labels are quoted in Polish below, with the English meaning in parentheses on first use.
 
 ---
 
-## Dlaczego?
+## Why?
 
-Eksplorator Windows jest wygodny, dopóki nie trzeba porównać dwóch folderów, znaleźć pliku
-w głębokim drzewie albo sprawdzić, co zjada miejsce na dysku. Klasyczne menedżery dwupanelowe
-potrafią to wszystko, ale wyglądają jak z 2005 roku albo kosztują. RustExplorer jest pomiędzy:
-wygląda i zachowuje się jak Windows 11, a pod spodem ma to, czego brakuje w Eksploratorze.
+Windows Explorer is convenient until you need to compare two folders, find a file deep in a
+tree, or see what is eating your disk space. Classic dual-pane file managers can do all of that,
+but they look like they are from 2005 or cost money. RustExplorer sits in between: it looks and
+behaves like Windows 11, and underneath it has what Explorer lacks.
 
-## Najważniejsze
+## Highlights
 
-### Archiwa jak foldery
+### Archives as folders
 
-ZIP, 7z i RAR otwierasz dwuklikiem jak zwykły folder: przeglądasz, podglądasz pliki i otwierasz je
-bez wypakowywania całości. ZIP i 7z da się też zmieniać na miejscu: dorzucasz pliki przeciąganiem
-lub wklejaniem, usuwasz je i zmieniasz nazwy, a program zapisuje archiwum od nowa w tle. Gdy plik otwarty
-z archiwum zapiszesz w innym programie, RustExplorer zapyta, czy zaktualizować go w archiwum. RAR jest
-tylko do odczytu i wypakowania. „Wypakuj tutaj”, „Wypakuj do folderu” i „Spakuj…” (ZIP albo 7z)
-są w menu prawego klawisza; zaszyfrowane archiwum pyta o hasło. Wszystko działa w samym programie
-(crate `rx-archive`), bez 7-Zipa i bez `tar.exe`, a postęp widać w panelu „Operacje”.
+You open ZIP, 7z and RAR files with a double-click, like any folder: browse them, preview files and
+open them without extracting the whole archive. ZIP and 7z can also be modified in place: you add
+files by dragging or pasting, delete them and rename them, and the program rewrites the archive in
+the background. When you save a file opened from an archive in another program, RustExplorer asks
+whether to update it in the archive. RAR is read-only and extract-only. „Wypakuj tutaj” (Extract here),
+„Wypakuj do folderu” (Extract to folder) and „Spakuj…” (Compress…, as ZIP or 7z) are in the right-click
+menu; an encrypted archive asks for its password. Everything runs inside the program itself
+(the `rx-archive` crate), without 7-Zip and without `tar.exe`, and progress shows in the „Operacje”
+(Operations) panel.
 
-<img src="docs/screenshots/archive.png" alt="Zawartość archiwum ZIP pokazana jak folder, w ścieżce i w drzewie">
+<img src="docs/screenshots/archive.png" alt="Contents of a ZIP archive shown like a folder, in the path bar and in the tree">
 
-### Szukaj wszędzie
+### Search everywhere
 
-Przycisk z dyskiem obok pola szukania przełącza je z bieżącego folderu na wszystkie dyski lokalne, jak
-w Everything, ale bez Everything i bez usługi administratora. Program ma własny indeks nazw na
-dysku: wczytuje go dopiero przy pierwszym szukaniu, odświeża w tle co najwyżej co 10 minut
-i zwalnia z pamięci 5 minut po ostatnim zapytaniu. Na dysku z 3 mln plików zapytanie trwa kilka
-milisekund, polskie litery nie mają znaczenia (`zolw` znajdzie `żółw`), a przy każdym wyniku jest
-jego folder.
+The disk button next to the search box switches it from the current folder to all local drives, as in
+Everything, but without Everything and without an administrator service. The program keeps its own
+index of file names on disk: it loads the index only on the first search, refreshes it in the background
+at most every 10 minutes and frees it from memory 5 minutes after the last query. On a drive with
+3 million files a query takes a few milliseconds, Polish diacritics do not matter (`zolw` finds `żółw`),
+and each result shows its folder.
 
-<img src="docs/screenshots/find.png" alt="Wyniki wyszukiwania na wszystkich dyskach z folderem każdego pliku">
+<img src="docs/screenshots/find.png" alt="Search results across all drives with the folder of each file">
 
-### Analiza miejsca
+### Disk space analysis
 
-Narzędzia ▸ Analiza miejsca pyta o zakres: cały dysk albo bieżący folder. Lista sortuje się
-według rozmiaru i rozwija jak drzewo, a pod nią mapa kafelków pokazuje, co zajmuje miejsce.
-Kliknięcie kafelka przechodzi do folderu, prawy przycisk usuwa do Kosza, a „Największe pliki”
-pokazuje je razem, bez względu na folder. Mapa korzysta z indeksu dysków, więc cały dysk nie jest skanowany od nowa.
+Tools ▸ „Analiza miejsca” (Disk space analysis) asks for a scope: the whole drive or the current folder. The list is
+sorted by size and expands like a tree, and below it a tile map shows what takes up the space.
+Clicking a tile jumps to that folder, right-clicking sends it to the Recycle Bin, and „Największe pliki”
+(Largest files) lists them together, regardless of folder. The map uses the drive index, so the whole
+drive is not scanned again.
 
-<img src="docs/screenshots/space.png" alt="Analiza miejsca: lista według rozmiaru i mapa kafelków">
+<img src="docs/screenshots/space.png" alt="Disk space analysis: a list by size and a tile map">
 
-### Drzewo bez nadmiaru
+### A tree without clutter
 
-Drzewo po lewej pokazuje tylko drogę do bieżącego folderu. Reszta każdego poziomu jest zwinięta
-w „… jeszcze N folderów” i rozwija się kliknięciem, więc nawet w głębokim folderze drzewo mieści się
-na ekranie. Pełne drzewo włączysz w Plik ▸ Ustawienia ▸ Pełne drzewo folderów.
+The tree on the left shows only the path to the current folder. The rest of each level is collapsed
+into „… jeszcze N folderów” (… N more folders) and expands with a click, so even in a deep folder the tree fits
+on the screen. You can turn on the full tree in Plik ▸ Ustawienia ▸ Pełne drzewo folderów
+(File ▸ Settings ▸ Full folder tree).
 
-### Dwa panele
+### Two panes
 
-`F3` dzieli okno na dwa panele, każdy ze swoimi kartami, filtrem i szukaniem. Przeciągasz pliki
-między panelami albo karty na podział.
+`F3` splits the window into two panes, each with its own tabs, filter and search. You drag files
+between the panes, or tabs onto the split.
 
-<img src="docs/screenshots/split.png" alt="Dwa panele obok siebie w ciemnym motywie">
+<img src="docs/screenshots/split.png" alt="Two panes side by side in the dark theme">
 
-### Świeże pliki na zielono
+### Fresh files in green
 
-Pliki i foldery utworzone lub zmienione w ostatnich 3 godzinach mają zieloną czcionkę w całym
-wierszu, a zamiast daty pokazują „40 min temu”. Liczy się też świeże utworzenie, więc plik
-skopiowany przed chwilą świeci na zielono, choć jego data zmiany jest stara. Widać to na zrzutach
-wyżej: trzy pliki zmienione przed chwilą i foldery, do których coś dopiero trafiło. Nie trzeba
-sortować po dacie, żeby zobaczyć, co się właśnie zmieniło.
+Files and folders created or modified in the last 3 hours have green text across the whole row, and
+show "40 min ago" instead of a date. A fresh creation counts too, so a file you just copied
+shows up green even though its modification date is old. You can see this in the screenshots
+above: three files changed a moment ago and folders that just received something. You don't need to
+sort by date to see what has just changed.
 
-### Sortowanie zapamiętane dla folderu
+### Sorting remembered per folder
 
-Każdy folder pamięta swoje sortowanie: posortujesz „Pobrane” od najnowszych, a „Faktury” według
-nazwy, i każdy otworzy się tak, jak go zostawiłeś, także po ponownym uruchomieniu. Folder
-posortowany zwyczajnie (Nazwa rosnąco) niczego nie zapamiętuje. Gdy chcesz przenieść jedno
-sortowanie na kolejne foldery, Plik ▸ Ustawienia ▸ „Blokada formatu (zachowaj sortowanie)” trzyma je przy
-przechodzeniu; plakietka na pasku stanu wyłącza blokadę.
+Each folder remembers its own sort order: sort „Pobrane” (Downloads) newest first and „Faktury” (Invoices) by
+name, and each opens the way you left it, even after a restart. A folder sorted the plain way
+(Name ascending) remembers nothing. If you want to carry one sort order over to subsequent folders,
+Plik ▸ Ustawienia ▸ „Blokada formatu (zachowaj sortowanie)” (Format lock: keep sorting) keeps it while you
+navigate; the badge on the status bar turns the lock off.
 
-## Co potrafi
+## What it can do
 
 | | |
 |---|---|
-| 🗂️ **Karty i podział** | Karty jak w przeglądarce (`Ctrl+T`, `Ctrl+W`), widok z podziałem na dwa panele (`F3`), każdy ze swoimi kartami. Układ wraca po ponownym uruchomieniu. |
-| 👁️ **Podgląd** | Zdjęcia (PNG, JPG, GIF, BMP, WebP, ICO, TIFF), pierwsza strona PDF, pliki tekstowe i kod, podsumowanie folderu, a dla reszty miniatura z powłoki Windows. Plik, który jest tylko w chmurze, nie jest pobierany dla podglądu: widać jego miniaturę i przycisk „Pobierz, aby zobaczyć podgląd”. |
-| 🖼️ **Trzy widoki** | Szczegóły, miniatury oraz szczegóły z miniaturami. Szerokość każdej kolumny zmieniasz, przeciągając jej granicę w nagłówku (dwuklik na granicy Nazwy przywraca wypełnianie); w wąskim panelu kolumny chowają się same. |
-| 🔢 **Sortowanie naturalne** | `Zeszyt2` przed `Zeszyt10`, wielkość liter bez znaczenia; każdy folder pamięta swoje sortowanie. |
-| 🔍 **Szukanie i filtr** | Pole szukania w bieżącym folderze; lejek obok przełącza je w filtr `*.pdf;*.jpg` albo po prostu `faktura` (dopasuje gdziekolwiek w nazwie), który dotyczy tylko bieżącej karty (w widoku dwóch paneli każdy panel ma własny) i zostaje przy zmianie folderu. |
-| 🟩 **Co nowego?** | Pliki utworzone lub zmienione w ostatnich 3 godzinach mają zieloną czcionkę i „N min temu” zamiast daty. |
-| 🌙 **Ciemny motyw** | Widok ▸ Motyw: Systemowy (jak ustawienie Windows, także zmienione w trakcie pracy), Jasny albo Ciemny. Kolory obu motywów są w `crates/rx-core/src/palette.rs`, a test sprawdza kontrast tekstu (WCAG, co najmniej 4,5:1 w ciemnym). |
-| 📏 **Rozmiary folderów** | Jednym kliknięciem, w tle, bez blokowania okna. |
-| 🪜 **Widok płaski** | Wszystkie pliki z podfolderów na jednej liście (do 20 000), z filtrem i sortowaniem. |
-| 💽 **Ten komputer** | Dyski z paskiem zajętości (czerwony powyżej 90%), system plików, dyski sieciowe. |
-| ⭐ **Zakładki** | Ulubione foldery w drzewie po lewej, obok szybkiego dostępu. |
-| 🌳 **Drzewo ścieżki** | Drzewo po lewej pokazuje tylko drogę do bieżącego folderu; „… jeszcze N folderów” rozwija dany poziom, a Plik ▸ Ustawienia ▸ Pełne drzewo folderów pokazuje wszystkie. |
-| 🧰 **Narzędzia** | Kopia `.bak` jednym skrótem (`Ctrl+B`), wypakowanie ZIP, terminal w bieżącym folderze, kopiowanie ścieżki (z dysku sieciowego Samby jako ścieżka linuksowa `/home/<użytkownik>/…`), „Blokada formatu (zachowaj sortowanie)”. |
-| 📋 **Schowek i przeciąganie** | Kopiuj i Wytnij kładą pliki w schowku Windows (jak Eksplorator), więc wklejasz je w Eksploratorze, na pulpicie czy w poczcie, a pliki skopiowane tam wklejasz tutaj; elementy archiwów zostają w schowku programu. Pliki z innych programów upuszczasz na listę albo na folder (kopia, z `Shift` przeniesienie), a wiersz przeciągnięty poza okno idzie dalej jako zwykłe przeciąganie Windows. |
-| 🪟 **Menu Windows** | „Więcej opcji Windows…” na końcu menu prawego klawisza (albo `Shift`+prawy klik) pokazuje menu Eksploratora dla zaznaczenia: „Wyślij do”, „Otwórz za pomocą”, 7-Zip, Git, „Zwolnij miejsce” i „Zawsze zachowuj na tym urządzeniu” w OneDrive. |
-| ↩️ **Cofnij** | `Ctrl+Z` cofa ostatnie operacje (do 30): usunięcie do Kosza (przywrócenie z Kosza), przeniesienie (z powrotem), kopiowanie (kopie do Kosza, tylko nowo utworzone), zmianę nazwy, nowy folder i kopię `.bak`; nigdy niczego nie nadpisuje, a element zmieniony od tamtej pory pomija. Czego cofnąć się nie da (usunięcie z dysku bez Kosza, zmiany w archiwach, pliki zastąpione przy kopiowaniu), mówi pasek stanu; poleceń z menu Windows program nie cofa. |
-| 🔄 **Samoaktualizacja** | Nowa wersja instaluje się sama, gdy nic nie robisz; jeśli się nie uruchomi, wraca poprzednia. Szczegóły niżej. |
-| 📌 **Zasobnik** | Ikona przy zegarze; kliknięcie jej pokazuje albo chowa okno. Zamknięcie okna chowa je do zasobnika (bez przycisku na pasku zadań), a ponowne uruchomienie programu je przywraca; „Zakończ” kończy program. |
+| 🗂️ **Tabs and split** | Browser-style tabs (`Ctrl+T`, `Ctrl+W`), a split view with two panes (`F3`), each with its own tabs. The layout comes back after a restart. |
+| 👁️ **Preview** | Images (PNG, JPG, GIF, BMP, WebP, ICO, TIFF), the first page of a PDF, text and code files, a folder summary, and for everything else a thumbnail from the Windows shell. A file that exists only in the cloud is not downloaded for the preview: you see its thumbnail and a „Pobierz, aby zobaczyć podgląd” (Download to see the preview) button. |
+| 🖼️ **Three views** | Details, thumbnails, and details with thumbnails. You resize each column by dragging its border in the header (a double-click on the Name border restores fill mode); in a narrow pane the columns hide on their own. |
+| 🔢 **Natural sorting** | `Zeszyt2` before `Zeszyt10`, case-insensitive; each folder remembers its own sort order. |
+| 🔍 **Search and filter** | A search box for the current folder; the funnel next to it turns it into a filter such as `*.pdf;*.jpg` or simply `faktura` (matches anywhere in the name), which applies only to the current tab (in the two-pane view each pane has its own) and stays when you change folder. |
+| 🟩 **What's new?** | Files created or modified in the last 3 hours have green text and "N min ago" instead of a date. |
+| 🌙 **Dark theme** | View ▸ Theme: System (follows the Windows setting, including changes made while running), Light or Dark. The colours of both themes are in `crates/rx-core/src/palette.rs`, and a test checks text contrast (WCAG, at least 4.5:1 in the dark theme). |
+| 📏 **Folder sizes** | One click, in the background, without blocking the window. |
+| 🪜 **Flat view** | All files from subfolders in a single list (up to 20,000), with filtering and sorting. |
+| 💽 **This PC** | Drives with a usage bar (red above 90%), file system, network drives. |
+| ⭐ **Bookmarks** | Favourite folders in the tree on the left, next to quick access. |
+| 🌳 **Path tree** | The tree on the left shows only the path to the current folder; „… jeszcze N folderów” (… N more folders) expands that level, and Plik ▸ Ustawienia ▸ Pełne drzewo folderów (File ▸ Settings ▸ Full folder tree) shows them all. |
+| 🧰 **Tools** | A `.bak` copy with one shortcut (`Ctrl+B`), ZIP extraction, a terminal in the current folder, copying the path (from a Samba network drive as a Linux path `/home/<user>/…`), „Blokada formatu (zachowaj sortowanie)” (Format lock: keep sorting). |
+| 📋 **Clipboard and dragging** | Copy and Cut put files on the Windows clipboard (like Explorer), so you can paste them in Explorer, on the desktop or in a mail client, and files copied there can be pasted here; archive items stay in the program's own clipboard. You drop files from other programs onto the list or onto a folder (copy; with `Shift`, move), and a row dragged outside the window carries on as an ordinary Windows drag. |
+| 🪟 **Windows menu** | „Więcej opcji Windows…” (More Windows options…) at the end of the right-click menu (or `Shift`+right-click) shows Explorer's own menu for the selection: „Wyślij do” (Send to), „Otwórz za pomocą” (Open with), 7-Zip, Git, „Zwolnij miejsce” (Free up space) and „Zawsze zachowuj na tym urządzeniu” (Always keep on this device) in OneDrive. |
+| ↩️ **Undo** | `Ctrl+Z` undoes the most recent operations (up to 30): deleting to the Recycle Bin (restores from the Bin), a move (moves back), a copy (the copies go to the Bin, newly created ones only), a rename, a new folder and a `.bak` copy; it never overwrites anything and skips an item that has changed since. What cannot be undone (deleting from disk without the Bin, changes inside archives, files replaced during a copy) is reported by the status bar; commands from the Windows menu are not undone by the program. |
+| 🔄 **Self-update** | A new version installs itself when you are idle; if it fails to start, the previous one comes back. Details below. |
+| 📌 **Tray** | An icon next to the clock; clicking it shows or hides the window. Closing the window hides it to the tray (no taskbar button), and starting the program again restores it; „Zakończ” (Quit) exits the program. |
 
-Kopiowanie, przenoszenie i usuwanie idą przez powłokę Windows, więc dostajesz te same okna
-postępu i pytania o konflikty co w Eksploratorze. `Delete` przenosi do Kosza bez pytania, jak
-w Windows 11; plik, który nie zmieści się w Koszu (np. z dysku sieciowego), zostanie usunięty
-na stałe dopiero po ostrzeżeniu powłoki.
+Copying, moving and deleting go through the Windows shell, so you get the same progress windows and
+conflict prompts as in Explorer. `Delete` sends to the Recycle Bin without asking, as in Windows 11;
+a file that does not fit in the Bin (e.g. from a network drive) is deleted permanently, but only
+after the shell's warning.
 
-### Skróty
+### Shortcuts
 
-| Skrót | Działanie | Skrót | Działanie |
+| Shortcut | Action | Shortcut | Action |
 |---|---|---|---|
-| `Alt+←` / `Alt+→` | wstecz / dalej | `F2` | zmień nazwę |
-| `Backspace`, `Alt+↑` | folder wyżej | `F3` | podział na dwa panele |
-| `Enter` | otwórz | `F5` | odśwież |
-| `Alt+Enter` | właściwości | `Delete` | do Kosza |
-| `Ctrl+C` / `X` / `V` | kopiuj / wytnij / wklej | `Ctrl+Z` | cofnij |
-| `Ctrl+A` | zaznacz wszystko | `Ctrl+B` | kopia `.bak` |
-| `Ctrl+T` / `Ctrl+W` | nowa / zamknij kartę | `Ctrl+Shift+N` | nowy folder |
-| `Ctrl+Shift+C` | kopiuj ścieżkę | `Ctrl` `+` / `−` / `0` | powiększenie |
-| `↑` `↓` `Home` `End` | ruch po liście (z `Shift` zaznacza) | `PgUp` / `PgDn` | strona w górę / w dół |
-| `Esc` | anuluje zmianę nazwy, czyści szukanie | środkowy przycisk na karcie | zamknij kartę |
-| `Spacja` | wielkość zaznaczonych folderów (w kolumnie Wielkość) | | |
+| `Alt+←` / `Alt+→` | back / forward | `F2` | rename |
+| `Backspace`, `Alt+↑` | up one folder | `F3` | split into two panes |
+| `Enter` | open | `F5` | refresh |
+| `Alt+Enter` | properties | `Delete` | to the Recycle Bin |
+| `Ctrl+C` / `X` / `V` | copy / cut / paste | `Ctrl+Z` | undo |
+| `Ctrl+A` | select all | `Ctrl+B` | `.bak` copy |
+| `Ctrl+T` / `Ctrl+W` | new / close tab | `Ctrl+Shift+N` | new folder |
+| `Ctrl+Shift+C` | copy path | `Ctrl` `+` / `−` / `0` | zoom |
+| `↑` `↓` `Home` `End` | move through the list (with `Shift`, select) | `PgUp` / `PgDn` | page up / down |
+| `Esc` | cancels a rename, clears the search | middle button on a tab | close the tab |
+| `Space` | size of the selected folders (in the Size column) | | |
 
-## Pod maską
+## Under the hood
 
 ```mermaid
 flowchart LR
-    app["rust-explorer<br/><i>okno: egui + OpenGL<br/>(zapasowo DirectX 12)</i>"]
-    core["rx-core<br/><i>zasady: rozmiary, daty,<br/>sortowanie, filtr, ikona</i>"]
-    sys["rx-sys<br/><i>powłoka Windows: nazwy, dyski,<br/>operacje na plikach, miniatury, PDF</i>"]
-    upd["rx-update<br/><i>samoaktualizacja</i>"]
-    arc["rx-archive<br/><i>ZIP i 7z w programie</i>"]
+    app["rust-explorer<br/><i>window: egui + OpenGL<br/>(DirectX 12 as fallback)</i>"]
+    core["rx-core<br/><i>rules: sizes, dates,<br/>sorting, filter, icon</i>"]
+    sys["rx-sys<br/><i>Windows shell: names, drives,<br/>file operations, thumbnails, PDF</i>"]
+    upd["rx-update<br/><i>self-update</i>"]
+    arc["rx-archive<br/><i>ZIP and 7z in-process</i>"]
     scan["rx-scan<br/><i>VirusTotal</i>"]
     app --> core
     app --> sys
@@ -156,169 +163,171 @@ flowchart LR
     upd --> core
 ```
 
-- **`rx-core`** nie zna ani okna, ani Windows API, więc jego testy działają na każdym systemie
-  (`cargo test -p rx-core`). Sortowanie naturalne porównuje nazwy w miejscu, bez przydziału
-  pamięci przy każdym porównaniu; test pilnuje, że wynik jest identyczny jak w pierwszej,
-  prostszej wersji.
-- **`rx-sys`** to cienka warstwa nad `windows-rs`: `SHFileOperation`, `IShellItemImageFactory`
-  dla miniatur, `Windows.Data.Pdf` dla podglądu PDF. Moduł `watch` śledzi foldery widoczne na
-  ekranie bez trzymania na nich uchwytu (inne programy mogą więc zmieniać nazwy folderów
-  nadrzędnych): na stałych dyskach, których nie da się odłączyć, jeden wątek czyta zmiany całego
-  woluminu (`ReadDirectoryChangesW` na jego katalogu głównym) i wybiera te, które dotyczą
-  pokazanych folderów; na pozostałych (sieciowych, wymiennych, zewnętrznych, wirtualnych) drugi
-  wątek porównuje listę co 10 s. Okno nie
-  odpytuje dysku i w spoczynku nie budzi się samo; folder zapisywany bez przerwy odświeża się
-  najwyżej raz na sekundę.
-- **Okno nie czeka na dysk przy listowaniu.** Listę folderu (także archiwum), foldery w drzewie,
-  dyski z nazwami i wolne miejsce czytają osobne wątki; wynik wraca komunikatem z numerem
-  żądania, a liczy się tylko odpowiedź na najnowsze (`rx_core::Asked`), więc spóźniona lista
-  folderu, z którego już wyszliśmy, niczego nie nadpisze. Do nadejścia listy karta pokazuje
-  poprzednie wiersze albo „Wczytuję…”, a zaznaczenie nowego folderu, pliku po zmianie nazwy czy
-  folderu, z którego wyszliśmy w górę, czeka na nią jako zapisany zamiar (`rx_core::Select`).
-  Karty z poprzedniej sesji otwierają się bez pytania dysku, więc niedostępny dysk sieciowy nie
-  wstrzymuje startu: jego karta pokaże błąd na liście, gdy system przestanie na niego czekać.
-  Podgląd buduje osobny wątek (z serii zaznaczeń tylko ostatnie), a plik, który jest tylko
-  w chmurze, nie jest dla niego czytany.
-- **Miniatury**: najwyżej 500 tekstur, a po przekroczeniu znikają najdawniej rysowane; wątek
-  wczytuje je w kolejności zamawiania i pomija kafelki, które zdążyły zniknąć z ekranu. Folder
-  3000 plików przewinięty do końca w Miniaturach zajmuje 141 MB pamięci prywatnej (przed limitem
-  364 MB), a folder 12 000 plików staje na ok. 185 MB.
-- **Schowek, przeciąganie i menu Windows** (`rx-sys`: moduły `clip` i `menu`): Kopiuj i Wytnij
-  kładą w schowku ten sam obiekt danych co Eksplorator (`CF_HDROP` z „Preferred DropEffect”,
-  `OleSetClipboard`, zostaje po zamknięciu programu), a przeciąganie na zewnątrz podaje go
-  `SHDoDragDrop`; o przeniesieniu decyduje cel, program sam nic nie usuwa. Menu Windows to
-  `IContextMenu` powłoki pokazane przy kursorze; elementy menu czyta wątek w tle, więc dysk
-  sieciowy, który nie odpowiada, nie zamraża okna.
-- **`rx-update`** sprawdza plik `latest.json` co minutę, a przy oknie zminimalizowanym lub w zasobniku
-  co 15 minut, pobiera nowszy build, weryfikuje rozmiar,
-  SHA-256 i nagłówek EXE, a podmienia program dopiero, gdy okno jest zminimalizowane, schowane albo nieużywane
-  i nic nie pracuje: ani własne kopiowanie programu, ani wątek, który powłoka uruchomiła w procesie
-  dla polecenia z menu Windows (np. „Wyślij do” na pendrive; program daje powłoce odniesienie do
-  procesu przez `SHSetInstanceExplorer` i widzi, że jest trzymane).
-  Stara wersja zostaje „strażnikiem”: jeśli nowa nie narysuje okna w 3 minuty, wraca poprzednia,
-  a nieudany build nie zostanie zainstalowany drugi raz. Zwykły HTTP jest dopuszczony tylko dla
-  adresów Tailscale (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`, `*.ts.net`) i localhost, wszędzie
-  indziej tylko HTTPS; przekierowania tylko z HTTPS na HTTPS (tak działają wydania z GitHuba).
-- **Ikona** jest rysowana w kodzie (`crates/rx-core/src/icon.rs`, funkcje odległości od
-  zaokrąglonych prostokątów): z niej powstaje ikona okna i zasobnika, a `rust-explorer.exe
-  --save-icon ikona.ico` zapisuje ją do pliku, który `build.rs` wbudowuje w EXE (build MSVC).
-- **Manifest** (`rustexplorer.manifest`, wbudowany przez `build.rs` razem z ikoną): `asInvoker`
-  (bez praw administratora), zgodność z Windows 10/11 i `longPathAware` (gdy w Windows włączono
-  `LongPathsEnabled`). Ten wpis zdejmuje limit 260 znaków tylko z bezpośrednich wywołań Win32
-  (cofnięcie zmiany nazwy, „Zawsze zachowuj na tym urządzeniu”, obserwator folderów); listowanie,
-  nowy folder i zmiana nazwy idą przez `std::fs`, które obchodzi limit i bez manifestu. Usuwanie,
-  kopiowanie i przenoszenie (`SHFileOperationW`), otwieranie, właściwości, menu Windows i miniatury
-  to wywołania powłoki, których ten wpis nie obejmuje: przy ścieżkach ponad 260 znaków mogą nadal
-  zawodzić (niesprawdzone). Bez wpisów DPI, kontrolek i motywu, więc wygląd się nie zmienia; bez
-  sterty segmentowej: 1–2 MB mniej pamięci prywatnej z ok. 112 MB, a CPU przy miniaturach nie
-  lepsze (10,2–10,7 s wobec 9,2–10,1 s, po dwa przebiegi).
-- **Pasek tytułu** jest rysowany przez program, ale najechanie na „Maksymalizuj” pokazuje
-  systemowe menu układów przyciągania: podklasa okna (`rx-sys/src/caption.rs`) odpowiada Windows
-  `HTMAXBUTTON` nad prostokątem tego przycisku. Minimum okna to 420×320 pt (`MIN_SIZE`): ikona,
-  cztery menu i przyciski okna jeszcze się mieszczą, a Microsoft wymaga najwyżej 500, więc okno
-  wypełnia też wąskie strefy. W wąskim oknie znikają kolejno przyciski paska narzędzi, drzewo
-  (poniżej 480 pt), podgląd (poniżej 700 pt), pole wyszukiwania i wolne miejsce na pasku stanu.
-- **Tryb zrzutu** (`--screenshot <plik.png>`) służy testom: osobny, wyrzucany układ, bez
-  zasobnika i aktualizacji, a okno jest zasłonięte przez DWM (rysuje się normalnie, ale nie
-  pojawia się na ekranie, nie bierze fokusu i nie ma przycisku na pasku zadań), więc testy mogą
-  działać na używanym komputerze; `--visible` je pokazuje.
+- **`rx-core`** knows nothing about the window or the Windows API, so its tests run on any system
+  (`cargo test -p rx-core`). Natural sorting compares names in place, without allocating memory on
+  each comparison; a test makes sure the result is identical to that of the first, simpler version.
+- **`rx-sys`** is a thin layer over `windows-rs`: `SHFileOperation`, `IShellItemImageFactory`
+  for thumbnails, `Windows.Data.Pdf` for the PDF preview. The `watch` module follows the folders
+  visible on screen without holding a handle on them (so other programs can rename parent
+  folders): on fixed drives that cannot be removed, one thread reads the changes of the whole
+  volume (`ReadDirectoryChangesW` on its root directory) and picks those that concern the folders
+  shown; on the rest (network, removable, external, virtual) a second thread compares the listing
+  every 10 s. The window does not poll the disk and does not wake up by itself when idle; a folder
+  that is written to continuously refreshes at most once per second.
+- **The window does not wait for the disk when listing.** The folder listing (archives too), the
+  folders in the tree, and the drives with their names and free space are read by separate
+  threads; the result comes back as a message carrying a request number, and only the reply to the
+  latest request counts (`rx_core::Asked`), so a late listing of a folder we have already left
+  overwrites nothing. Until the listing arrives, the tab shows the previous rows or „Wczytuję…”
+  (Loading…), and selecting the new folder, a file after a rename, or the folder we came up from
+  waits for it as a saved intent (`rx_core::Select`). Tabs from the previous session open without
+  asking the disk, so an unavailable network drive does not hold up startup: its tab shows an error
+  in the list once the system stops waiting for it. The preview is built by a separate thread (of a
+  series of selections only the last one), and a file that exists only in the cloud is not read for it.
+- **Thumbnails**: at most 500 textures; past that, the least recently drawn ones disappear. A thread
+  loads them in the order they were requested and skips tiles that have already left the screen. A
+  folder of 3000 files scrolled to the end in Thumbnails uses 141 MB of private memory (364 MB before
+  the limit), and a folder of 12,000 files levels off at about 185 MB.
+- **Clipboard, dragging and the Windows menu** (`rx-sys`: the `clip` and `menu` modules): Copy and
+  Cut put the same data object on the clipboard as Explorer does (`CF_HDROP` with "Preferred
+  DropEffect", `OleSetClipboard`, which survives closing the program), and dragging out hands it to
+  `SHDoDragDrop`; the target decides about a move, and the program deletes nothing itself. The
+  Windows menu is the shell's `IContextMenu` shown at the cursor; the menu items are read by a
+  background thread, so a network drive that does not respond does not freeze the window.
+- **`rx-update`** checks the `latest.json` file every minute, or every 15 minutes while the window is
+  minimized or in the tray, downloads a newer build, verifies its size, SHA-256 and EXE header, and
+  replaces the program only when the window is minimized, hidden or unused and nothing is working:
+  neither the program's own copying nor a thread the shell started inside the process for a Windows
+  menu command (e.g. „Wyślij do” (Send to) on a USB stick; the program gives the shell a reference to the
+  process through `SHSetInstanceExplorer` and sees that it is being held).
+  The old version stays on as a "guard": if the new one does not draw its window within 3 minutes,
+  the previous one comes back, and a failed build is not installed a second time. Plain HTTP is
+  allowed only for Tailscale addresses (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`, `*.ts.net`) and
+  localhost, and HTTPS everywhere else; redirects only from HTTPS to HTTPS (which is how GitHub
+  releases work).
+- **The icon** is drawn in code (`crates/rx-core/src/icon.rs`, distance functions from rounded
+  rectangles): it produces the window and tray icons, and `rust-explorer.exe --save-icon ikona.ico`
+  writes it to a file that `build.rs` embeds in the EXE (MSVC build).
+- **Manifest** (`rustexplorer.manifest`, embedded by `build.rs` together with the icon): `asInvoker`
+  (no administrator rights), Windows 10/11 compatibility and `longPathAware` (when `LongPathsEnabled`
+  is turned on in Windows). This entry lifts the 260-character limit only for direct Win32 calls
+  (undoing a rename, „Zawsze zachowuj na tym urządzeniu” (Always keep on this device), the folder
+  watcher); listing, new folder and rename go through `std::fs`, which gets around the limit even
+  without the manifest. Deleting, copying and moving (`SHFileOperationW`), opening, properties, the
+  Windows menu and thumbnails are shell calls that this entry does not cover: with paths over 260
+  characters they may still fail (untested). No DPI, controls or theme entries, so the look does
+  not change; no segment heap: 1-2 MB less private memory out of about 112 MB, and CPU with
+  thumbnails no better (10.2-10.7 s versus 9.2-10.1 s, two runs each).
+- **The title bar** is drawn by the program, but hovering over "Maximize" shows the system's
+  snap layouts menu: a window subclass (`rx-sys/src/caption.rs`) answers Windows with
+  `HTMAXBUTTON` over the rectangle of that button. The minimum window size is 420×320 pt
+  (`MIN_SIZE`): the icon, four menus and window buttons still fit, and Microsoft requires at most 500,
+  so the window also fills narrow snap zones. In a narrow window, the toolbar buttons disappear
+  first, then the tree (below 480 pt), the preview (below 700 pt), the search box and the free space
+  on the status bar.
+- **Screenshot mode** (`--screenshot <file.png>`) is meant for tests: a separate, throw-away layout,
+  with no tray and no updates, and the window is cloaked by DWM (it draws normally but does not
+  appear on screen, takes no focus and has no taskbar button), so tests can run on a computer that is
+  in use; `--visible` shows it.
 
-### Rozmiar
+### Size
 
 | | EXE |
 |---|---|
-| start (domyślne funkcje eframe/wgpu) | 18,1 MB |
-| + LTO, `codegen-units = 1`, `strip` | 15,6 MB |
-| + w wgpu tylko DirectX 12 (bez Vulkana, GL i Metala) | 13,8 MB |
-| + ikona w zasobniku | 14,1 MB |
-| + OpenGL jako główny renderer | 14,4 MB |
-| dzisiejszy build (archiwa, VirusTotal, indeks, schowek, menu Windows…) | 17,9 MB |
+| start (default eframe/wgpu features) | 18.1 MB |
+| + LTO, `codegen-units = 1`, `strip` | 15.6 MB |
+| + only DirectX 12 in wgpu (no Vulkan, GL or Metal) | 13.8 MB |
+| + tray icon | 14.1 MB |
+| + OpenGL as the main renderer | 14.4 MB |
+| today's build (archives, VirusTotal, index, clipboard, Windows menu…) | 17.9 MB |
 
-### Pamięć
+### Memory
 
-Pomiar na laptopie z Ryzenem i zintegrowaną grafiką Radeon 780M (folder z 3000 plików, okno 1600×860
-przy skali 175%). Na zintegrowanej karcie pamięć GPU jest zwykłym RAM-em procesu.
+Measured on a laptop with a Ryzen and integrated Radeon 780M graphics (a folder of 3000 files, a
+1600×860 window at 175% scale). On an integrated GPU, GPU memory is ordinary process RAM.
 
-| | working set | pamięć prywatna |
+| | working set | private memory |
 |---|---|---|
-| DirectX 12, domyślne ustawienia wgpu | 430–460 MB | 430–455 MB |
+| DirectX 12, default wgpu settings | 430-460 MB | 430-455 MB |
 | DirectX 12, `MemoryHints::MemoryUsage` | ~280 MB | ~280 MB |
-| **OpenGL** (domyślnie), Szczegóły, okno bezczynne | **~109 MB** | **~113 MB** |
-| OpenGL, Miniatury przewinięte do końca folderu | ~136 MB | ~141 MB |
-| okno zminimalizowane lub schowane do zasobnika, po 3 s | **~1 MB** | bez zmian |
+| **OpenGL** (default), Details, idle window | **~109 MB** | **~113 MB** |
+| OpenGL, Thumbnails scrolled to the end of the folder | ~136 MB | ~141 MB |
+| window minimized or hidden to the tray, after 3 s | **~1 MB** | unchanged |
 
-Większość tego, co zostaje, to sterownik grafiki: samo puste okno egui zajmuje prawie tyle samo.
-Bezczynne okno nic nie robi: w 80 s rysuje ok. 122 klatki (prawie wszystkie przy starcie) i zużywa
-ok. 0,01 s CPU na minutę.
-Zminimalizowane okno nic nie rysuje, więc program oddaje wtedy swoje strony systemowi
-(`SetProcessWorkingSetSize`) i Menedżer zadań pokazuje około 1 MB; wracają z pamięci podręcznej
-przy pierwszym użyciu. Okno tylko przysłonięte innym dalej się rysuje i zostaje przy ~120 MB.
-Razem z oddaniem pamięci proces przechodzi w tryb wydajności Windows 11 (EcoQoS) i wychodzi z niego
-przy pokazaniu okna; trwające w tle kopiowanie, pakowanie czy skan indeksu go wstrzymują.
-Ponowny skan indeksu, na który nikt nie czeka, działa w priorytecie tła Windows.
+Most of what remains is the graphics driver: an empty egui window alone takes almost as much.
+An idle window does nothing: in 80 s it draws about 122 frames (almost all of them at startup) and
+uses about 0.01 s of CPU per minute.
+A minimized window draws nothing, so the program then hands its pages back to the system
+(`SetProcessWorkingSetSize`) and Task Manager shows about 1 MB; they return from the cache on first
+use. A window that is merely covered by another one keeps drawing and stays at ~120 MB.
+Along with handing back memory, the process switches to the Windows 11 efficiency mode (EcoQoS) and
+leaves it when the window is shown; copying, compressing or an index scan running in the background
+hold it off. A re-scan of the index that nobody is waiting for runs at Windows background priority.
 
-Program używa OpenGL. Jeśli sterownik OpenGL nie wystartuje, przełącza się na DirectX 12.
+The program uses OpenGL. If the OpenGL driver fails to start, it switches to DirectX 12.
 
-## Pobierz
+## Download
 
-Gotowy plik EXE jest w [wydaniach](https://github.com/jarx-dev/RustExplorer/releases/latest). Wystarczy go
-pobrać i uruchomić, bez instalacji (Windows 10 lub 11). Kolejne wydania program pobiera sam.
-Plik nie jest podpisany, więc za pierwszym razem Windows może ostrzec przed nieznanym wydawcą:
-„Więcej informacji” → „Uruchom mimo to”.
+The ready-made EXE is in the [releases](https://github.com/jarx-dev/RustExplorer/releases/latest). Just
+download and run it, no installation (Windows 10 or 11). The program fetches later releases by itself.
+The file is not signed, so the first time Windows may warn about an unknown publisher:
+„Więcej informacji” (More info) → „Uruchom mimo to” (Run anyway).
 
-## Budowanie
+## Building
 
-Na Windows:
+On Windows:
 
 ```powershell
 cargo build --release
 # target\release\rust-explorer.exe
 ```
 
-Na Linuksie (krzyżowo, bez Windows), przez [cargo-xwin](https://github.com/rust-cross/cargo-xwin):
+On Linux (cross-compiling, without Windows), via [cargo-xwin](https://github.com/rust-cross/cargo-xwin):
 
 ```bash
 cargo install cargo-xwin
 cargo xwin build --release --target x86_64-pc-windows-msvc
-cargo test -p rx-core -p rx-update -p rx-archive      # testy bez Windows
+cargo test -p rx-core -p rx-update -p rx-archive      # tests without Windows
 ```
 
-Wersja Rusta jest przypięta w `rust-toolchain.toml`.
+The Rust version is pinned in `rust-toolchain.toml`.
 
-Wydania na GitHubie buduje GitHub Actions (workflow „Wydanie”, uruchamiany ręcznie z `main`):
-EXE, `latest.json` dla aktualizacji i atestacja pochodzenia pliku. Każdy PR i każda zmiana na
-`main` przechodzi build i testy na Windows (workflow „CI”).
+Releases on GitHub are built by GitHub Actions (the "Wydanie" (Release) workflow, started manually from `main`):
+the EXE, `latest.json` for updates and a build provenance attestation for the file. Every PR and every
+change to `main` goes through a build and tests on Windows (the "CI" workflow).
 
-### Własny serwer aktualizacji
+### Your own update server
 
-Zwykły build nigdy sam się nie aktualizuje. Aktualizuje się tylko build z wydania na GitHubie
-(pobiera kolejne wydania) albo z `scripts/publish.sh`, który wbudowuje adres `latest.json` i tożsamość wersji. Skrypt potrzebuje `cargo-xwin` i `jq`:
+A plain build never updates itself. Only a build from a GitHub release (it fetches later releases)
+or from `scripts/publish.sh` does, which embeds the `latest.json` address and the version identity.
+The script needs `cargo-xwin` and `jq`:
 
 ```bash
-mkdir -p ~/updates && (cd ~/updates && python3 -m http.server 8790 --bind <adres-tailscale>) &
-RUSTEXPLORER_UPDATE_BASE=http://<adres-tailscale>:8790/rustexplorer \
+mkdir -p ~/updates && (cd ~/updates && python3 -m http.server 8790 --bind <tailscale-address>) &
+RUSTEXPLORER_UPDATE_BASE=http://<tailscale-address>:8790/rustexplorer \
 RUSTEXPLORER_UPDATE_DIR=~/updates/rustexplorer \
 scripts/publish.sh
 ```
 
-`RUSTEXPLORER_UPDATE_DIR` to katalog z buildami, a `RUSTEXPLORER_UPDATE_BASE` to adres, pod
-którym ten katalog widać (serwer działa w katalogu nadrzędnym). Adres jest wymagany; obie
-zmienne można trzymać poza repozytorium w `~/.config/rustexplorer/build.env`. Zamiast
-`http.server` może być dowolny serwer plików w sieci Tailscale albo HTTPS.
+`RUSTEXPLORER_UPDATE_DIR` is the directory with the builds, and `RUSTEXPLORER_UPDATE_BASE` is the
+address at which that directory is visible (the server runs in the parent directory). The address
+is required; both variables can be kept outside the repository in
+`~/.config/rustexplorer/build.env`. Instead of `http.server` you can use any file server on the
+Tailscale network, or HTTPS.
 
-Te same zmienne podane przy `scripts/auto-publish.sh --install` trafiają do timera systemd, który
-co minutę buduje i publikuje każdy nowy commit na `main`. Na komputerze z programem
-`RUSTEXPLORER_UPDATE_URL=off` wyłącza aktualizacje, a inny adres `latest.json` w tej zmiennej
-kieruje je gdzie indziej. Przebieg aktualizacji zapisuje się w `%APPDATA%\RustExplorer\update.log`.
+The same variables passed to `scripts/auto-publish.sh --install` go into a systemd timer that
+builds and publishes every new commit on `main` every minute. On the computer running the program,
+`RUSTEXPLORER_UPDATE_URL=off` turns updates off, and a different `latest.json` address in that variable
+points them elsewhere. The update progress is logged in `%APPDATA%\RustExplorer\update.log`.
 
-## O autorze
+## About the author
 
-RustExplorera napisał **Jarosław Hartwich** ([github.com/jarx-dev](https://github.com/jarx-dev)).
-To samo znajdziesz w programie: Plik → „O programie”.
+RustExplorer was written by **Jarosław Hartwich** ([github.com/jarx-dev](https://github.com/jarx-dev)).
+You can find the same in the program: File → „O programie” (About).
 
-Jeśli RustExplorer Ci się przydaje, możesz [postawić mi kawę](https://buymeacoffee.com/jarx) ☕
+If RustExplorer is useful to you, you can [buy me a coffee](https://buymeacoffee.com/jarx) ☕
 
-## Licencja
+## License
 
-[MIT](LICENSE). Katalog `patches/windows-link` to łatka crate'a
-[windows-link](https://crates.io/crates/windows-link) (MIT/Apache-2.0) dla buildu GNU.
+[MIT](LICENSE). The `patches/windows-link` directory is a patch of the
+[windows-link](https://crates.io/crates/windows-link) crate (MIT/Apache-2.0) for the GNU build.
