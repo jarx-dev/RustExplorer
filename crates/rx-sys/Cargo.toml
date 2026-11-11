@@ -1,0 +1,50 @@
+[package]
+name = "rx-sys"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "RustExplorer: Windows shell calls (names, drives, file operations, thumbnails, PDF)"
+
+[dependencies]
+# which changes on a volume concern a shown folder (src/watch.rs): a rule tested on Linux
+rx-core = { path = "../rx-core" }
+# the app's own note in the screen's corner (src/note.rs)
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_UI_HiDpi", "Win32_UI_WindowsAndMessaging"] }
+windows-future = "0.3"
+# already under `windows`; #[implement] (a copy's progress sink, src/lib.rs) names it as a crate
+windows-core = "0.62"
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Storage_FileSystem",
+  # "Zawsze zachowuj na tym urządzeniu": CfHydratePlaceholder, gated behind System_IO
+  "Win32_Storage_CloudFilters",
+  "Win32_System_IO",
+  # whether a disk can be unplugged (src/watch.rs): IOCTL_STORAGE_GET_HOTPLUG_INFO
+  "Win32_System_Ioctl",
+  "Win32_Graphics_Gdi",
+  "Win32_System_Com",
+  "Win32_System_Registry",
+  # OneDrive's "Kopiuj link": a list of paths passed as a SAFEARRAY of BSTR
+  "Win32_System_Ole",
+  "Win32_System_Variant",
+  # files on the clipboard and in a system drag (src/clip.rs): a shell data object with CF_HDROP
+  "Win32_System_DataExchange",
+  "Win32_System_Memory",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_UI_Shell_Common",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_System_Threading",
+  # CreateEventW (Threading) is gated behind it; the app pulled it in, rx-sys alone did not build
+  "Win32_Security",
+  # the VirusTotal key, kept by Windows (Menedżer poświadczeń) rather than in a file
+  "Win32_Security_Credentials",
+  "Win32_System_LibraryLoader",
+  "Win32_Graphics_Dwm",
+  "Win32_NetworkManagement_WNet",
+  "Foundation",
+  "Data_Pdf",
+  "Storage",
+  "Storage_Streams",
+] }

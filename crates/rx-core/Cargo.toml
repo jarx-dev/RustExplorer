@@ -1,0 +1,11 @@
+[package]
+name = "rx-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "RustExplorer: platform-free rules (sizes, dates, sorting, filters, file kinds) and the app icon"
+
+[dependencies]
+chrono = "0.4"
+# SIMD substring search over the whole-drive index (index.rs); already in the tree via egui
+memchr = "2"

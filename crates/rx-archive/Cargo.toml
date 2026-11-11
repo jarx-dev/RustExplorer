@@ -1,0 +1,18 @@
+[package]
+name = "rx-archive"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "RustExplorer: packing and unpacking archives in-process (ZIP and 7z both ways, RAR unpack only)"
+
+[dependencies]
+# versions pinned to releases at least two weeks old; only the methods real archives use
+zip = { version = "=9.1.2", default-features = false, features = ["deflate-flate2", "deflate64", "lzma", "aes-crypto"] }
+# zip's deflate through miniz_oxide, which the app already builds for PNG
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+sevenz-rust2 = { version = "=0.24.1", default-features = false, features = ["compress", "util", "ppmd", "bzip2", "aes256"] }
+# pure-Rust RAR reader (RAR 1.5-7, solid, volumes); clean-room, so no unRAR licence clause.
+# Extraction only: RAR archives cannot be created outside WinRAR. Pinned: it releases very often.
+rars = { version = "=0.12.2", default-features = false, features = ["encryption"] }
+# entry dates in local time (ZIP stores no time zone); already in the tree via rx-core
+chrono = "0.4"

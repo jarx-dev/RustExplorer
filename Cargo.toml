@@ -1,0 +1,42 @@
+[package]
+name = "rust-explorer"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+# The window (src/) is the binary; platform-free rules, Windows shell calls and the updater are
+# crates of their own, so the rules test on Linux and an edit to one part rebuilds only it.
+[workspace]
+members = ["crates/*"]
+
+[dependencies]
+rx-core = { path = "crates/rx-core" }
+rx-sys = { path = "crates/rx-sys" }
+rx-update = { path = "crates/rx-update" }
+rx-archive = { path = "crates/rx-archive" }
+rx-scan = { path = "crates/rx-scan" }
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "default_fonts", "wgpu_no_default_features", "persistence", "glow"] }
+# OpenGL (glow) draws the window; wgpu with only DirectX 12 (eframe's "wgpu" feature would also build
+# Vulkan, GL and Metal) is the fallback when OpenGL does not start (src/main.rs)
+wgpu = { version = "30", default-features = false, features = ["std", "wgsl", "dx12"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp", "webp", "ico", "tiff"] }
+dirs = "6"
+# the icon next to the clock (src/tray.rs)
+tray-icon = "0.26"
+# the window's handle, for its icons and bringing it to the front (src/tray.rs)
+raw-window-handle = "0.6"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[patch.crates-io]
+windows-link = { path = "patches/windows-link" }
