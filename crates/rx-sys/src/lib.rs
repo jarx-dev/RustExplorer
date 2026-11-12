@@ -191,13 +191,19 @@ pub fn copy_into_with(paths: &[PathBuf], dir: &Path, cut: bool, progress: &mut d
     let (ok, renamed) = file_op(paths, dir, cut, flags, progress)
         .unwrap_or_else(|| shell_op(if cut { FO_MOVE } else { FO_COPY }, paths, &[dir.to_path_buf()], flags));
     let (undo, left) = rx_core::undo::transferred(paths, dir, cut, &before, &renamed, rx_core::undo::stamp);
+    // a move cancelled in Windows' window half way through a folder, with nothing whole to take
+    // back: the folder is in both places, and with no record Ctrl+Z would undo the operation before
+    let partial = cut && !ok && matches!(&undo, rx_core::undo::Undo::Moved(m) if m.is_empty())
+        && paths.iter().zip(&before).any(|(p, &was)| !was && p.exists() && p.file_name().is_some_and(|n| dir.join(n).exists()));
+    let undo = if partial { rx_core::undo::Undo::Blocked("undo.what.move_partial") } else { undo };
     (ok, undo, left)
 }
 
 /// Wklej and a drop: the app's own copy (rx_core::copy) wherever it can, else Windows' own
 /// (`copy_into_with`: a name already taken, links, a folder needing the administrator's consent).
 /// Like `copy_into_with`, with the note saying where the app's own copy stopped: Err for an error,
-/// Ok for a cancel from the panel (`ctl`; Windows' copy never arms it, so it shows no buttons).
+/// Ok for a cancel from the panel (`ctl`; Windows' copy never arms it, so the panel shows no
+/// buttons: Windows' own window has them).
 pub fn transfer(paths: &[PathBuf], dir: &Path, cut: bool, ctl: &rx_core::ops::Control, progress: &mut dyn FnMut(u64, u64)) -> (bool, rx_core::undo::Undo, usize, Option<Result<String, String>>) {
     use rx_core::copy::{self, Outcome};
     if let Some(plan) = copy::plan(paths, dir, cut, &WinFs) {
@@ -431,9 +437,12 @@ fn file_op(paths: &[PathBuf], dir: &Path, cut: bool, flags: u32, progress: &mut 
             CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE).ok().ok()?;
             let r = (|| {
                 let op: IFileOperation = CoCreateInstance(&FileOperation, None, CLSCTX_ALL).ok()?;
-                // FOF_SILENT: no Windows progress window, the app's Operacje panel shows it; the
-                // shell still asks about name conflicts and reports errors
-                op.SetOperationFlags(FILEOPERATION_FLAGS(FOF_ALLOWUNDO.0 | FOF_SILENT.0 | flags)).ok()?;
+                // Windows' own progress window (no FOF_SILENT): this copy runs where the app's own
+                // could not (a name taken, …), and the window holds its conflict questions and the
+                // pause and cancel the Operacje panel cannot give it. Silent in tests: a window
+                // there would fail the test that this process shows none
+                let silent = if cfg!(test) { FOF_SILENT.0 } else { 0 };
+                op.SetOperationFlags(FILEOPERATION_FLAGS(FOF_ALLOWUNDO.0 | silent | flags)).ok()?;
                 let to: IShellItem = SHCreateItemFromParsingName(&HSTRING::from(dir), None).ok()?;
                 for p in paths {
                     let item: IShellItem = SHCreateItemFromParsingName(&HSTRING::from(p.as_path()), None).ok()?;
