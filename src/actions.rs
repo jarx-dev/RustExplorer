@@ -624,12 +624,12 @@ impl App {
                     if self.space {
                         self.space_forget(&sel);
                     }
-                    self.background(ctx, t!("actions.job.recycle").into(), names(&sel), move |_| recycled(sel));
+                    self.background(ctx, t!("actions.job.recycle").into(), names(&sel), move |_, _| recycled(sel));
                 }
             }
             Act::Recycle(paths) => {
                 self.space_forget(&paths);
-                self.background(ctx, t!("actions.job.recycle").into(), names(&paths), move |_| recycled(paths));
+                self.background(ctx, t!("actions.job.recycle").into(), names(&paths), move |_, _| recycled(paths));
             }
             Act::Reveal(p) => {
                 if let Some(dir) = p.parent().map(Path::to_path_buf) {
@@ -812,9 +812,9 @@ impl App {
                         let seq = self.clip_seq;
                         let job = Arc::new(());
                         self.pasting = Some((seq, job.clone()));
-                        self.background(ctx, t!("actions.job.move", place = place(&dir)), names(&clip), move |p| {
+                        self.background(ctx, t!("actions.job.move", place = place(&dir)), names(&clip), move |p, ctl| {
                             let _running = job;
-                            let done = sys::transfer(&clip, &dir, true, p);
+                            let done = sys::transfer(&clip, &dir, true, ctl, p);
                             if done.0 {
                                 sys::clip::paste_done(seq);
                             }
@@ -956,7 +956,7 @@ impl App {
                 Some(u) => {
                     self.msg = Some(format!("{}…", u.label()));
                     // the note says how it went; undo() says whether it was a full success
-                    self.background(ctx, t!("actions.job.undo").into(), String::new(), move |_| {
+                    self.background(ctx, t!("actions.job.undo").into(), String::new(), move |_, _| {
                         let (ok, n) = undo(u);
                         (Ok(ok), vec![Msg::Note(n)])
                     });
@@ -1164,7 +1164,7 @@ impl App {
         }
         if !plain.is_empty() {
             let title = if cut { t!("actions.job.move", place = place(&dir)) } else { t!("actions.job.copy", place = place(&dir)) };
-            self.background(ctx, title, names(&plain), move |p| transferred(sys::transfer(&plain, &dir, cut, p)));
+            self.background(ctx, title, names(&plain), move |p, ctl| transferred(sys::transfer(&plain, &dir, cut, ctl, p)));
         }
     }
 
@@ -1247,11 +1247,13 @@ impl App {
     /// Operacje panel; one that reports (done, total) through its argument gets a percentage,
     /// one that does not shows an indeterminate bar. `f` says whether it went through: a cancel
     /// leaves the panel without a confirmation (its note, if any, says what happened); an error
-    /// stays in the history as a failed operation.
-    pub(crate) fn background(&self, ctx: &egui::Context, title: String, source: String, f: impl FnOnce(rx_archive::Progress) -> (Result<bool, String>, Vec<Msg>) + Send + 'static) {
+    /// stays in the history as a failed operation. A job that can be paused and cancelled from the
+    /// panel arms the `Control` it gets (the app's own copy); the others ignore it.
+    pub(crate) fn background(&self, ctx: &egui::Context, title: String, source: String, f: impl FnOnce(rx_archive::Progress, &rx_core::ops::Control) -> (Result<bool, String>, Vec<Msg>) + Send + 'static) {
         let (tx, busy, ops, ctx) = (self.tx.clone(), self.busy.clone(), self.ops.clone(), ctx.clone());
         busy.fetch_add(1, AO::SeqCst);
-        let id = ops.start(title, source);
+        let ctl = Arc::new(rx_core::ops::Control::default());
+        let id = ops.start_with(title, source, Some(ctl.clone()));
         std::thread::spawn(move || {
             sys::init_com();
             let mut report = |done: u64, total: u64| {
@@ -1260,7 +1262,7 @@ impl App {
                 }
             };
             // a panic must still end the job, or it runs in the panel and blocks updates for good
-            let msgs = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut report))) {
+            let msgs = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut report, &ctl))) {
                 Ok((Ok(true), msgs)) => {
                     ops.finish(id, Ok(String::new()));
                     msgs
@@ -1964,11 +1966,16 @@ pub(crate) fn place(p: &Path) -> String {
 }
 
 /// A copy or move's undo record, and a note when some items cannot be taken back; with whether
-/// nothing was cancelled, or what the app's own copy stopped on (shown as a note too).
-fn transferred((ok, u, left, failed): (bool, Undo, usize, Option<String>)) -> (Result<bool, String>, Vec<Msg>) {
+/// nothing was cancelled, or what the app's own copy stopped on (shown as a note too): Err an
+/// error (stays in the history), Ok a cancel from the panel (the job goes, the note says how far).
+fn transferred((ok, u, left, stopped): (bool, Undo, usize, Option<Result<String, String>>)) -> (Result<bool, String>, Vec<Msg>) {
     let note = (left > 0).then(|| Msg::Note(t!("actions.taken_names_note", n = left)));
-    let msgs = std::iter::once(Msg::Undo(u)).chain(note).chain(failed.clone().map(Msg::Note)).collect();
-    (failed.map_or(Ok(ok), Err), msgs)
+    let said = stopped.clone().map(|s| Msg::Note(s.unwrap_or_else(|e| e)));
+    let msgs = std::iter::once(Msg::Undo(u)).chain(note).chain(said).collect();
+    (match stopped {
+        Some(Err(e)) => Err(e),
+        _ => Ok(ok),
+    }, msgs)
 }
 
 /// Takes back one operation (off the UI thread), never overwriting anything; the note says how it

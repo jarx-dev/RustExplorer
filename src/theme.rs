@@ -43,6 +43,8 @@ pub(crate) mod ic {
     pub const CHEV_U: &str = "\u{E70E}";
     pub const ADD: &str = "\u{E710}";
     pub const CLOSE: &str = "\u{E711}";
+    pub const PLAY: &str = "\u{E768}";
+    pub const PAUSE: &str = "\u{E769}";
     pub const FILTER: &str = "\u{E71C}";
     pub const BAK: &str = "\u{E8F1}";
     /// Download (an arrow into a tray), for unpacking an archive

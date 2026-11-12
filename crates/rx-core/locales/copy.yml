@@ -9,3 +9,9 @@ copy.not_removed:
 copy.changed:
   en: "Moved, but files changed while it ran stayed in the old place: %{n}"
   pl: "Przeniesiono, ale pliki zmienione w trakcie zostały w starym miejscu: %{n}"
+copy.cancelled_copy:
+  en: "Cancelled; files copied: %{n} of %{total}"
+  pl: "Anulowano; skopiowane pliki: %{n} z %{total}"
+copy.cancelled_move:
+  en: "Cancelled; files moved: %{n} of %{total}, the rest stayed in the old place"
+  pl: "Anulowano; przeniesione pliki: %{n} z %{total}, reszta została w starym miejscu"

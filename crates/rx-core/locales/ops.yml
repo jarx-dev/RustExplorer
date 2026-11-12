@@ -49,3 +49,15 @@ ops_panel.clear_tip:
 ops_panel.remove:
   en: Remove from history
   pl: Usuń z historii
+ops_panel.pause:
+  en: Pause
+  pl: Wstrzymaj
+ops_panel.resume:
+  en: Resume
+  pl: Wznów
+ops_panel.cancel:
+  en: Cancel; what was copied whole stays
+  pl: Anuluj; to, co skopiowano w całości, zostaje
+ops_panel.paused:
+  en: Paused
+  pl: Wstrzymano
