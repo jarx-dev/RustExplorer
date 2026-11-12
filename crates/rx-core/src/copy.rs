@@ -14,7 +14,7 @@ use crate::undo::stamp;
 /// What the platform does for a copy; Windows' in rx-sys, `std::fs` in the tests.
 pub trait Fs: Sync {
     /// Copies one file to a new `to` (never over one), reporting the bytes copied so far.
-    fn copy_file(&self, from: &Path, to: &Path, len: u64, progress: &mut dyn FnMut(u64)) -> io::Result<()>;
+    fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64)) -> io::Result<()>;
     /// Renames on one volume, never over anything (std's rename on Windows replaces a file).
     fn rename(&self, from: &Path, to: &Path) -> io::Result<()>;
     /// Whether a rename can take `from` to `to` (one volume), rather than a copy and a delete.
@@ -34,7 +34,7 @@ pub struct Plan {
     files: Vec<(PathBuf, PathBuf, u64)>,
     /// the items' places in the target, to tell which of them this operation made
     tops: HashSet<PathBuf>,
-    pub total: u64,
+    total: u64,
     cut: bool,
 }
 
@@ -137,7 +137,7 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, progress: &mut dyn FnMut(u6
                             let Some((from, to, len)) = plan.files.get(i) else { break };
                             was.lock().unwrap()[i] = stamp(from);
                             let mut seen = 0;
-                            let r = fs.copy_file(from, to, *len, &mut |n| {
+                            let r = fs.copy_file(from, to, &mut |n| {
                                 done.fetch_add(n.saturating_sub(seen), Relaxed);
                                 seen = seen.max(n);
                             });
@@ -172,19 +172,28 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, progress: &mut dyn FnMut(u6
         if !plan.cut {
             return Outcome::Done;
         }
-        // only what was copied, as it was: a file put into a source folder meanwhile stays, and its folder too
-        let mut changed = 0;
+        // only what was copied, as it was: a file put into a source folder meanwhile stays, and its
+        // folder too; one that cannot go (open elsewhere) does not stop the rest
+        let (mut changed, mut stuck) = (0, None);
         for ((from, _, _), was) in plan.files.iter().zip(was.into_inner().unwrap()) {
             if stamp(from) != was {
                 changed += 1;
             } else if let Err(e) = remove(from, false) {
-                return Outcome::Failed(t!("copy.not_removed", name = name(from), e = e));
+                stuck.get_or_insert((from, e));
             }
         }
         for (from, _) in plan.dirs.iter().rev() {
-            let _ = remove(from, true);
+            // not empty: what stayed above is in it
+            match remove(from, true) {
+                Err(e) if e.kind() != io::ErrorKind::DirectoryNotEmpty => _ = stuck.get_or_insert((from, e)),
+                _ => {}
+            }
         }
-        if changed > 0 { Outcome::Failed(t!("copy.changed", n = changed)) } else { Outcome::Done }
+        match stuck {
+            Some((from, e)) => Outcome::Failed(t!("copy.not_removed", name = name(from), e = e)),
+            None if changed > 0 => Outcome::Failed(t!("copy.changed", n = changed)),
+            None => Outcome::Done,
+        }
     })();
     (r, tops.into_inner().unwrap())
 }
@@ -223,7 +232,7 @@ mod tests {
     const NONE: T = T { same: false, fail: None, touch: None };
 
     impl Fs for T {
-        fn copy_file(&self, from: &Path, to: &Path, _: u64, progress: &mut dyn FnMut(u64)) -> io::Result<()> {
+        fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64)) -> io::Result<()> {
             let named = |n: &str| from.file_name().is_some_and(|x| x == n);
             if let Some((n, kind)) = self.fail.filter(|f| named(f.0)) {
                 return Err(io::Error::new(kind, n));
@@ -329,6 +338,23 @@ mod tests {
         assert!(matches!(&r, Outcome::Failed(m) if m.ends_with(": 1")), "{r:?}");
         assert_eq!(std::fs::read_to_string(back.join("tree/sub/f4.txt")).unwrap(), "saved again, longer");
         assert!(src.join("tree/sub/f4.txt").exists() && !back.join("tree/sub/f3.txt").exists());
+        std::fs::remove_dir_all(&b).unwrap();
+    }
+
+    /// A source that cannot go (here its folder is read-only) does not keep the rest in place.
+    #[cfg(unix)]
+    #[test]
+    fn a_source_that_cannot_go_leaves_only_itself() {
+        use std::os::unix::fs::PermissionsExt;
+        let b = base("stuck");
+        let (src, dst) = (b.join("src"), b.join("dst"));
+        std::fs::create_dir(src.join("tree/locked")).unwrap();
+        std::fs::write(src.join("tree/locked/held.txt"), "x").unwrap();
+        std::fs::set_permissions(src.join("tree/locked"), std::fs::Permissions::from_mode(0o555)).unwrap();
+        let (r, _, _) = go(&[src.join("tree")], &dst, true, &NONE);
+        std::fs::set_permissions(src.join("tree/locked"), std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(matches!(&r, Outcome::Failed(m) if m.contains("held.txt")), "{r:?}");
+        assert!(src.join("tree/locked/held.txt").exists() && !src.join("tree/sub").exists() && dst.join("tree/sub/f19.txt").exists());
         std::fs::remove_dir_all(&b).unwrap();
     }
 

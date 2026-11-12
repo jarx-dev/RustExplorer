@@ -222,8 +222,9 @@ flowchart LR
   (bez praw administratora), zgodność z Windows 10/11 i `longPathAware` (gdy w Windows włączono
   `LongPathsEnabled`). Ten wpis zdejmuje limit 260 znaków tylko z bezpośrednich wywołań Win32
   (cofnięcie zmiany nazwy, „Zawsze zachowuj na tym urządzeniu”, obserwator folderów); listowanie,
-  nowy folder i zmiana nazwy idą przez `std::fs`, które obchodzi limit i bez manifestu. Usuwanie,
-  kopiowanie i przenoszenie (`SHFileOperationW`), otwieranie, właściwości, menu Windows i miniatury
+  nowy folder i zmiana nazwy idą przez `std::fs`, które obchodzi limit i bez manifestu. Własne
+  kopiowanie i przenoszenie programu same dodają do długich ścieżek prefiks `\\?\`. Usuwanie,
+  kopiowanie i przenoszenie przez powłokę (`SHFileOperationW`), otwieranie, właściwości, menu Windows i miniatury
   to wywołania powłoki, których ten wpis nie obejmuje: przy ścieżkach ponad 260 znaków mogą nadal
   zawodzić (niesprawdzone). Bez wpisów DPI, kontrolek i motywu, więc wygląd się nie zmienia; bez
   sterty segmentowej: 1–2 MB mniej pamięci prywatnej z ok. 112 MB, a CPU przy miniaturach nie

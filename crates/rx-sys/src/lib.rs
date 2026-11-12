@@ -206,6 +206,7 @@ pub fn transfer(paths: &[PathBuf], dir: &Path, cut: bool, progress: &mut dyn FnM
         if r != Outcome::Denied {
             // only what this run made: the plan took no name already there, and an item put in the
             // target by someone else meanwhile is not this operation's to take back
+            let made: std::collections::HashSet<PathBuf> = made.into_iter().collect();
             let done: Vec<PathBuf> = paths.iter().filter(|p| p.file_name().is_some_and(|n| made.contains(&dir.join(n)))).cloned().collect();
             let (undo, left) = rx_core::undo::transferred(&done, dir, cut, &vec![false; done.len()], &[], rx_core::undo::stamp);
             let note = if let Outcome::Failed(e) = r { Some(e) } else { None };
@@ -222,20 +223,19 @@ pub fn transfer(paths: &[PathBuf], dir: &Path, cut: bool, progress: &mut dyn FnM
 struct WinFs;
 
 impl rx_core::copy::Fs for WinFs {
-    fn copy_file(&self, from: &Path, to: &Path, _: u64, progress: &mut dyn FnMut(u64)) -> std::io::Result<()> {
+    fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64)) -> std::io::Result<()> {
         unsafe extern "system" fn told(_: i64, done: i64, _: i64, _: i64, _: u32, _: LPPROGRESS_ROUTINE_CALLBACK_REASON, _: windows::Win32::Foundation::HANDLE, _: windows::Win32::Foundation::HANDLE, data: *const std::ffi::c_void) -> COPYPROGRESSROUTINE_PROGRESS {
             let f = unsafe { &mut *(data as *mut &mut dyn FnMut(u64)) };
             f(done as u64);
             PROGRESS_CONTINUE
         }
         let mut f: &mut dyn FnMut(u64) = progress;
-        // shortcut: a path over 260 characters works only with long paths on in Windows; add the \\?\ prefix if that ever bites
-        unsafe { CopyFileExW(&HSTRING::from(from), &HSTRING::from(to), Some(told), Some(&mut f as *mut _ as *const _), None, COPY_FILE_FAIL_IF_EXISTS) }.map_err(std::io::Error::from)
+        unsafe { CopyFileExW(&long(from), &long(to), Some(told), Some(&mut f as *mut _ as *const _), None, COPY_FILE_FAIL_IF_EXISTS) }.map_err(io_error)
     }
 
     fn rename(&self, from: &Path, to: &Path) -> std::io::Result<()> {
         // no MOVEFILE_REPLACE_EXISTING: a file put there meanwhile is an error, not replaced
-        unsafe { MoveFileExW(&HSTRING::from(from), &HSTRING::from(to), MOVE_FILE_FLAGS(0)) }.map_err(std::io::Error::from)
+        unsafe { MoveFileExW(&long(from), &long(to), MOVE_FILE_FLAGS(0)) }.map_err(io_error)
     }
 
     fn same_volume(&self, from: &Path, to: &Path) -> bool {
@@ -246,12 +246,34 @@ impl rx_core::copy::Fs for WinFs {
         // what Explorer carries over to a copied folder: hidden (.git), system, read-only, archive
         let keep = FILE_ATTRIBUTE_HIDDEN.0 | FILE_ATTRIBUTE_SYSTEM.0 | FILE_ATTRIBUTE_READONLY.0 | FILE_ATTRIBUTE_ARCHIVE.0 | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED.0;
         unsafe {
-            let a = GetFileAttributesW(&HSTRING::from(from));
+            let a = GetFileAttributesW(&long(from));
             if a != INVALID_FILE_ATTRIBUTES && a & keep != 0 {
-                let _ = SetFileAttributesW(&HSTRING::from(to), FILE_FLAGS_AND_ATTRIBUTES(a & keep));
+                let _ = SetFileAttributesW(&long(to), FILE_FLAGS_AND_ATTRIBUTES(a & keep));
             }
         }
     }
+}
+
+/// `p` for a Win32 call: past 259 characters with the \\?\ prefix, which works without
+/// LongPathsEnabled (std does the same for its own calls). The app's paths are absolute.
+fn long(p: &Path) -> HSTRING {
+    let w: Vec<u16> = p.as_os_str().encode_wide().collect();
+    let u = |s: &str| s.encode_utf16().collect::<Vec<u16>>();
+    let w = if w.len() < 260 || w.starts_with(&u(r"\\?\")) {
+        w
+    } else if w.starts_with(&u(r"\\")) {
+        [u(r"\\?\UNC\"), w[2..].to_vec()].concat()
+    } else {
+        [u(r"\\?\"), w].concat()
+    };
+    HSTRING::from_wide(&w)
+}
+
+/// A Win32 failure as std reads it (its kind, Windows' own words): `windows` hands std the
+/// HRESULT, which std does not know as "access denied" and the like.
+fn io_error(e: windows::core::Error) -> std::io::Error {
+    let c = e.code().0 as u32;
+    std::io::Error::from_raw_os_error(if c >> 16 == 0x8007 { (c & 0xFFFF) as i32 } else { c as i32 })
 }
 
 /// The root of the volume `p` is on ("C:\", "\\serwer\udział\", a folder a disk is mounted on).
@@ -284,6 +306,8 @@ fn seeks(p: &Path) -> bool {
         asked.is_ok() && d.IncursSeekPenalty
     }
 }
+
+/// Hears an IFileOperation: its progress, and the top-level items that got a new name.
 #[windows::core::implement(IFileOperationProgressSink)]
 struct Sink {
     // the caller's items by their folded path: one lookup per item the shell reports, not a scan
@@ -1156,6 +1180,18 @@ mod tests {
         assert_eq!(std::fs::read(dst.join("big.bin")).unwrap(), std::fs::read(&big).unwrap());
         assert!(hidden(&dst.join("tree/.git")) && std::fs::read_dir(dst.join("tree/.git")).unwrap().count() == 50);
         assert_eq!(undo, Undo::Created(vec![(dst.join("tree"), rx_core::undo::stamp(&dst.join("tree"))), (dst.join("big.bin"), rx_core::undo::stamp(&dst.join("big.bin")))], "undo.what.copy"));
+
+        // Windows' errors reach the engine with std's kinds (a refusal hands over to Windows' copy)
+        let e = rx_core::copy::Fs::copy_file(&WinFs, &big, &dst.join("big.bin"), &mut |_| {}).unwrap_err();
+        assert_eq!(e.kind(), std::io::ErrorKind::AlreadyExists, "{e}");
+
+        // past 260 characters: through \\?\ (works with LongPathsEnabled off)
+        let deep = (0..6).fold(src.join("gleboki"), |p, i| p.join(format!("{i}{}", "x".repeat(50))));
+        std::fs::create_dir_all(&deep).unwrap();
+        std::fs::write(deep.join("plik.txt"), "rx").unwrap();
+        let (ok, _, _, note) = transfer(&[src.join("gleboki")], &dst, false, &mut |_, _| {});
+        let copied = dst.join(deep.strip_prefix(&src).unwrap()).join("plik.txt");
+        assert!(ok && note.is_none() && copied.as_os_str().len() > 300 && copied.exists(), "{note:?}");
 
         // a move on one volume: renamed, and Ctrl+Z puts it back
         let (ok, undo, _, note) = transfer(std::slice::from_ref(&big), &mv, true, &mut |_, _| {});

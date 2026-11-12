@@ -216,7 +216,8 @@ flowchart LR
   is turned on in Windows). This entry lifts the 260-character limit only for direct Win32 calls
   (undoing a rename, "Always keep on this device", the folder
   watcher); listing, new folder and rename go through `std::fs`, which gets around the limit even
-  without the manifest. Deleting, copying and moving (`SHFileOperationW`), opening, properties, the
+  without the manifest. The program's own copy and move add the `\\?\` prefix to long paths
+  themselves. Deleting, copying and moving through the shell (`SHFileOperationW`), opening, properties, the
   Windows menu and thumbnails are shell calls that this entry does not cover: with paths over 260
   characters they may still fail (untested). No DPI, controls or theme entries, so the look does
   not change; no segment heap: 1-2 MB less private memory out of about 112 MB, and CPU with
