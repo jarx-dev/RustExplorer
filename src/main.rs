@@ -555,6 +555,8 @@ struct App {
     trimmed: bool,
     /// Windows 11's efficiency mode is on for the process (only ever with the window out of sight)
     eco: bool,
+    /// started out of sight by an update while maximized: maximized again once on screen
+    restore_maximized: bool,
 }
 
 fn bookmarks_file() -> Option<PathBuf> {
@@ -693,6 +695,15 @@ impl eframe::App for App {
                 update::log("okno: poza ekranem, przeniesione na ekran główny");
             }
             let on_screen = self.hwnd != 0 && sys::window_on_screen(self.hwnd);
+            // until egui sees it maximized: the size check below would undo a maximize still on its way
+            let maximize_now = self.restore_maximized && on_screen;
+            if maximize_now {
+                if ctx.input(|i| i.viewport().maximized) == Some(true) {
+                    self.restore_maximized = false;
+                } else {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(true));
+                }
+            }
             // eframe hands Windows the minimum once, in pixels at the start's DPI and zoom: on a
             // screen with a larger scale Windows let an edge drag below the check below, which
             // then jumped to the start size against the drag (the window flickered while narrowed)
@@ -707,7 +718,7 @@ impl eframe::App for App {
             // on screen below it gets the start size again. Its size is Windows's own: egui's still
             // says 158×26 just after a restore. A maximized window is left alone (a screen smaller
             // than the minimum would otherwise un-maximize it).
-            if on_screen && ctx.input(|i| i.viewport().maximized) != Some(true) {
+            if on_screen && !maximize_now && ctx.input(|i| i.viewport().maximized) != Some(true) {
                 let (w, h) = sys::client_size(self.hwnd);
                 let px = ctx.input(|i| i.viewport().native_pixels_per_point).unwrap_or(1.0);
                 if (w as f32) < MIN_SIZE[0] * px - 1.0 || (h as f32) < MIN_SIZE[1] * px - 1.0 {
@@ -1174,6 +1185,9 @@ fn main() -> eframe::Result {
                     sys::set_window_icons(hwnd);
                     app.hidden = tray_start && app._tray.is_some();
                     sys::start_minimized(hwnd, app.hidden);
+                    // Windows brings a window minimized before it was ever shown back at its normal
+                    // size, not maximized (the stored state then said "not maximized" for good)
+                    app.restore_maximized = app.last_window.as_deref().is_some_and(|w| w.replace(' ', "").contains("maximized:true"));
                 }
             }
             if cloaked {
