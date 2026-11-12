@@ -34,6 +34,8 @@ pub struct Job {
     pub total: Option<u64>,
     pub start: Instant,
     pub end: Option<Instant>,
+    /// the clock time it ended, for the history ("11:32")
+    pub ended_at: Option<std::time::SystemTime>,
     /// bytes per second, smoothed
     pub speed: f64,
     /// (fraction done, bytes per second) at each sample: the panel's chart
@@ -47,7 +49,7 @@ pub struct Job {
 
 impl Job {
     fn new(id: u64, title: String, source: String, now: Instant) -> Self {
-        Job { id, title, source, done: 0, total: None, start: now, end: None, speed: 0.0, samples: vec![], state: State::Running, queued: None, last: (now, 0) }
+        Job { id, title, source, done: 0, total: None, start: now, end: None, ended_at: None, speed: 0.0, samples: vec![], state: State::Running, queued: None, last: (now, 0) }
     }
 
     /// Takes a count; true when a sample was taken (worth a repaint, at most every SAMPLE_EVERY).
@@ -117,6 +119,15 @@ impl Job {
 
     /// A finished job's line under its note: "1,90 GB · 17 s · śr. 112 MB/s", or only the time
     /// when nothing was counted.
+    /// When it ended, for the history: "11:32" today, "11.11 18:05" before.
+    pub fn ended_clock(&self) -> String {
+        use chrono::{DateTime, Local};
+        self.ended_at.map_or_else(String::new, |t| {
+            let d = DateTime::<Local>::from(t);
+            d.format(if d.date_naive() == Local::now().date_naive() { "%H:%M" } else { "%d.%m %H:%M" }).to_string()
+        })
+    }
+
     pub fn summary(&self) -> String {
         let secs = self.end.unwrap_or(self.last.0).duration_since(self.start).as_secs_f64();
         let took = fmt_secs(secs.round() as u64);
@@ -177,6 +188,7 @@ impl Ops {
     fn finish_at(&self, id: u64, outcome: Result<String, String>, now: Instant) {
         self.job(id, |j| {
             j.end = Some(now);
+            j.ended_at = Some(std::time::SystemTime::now());
             if outcome.is_ok() {
                 if let Some(t) = j.total {
                     j.done = t;

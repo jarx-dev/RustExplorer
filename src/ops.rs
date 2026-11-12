@@ -182,14 +182,21 @@ impl App {
                         ui.label(RichText::new(if n > 0 { t!("ops_panel.running", n = n) } else { t!("ops_panel.none").into() }).color(pal().dim));
                     });
                 });
-                // what runs on top, then the history from the newest
-                let order = jobs.iter().filter(|j| j.running()).chain(jobs.iter().rev().filter(|j| !j.running()));
-                egui::ScrollArea::vertical().max_height(480.0).auto_shrink([false, true]).show(ui, |ui| {
-                    for j in order {
-                        ui.add_space(5.0);
-                        ui.separator();
-                        ui.add_space(3.0);
-                        close = close.or(self.op_card(ui, j));
+                let mut card = |ui: &mut Ui, j: &Job| {
+                    ui.add_space(5.0);
+                    ui.separator();
+                    ui.add_space(3.0);
+                    close = close.or(self.op_card(ui, j));
+                };
+                // what runs stays in sight on top; the history from the newest scrolls under it, about
+                // three finished cards (three lines each) high, so the panel does not grow with it
+                for j in jobs.iter().filter(|j| j.running()) {
+                    card(ui, j);
+                }
+                let three = 3.0 * (3.0 * ui.text_style_height(&egui::TextStyle::Body) + 28.0);
+                egui::ScrollArea::vertical().id_salt("ops_history").max_height(three).auto_shrink([false, true]).show(ui, |ui| {
+                    for j in jobs.iter().rev().filter(|j| !j.running()) {
+                        card(ui, j);
                     }
                 });
             });
@@ -216,7 +223,11 @@ impl App {
                 ui.vertical(|ui| {
                     ui.set_width(w);
                     ui.add(egui::Label::new(j.outcome()).wrap());
-                    ui.label(RichText::new(j.summary()).color(pal().dim));
+                    // what it worked on, so the history says which files it was
+                    if !j.source.is_empty() {
+                        ui.add(egui::Label::new(RichText::new(&j.source).color(pal().dim)).truncate());
+                    }
+                    ui.label(RichText::new(format!("{} · {}", j.ended_clock(), j.summary())).color(pal().dim));
                 });
                 if remove(ui, t!("ops_panel.remove")) {
                     close = Some(j.id);
@@ -246,6 +257,7 @@ impl App {
                 ui.label(icon(ic::CLOSE, 10.0).color(pal().red));
                 ui.add(egui::Label::new(RichText::new(j.outcome()).color(pal().red)).wrap());
             });
+            ui.label(RichText::new(j.ended_clock()).color(pal().dim));
         } else {
             let s = j.status();
             if !s.is_empty() {

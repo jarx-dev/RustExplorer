@@ -309,7 +309,9 @@ fn file_op(paths: &[PathBuf], dir: &Path, cut: bool, flags: u32, progress: &mut 
             CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE).ok().ok()?;
             let r = (|| {
                 let op: IFileOperation = CoCreateInstance(&FileOperation, None, CLSCTX_ALL).ok()?;
-                op.SetOperationFlags(FILEOPERATION_FLAGS(FOF_ALLOWUNDO.0 | flags)).ok()?;
+                // FOF_SILENT: no Windows progress window, the app's Operacje panel shows it; the
+                // shell still asks about name conflicts and reports errors
+                op.SetOperationFlags(FILEOPERATION_FLAGS(FOF_ALLOWUNDO.0 | FOF_SILENT.0 | flags)).ok()?;
                 let to: IShellItem = SHCreateItemFromParsingName(&HSTRING::from(dir), None).ok()?;
                 for p in paths {
                     let item: IShellItem = SHCreateItemFromParsingName(&HSTRING::from(p.as_path()), None).ok()?;
