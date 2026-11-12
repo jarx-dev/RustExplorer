@@ -626,6 +626,24 @@ impl App {
                 } else if resp.hovered() {
                     p.rect_filled(rect.shrink(2.0), cr(4.0), shade(10));
                 }
+                // files dragged onto a tab go into its folder, as onto a folder row; the tab shown
+                // stays the same (not "Ten komputer", search results or a folder in an archive)
+                let path = self.tabs[i].path.clone();
+                if !is_pc(&path) && !self.tabs[i].found && !self.tabs[i].in_archive() {
+                    // files from another program: by where the pointer is (egui does not see it move then)
+                    let ext = self.ext.as_ref().filter(|x| resp.interact_rect.contains(x.0)).cloned();
+                    let hover = resp.dnd_hover_payload::<Dragged>().or_else(|| ext.as_ref().map(|x| x.1.clone()));
+                    // not into a dragged folder or below it, nor where the items already are
+                    if let Some(d) = hover.filter(|d| !d.0.iter().any(|x| path.starts_with(x) || x.parent() == Some(path.as_path()))) {
+                        let mv = drop_moves_now(&d, &path, ext.is_some(), resp.ctx.input(|i| i.modifiers));
+                        p.rect_stroke(rect.shrink(1.0), cr(6.0), Stroke::new(2.0, pal().accent), StrokeKind::Inside);
+                        self.drop_target = Some((path.clone(), mv));
+                        if let Some(d) = resp.dnd_release_payload::<Dragged>().or_else(|| ext.filter(|x| x.2).map(|x| x.1)) {
+                            self.ext = None;
+                            self.pending.push(Act::Drop(d.0.clone(), path.clone(), self.cur, mv));
+                        }
+                    }
+                }
                 let kind = if is_pc(&self.tabs[i].path) { Kind::Computer } else { Kind::Folder };
                 paint_icon(p, Rect::from_min_size(pos2(rect.left() + 10.0, rect.center().y - 8.0), vec2(16.0, 16.0)), kind);
                 p.galley(pos2(rect.left() + 32.0, rect.center().y - galley.size().y / 2.0), galley, col);
