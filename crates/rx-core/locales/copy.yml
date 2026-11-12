@@ -1,0 +1,8 @@
+# The app's own copy and move (rx-core/src/copy.rs): what the note says when it stops.
+_version: 2
+copy.failed:
+  en: "Not copied: “%{name}”: %{e}"
+  pl: "Nie skopiowano „%{name}”: %{e}"
+copy.not_removed:
+  en: "Copied, but “%{name}” stayed in its old place: %{e}"
+  pl: "Skopiowano, ale „%{name}” zostało w starym miejscu: %{e}"

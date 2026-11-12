@@ -128,8 +128,12 @@ przechodzeniu; plakietka na pasku stanu wyłącza blokadę.
 | 🔄 **Samoaktualizacja** | Nowa wersja instaluje się sama, gdy nic nie robisz; jeśli się nie uruchomi, wraca poprzednia. Szczegóły niżej. |
 | 📌 **Zasobnik** | Ikona przy zegarze; kliknięcie jej pokazuje albo chowa okno. Zamknięcie okna chowa je do zasobnika (bez przycisku na pasku zadań), a ponowne uruchomienie programu je przywraca; „Zakończ” kończy program. |
 
-Kopiowanie, przenoszenie i usuwanie idą przez powłokę Windows, więc dostajesz te same okna
-postępu i pytania o konflikty co w Eksploratorze. `Delete` przenosi do Kosza bez pytania, jak
+Kopiowanie i przenoszenie w programie idą jego własnym mechanizmem, z postępem w panelu
+Operacje: kilka plików naraz (na dysku talerzowym po jednym), więc folder z tysiącami małych
+plików kopiuje się kilka razy szybciej niż w Eksploratorze. Gdy nazwa w celu jest już zajęta,
+przejmuje powłoka Windows ze swoim pytaniem o konflikt, podobnie przy dowiązaniach i folderach
+wymagających zgody administratora. Przeciąganie plików do innych programów i `Ctrl+C` działają
+jak w Eksploratorze. `Delete` przenosi do Kosza bez pytania, jak
 w Windows 11; plik, który nie zmieści się w Koszu (np. z dysku sieciowego), zostanie usunięty
 na stałe dopiero po ostrzeżeniu powłoki.
 
