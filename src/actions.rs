@@ -229,6 +229,7 @@ impl App {
             minimized_since: None,
             trimmed: false,
             eco: false,
+            restore_maximized: false,
         }
     }
 
