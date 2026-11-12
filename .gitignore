@@ -12,6 +12,7 @@
 *.failed.exe
 *.update-ok
 *.update-skip
+*.update-notes
 *.part
 *.pdb
 

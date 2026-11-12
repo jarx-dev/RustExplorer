@@ -8,6 +8,11 @@ impl App {
         setup_style(ctx);
         // screenshot runs get no tray icon
         let tray = if shot.is_none() { make_tray(ctx) } else { (None, channel().1) };
+        // the first start after an update says so from the tray, with what changed
+        if let (Some(t), Some(notes)) = (&tray.0, update::just_updated()) {
+            let text = if notes.is_empty() { t!("tray.updated_text").to_string() } else { notes };
+            sys::tray_balloon(t.window_handle(), &t!("tray.updated", app = APP_NAME, v = update::version().0), &text);
+        }
         // a second start of the window (the DirectX 12 fallback) makes its own
         let (tx, rx) = chan.unwrap_or_else(|| {
             let chan = channel();
