@@ -914,7 +914,10 @@ impl App {
             Act::ArchiveChange(arc, change, rename) => self.change_archive(arc, change, rename, ctx),
             Act::ConvertArchive(arc, inner) => self.convert_archive(arc, inner, ctx),
             Act::PackAs(stem, kind, opts) => {
-                if !sel.is_empty() {
+                if sel.is_empty() {
+                    // never silent: the dialog has closed, so say why nothing is packed
+                    self.msg = Some(t!("actions.select_to_pack").into());
+                } else {
                     let dest = free_name(&dir, &stem, kind, &[]);
                     let name = dest.file_name().unwrap_or_default().to_string_lossy().into_owned();
                     let base = dir.clone();
