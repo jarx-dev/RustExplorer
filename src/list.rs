@@ -201,7 +201,9 @@ impl App {
             if !is_dir {
                 item(ui, ic::BAK, t!("bars.cmd.make_bak"), "Ctrl+B", Act::MakeBak);
                 if own {
-                    item(ui, ic::SHIELD, t!("scan.check"), "", Act::VtCheck(path.clone()));
+                    // shown greyed out without a key, so people learn the check exists
+                    let has_key = sys::secret(crate::scan::KEY_NAME).is_some();
+                    ui.add_enabled_ui(has_key, |ui| item(ui, ic::SHIELD, t!("scan.check"), "", Act::VtCheck(path.clone()))).response.on_disabled_hover_text(t!("scan.no_key"));
                 }
             }
             if is_archive {

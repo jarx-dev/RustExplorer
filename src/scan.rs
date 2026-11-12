@@ -252,6 +252,8 @@ impl App {
             ui.label(RichText::new(t!("scan.key.title")).heading());
             ui.add_space(6.0);
             ui.add(egui::Label::new(t!("scan.key.info")).wrap());
+            ui.add_space(4.0);
+            ui.add(egui::Label::new(RichText::new(t!("scan.key.limit")).color(pal().dim)).wrap());
             if ui.link(t!("scan.key.page")).clicked() {
                 sys::open(Path::new(KEY_PAGE));
             }
