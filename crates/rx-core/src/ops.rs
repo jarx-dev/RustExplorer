@@ -9,10 +9,8 @@ use crate::fmt_size;
 
 /// How often a running job takes a speed sample; also the most a worker asks for a repaint.
 pub const SAMPLE_EVERY: Duration = Duration::from_millis(200);
-/// How long a finished job stays in the status bar and the panel.
-pub const KEEP_DONE: Duration = Duration::from_secs(5);
-/// A job done sooner leaves at once, with no confirmation (a delete of a few files).
-const QUICK: Duration = Duration::from_secs(1);
+/// Finished jobs kept as the history (the person clears it); past that the oldest go.
+const MAX_HISTORY: usize = 100;
 /// Samples kept per job; past that every other one goes, so the chart still spans the whole run.
 const MAX_SAMPLES: usize = 240;
 
@@ -171,16 +169,12 @@ impl Ops {
         self.job(id, |j| j.queued = Some(until));
     }
 
-    /// Ok(note) ends it done (shown for KEEP_DONE), Err(text) failed (kept until dismissed).
+    /// Ok(note) ends it done, Err(text) failed; both stay as history until cleared or closed.
     pub fn finish(&self, id: u64, outcome: Result<String, String>) {
         self.finish_at(id, outcome, Instant::now());
     }
 
     fn finish_at(&self, id: u64, outcome: Result<String, String>, now: Instant) {
-        // a job done within QUICK was seen through: no 5 s "✓ 4 kB · 0 s" after it (its note still shows)
-        if outcome.is_ok() && self.job(id, |j| now.duration_since(j.start) < QUICK).unwrap_or(false) {
-            return self.remove(id);
-        }
         self.job(id, |j| {
             j.end = Some(now);
             if outcome.is_ok() {
@@ -190,19 +184,32 @@ impl Ops {
             }
             j.state = outcome.map_or_else(State::Failed, State::Done);
         });
+        // the history stays until cleared, but not without end: the oldest finished go first
+        self.with(|(_, jobs)| {
+            let mut extra = jobs.iter().filter(|j| !j.running()).count().saturating_sub(MAX_HISTORY);
+            jobs.retain(|j| {
+                let drop = extra > 0 && !j.running();
+                extra -= drop as usize;
+                !drop
+            });
+        });
     }
 
-    /// Gone without a trace: a job that ended in a question or was cancelled, or a failure the
-    /// user closed.
+    /// Wyczyść historię: every finished job goes, the running ones stay.
+    pub fn clear_finished(&self) {
+        self.with(|(_, jobs)| jobs.retain(Job::running));
+    }
+
+    /// Gone without a trace: a job that ended in a question or was cancelled, or one the person
+    /// closed in the panel.
     pub fn remove(&self, id: u64) {
         self.with(|(_, jobs)| jobs.retain(|j| j.id != id));
     }
 
-    /// A copy for drawing; done jobs older than KEEP_DONE are dropped here. The chart's samples
-    /// come only `with_samples` (the panel is open).
-    pub fn list(&self, now: Instant, with_samples: bool) -> Vec<Job> {
+    /// A copy for drawing, the history included. The chart's samples come only `with_samples`
+    /// (the panel is open).
+    pub fn list(&self, with_samples: bool) -> Vec<Job> {
         self.with(|(_, jobs)| {
-            jobs.retain(|j| !matches!(j.state, State::Done(_)) || j.end.is_none_or(|e| now.duration_since(e) < KEEP_DONE));
             jobs.iter_mut()
                 .map(|j| {
                     // taken out for the clone, so they are copied only when asked for
@@ -294,25 +301,39 @@ mod tests {
         let (a, b) = (ops.start("Kopiowanie do Y".into(), String::new()), ops.start("Wypakowywanie do Z".into(), "z.7z".into()));
         ops.progress(a, 0, 0);
         ops.progress(b, 300, 1000);
-        let l = ops.list(Instant::now(), false);
+        let l = ops.list(false);
         assert_eq!(l[0].fraction(), None);
         // the job with no size does not count in the total share
         assert_eq!(overall(&l), Some(0.3));
-        // a quick success leaves at once, with no confirmation
+        // every finished job stays as history, a quick one too
         let c = ops.start("Przenoszenie do Kosza".into(), String::new());
         ops.finish(c, Ok(String::new()));
-        assert_eq!(ops.list(Instant::now(), false).len(), 2);
-        let later = Instant::now() + QUICK;
+        assert_eq!(ops.list(false).len(), 3);
+        let later = Instant::now() + Duration::from_secs(5);
         ops.finish_at(b, Err("Błąd archiwum: uszkodzony wpis".into()), later);
+        assert_eq!(overall(&ops.list(false)), None);
+        let l = ops.list(false);
+        assert_eq!((l[0].outcome(), l[1].outcome(), l[2].outcome()), ("Kopiowanie do Y".into(), "Błąd archiwum: uszkodzony wpis".into(), "Zakończono: Przenoszenie do Kosza".into()));
+        // Wyczyść historię keeps what still runs; a single entry goes with its ×
+        ops.clear_finished();
+        assert_eq!(ops.list(false).iter().map(|j| j.id).collect::<Vec<_>>(), [a]);
         ops.finish_at(a, Ok(String::new()), later);
-        assert_eq!(overall(&ops.list(later, false)), None);
-        let l = ops.list(later, false);
-        assert_eq!((l[0].outcome(), l[1].outcome()), ("Zakończono: Kopiowanie do Y".into(), "Błąd archiwum: uszkodzony wpis".into()));
-        // done jobs leave after a while; a failure stays until removed
-        let l = ops.list(later + KEEP_DONE, false);
-        assert_eq!(l.len(), 1);
-        ops.remove(b);
-        assert!(ops.list(later, false).is_empty());
+        ops.remove(a);
+        assert!(ops.list(false).is_empty());
+    }
+
+    #[test]
+    fn history_keeps_the_newest() {
+        let ops = Ops::default();
+        let running = ops.start("biegnie".into(), String::new());
+        for i in 0..MAX_HISTORY + 5 {
+            let id = ops.start(i.to_string(), String::new());
+            ops.finish(id, Ok(String::new()));
+        }
+        let l = ops.list(false);
+        // the oldest finished went, the running one stayed
+        assert_eq!(l.len(), MAX_HISTORY + 1);
+        assert_eq!((l[0].id, l[1].title.as_str()), (running, "5"));
     }
 
     #[test]
@@ -321,10 +342,10 @@ mod tests {
         let a = ops.start(String::new(), String::new());
         let t0 = Instant::now();
         ops.job(a, |j| j.progress(500, 1000, t0 + SAMPLE_EVERY));
-        assert!(ops.list(t0, false)[0].samples.is_empty());
-        assert_eq!(ops.list(t0, true)[0].samples.len(), 1);
+        assert!(ops.list(false)[0].samples.is_empty());
+        assert_eq!(ops.list(true)[0].samples.len(), 1);
         // and kept after a list without them
-        assert_eq!(ops.list(t0, true)[0].samples.len(), 1);
+        assert_eq!(ops.list(true)[0].samples.len(), 1);
     }
 
     #[test]

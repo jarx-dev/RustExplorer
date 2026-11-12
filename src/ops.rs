@@ -95,7 +95,7 @@ impl App {
         let popup_id = panel_id();
         let open = egui::Popup::is_id_open(ui.ctx(), popup_id);
         // the chart's samples are copied only for the open panel
-        let jobs = self.ops.list(Instant::now(), open);
+        let jobs = self.ops.list(open);
         if jobs.is_empty() {
             egui::Popup::close_id(ui.ctx(), popup_id);
             return;
@@ -156,14 +156,13 @@ impl App {
             info.value = frac.map(|f| (f as f64 * 100.0).floor());
             info
         });
-        // a done job leaves on its own: the bar must change then without a pointer move
-        if let Some(left) = jobs.iter().filter_map(|j| j.end.filter(|_| matches!(j.state, State::Done(_)))).map(|e| rx_core::ops::KEEP_DONE.saturating_sub(e.elapsed())).min() {
-            ui.ctx().request_repaint_after(left);
-        }
         let mut close = None;
+        let mut clear = false;
         egui::Popup::new(popup_id, ui.ctx().clone(), &resp, ui.layer_id())
             .open_memory(resp.clicked().then_some(egui::SetOpenCommand::Toggle))
-            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+            // one panel for the whole app: it stays open while tabs and folders change, until its
+            // button or Esc closes it
+            .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
             .align(egui::RectAlign::TOP_START)
             .gap(6.0)
             .width(PANEL_W)
@@ -175,46 +174,63 @@ impl App {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(t!("ops_panel.title")).font(FontId::new(14.0, FontFamily::Name("semibold".into()))));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        if running.len() < jobs.len() {
+                            let r = ui.add(egui::Button::new(RichText::new(t!("ops_panel.clear")).color(pal().accent)).frame(false));
+                            clear = r.on_hover_text(t!("ops_panel.clear_tip")).clicked();
+                        }
                         let n = running.len();
                         ui.label(RichText::new(if n > 0 { t!("ops_panel.running", n = n) } else { t!("ops_panel.none").into() }).color(pal().dim));
                     });
                 });
-                for j in &jobs {
-                    ui.add_space(5.0);
-                    ui.separator();
-                    ui.add_space(3.0);
-                    close = close.or(self.op_card(ui, j));
-                }
+                // what runs on top, then the history from the newest
+                let order = jobs.iter().filter(|j| j.running()).chain(jobs.iter().rev().filter(|j| !j.running()));
+                egui::ScrollArea::vertical().max_height(480.0).auto_shrink([false, true]).show(ui, |ui| {
+                    for j in order {
+                        ui.add_space(5.0);
+                        ui.separator();
+                        ui.add_space(3.0);
+                        close = close.or(self.op_card(ui, j));
+                    }
+                });
             });
+        if clear {
+            self.ops.clear_finished();
+        }
         if let Some(id) = close {
             self.ops.remove(id);
         }
     }
 
-    /// One job's card; returns its id when its failure was closed (×).
+    /// One job's card; returns its id when it was removed from the history (×).
     fn op_card(&self, ui: &mut Ui, j: &Job) -> Option<u64> {
         let mut close = None;
+        let remove = |ui: &mut Ui, name: &str| {
+            let r = ui.add(egui::Button::new(icon(ic::CLOSE, 10.0).color(pal().dim)).frame(false)).on_hover_text(t!("ops_panel.remove"));
+            named(&r, egui::Role::Button, name);
+            r.clicked()
+        };
         if let State::Done(_) = &j.state {
             ui.horizontal_top(|ui| {
                 ui.label(icon(ic::CHECK, 12.0).color(pal().new_text));
+                let w = ui.available_width() - 24.0;
                 ui.vertical(|ui| {
+                    ui.set_width(w);
                     ui.add(egui::Label::new(j.outcome()).wrap());
                     ui.label(RichText::new(j.summary()).color(pal().dim));
                 });
+                if remove(ui, t!("ops_panel.remove")) {
+                    close = Some(j.id);
+                }
             });
-            return None;
+            return close;
         }
         let err = matches!(j.state, State::Failed(_));
         let col = if err { pal().red } else { pal().accent };
         ui.horizontal(|ui| {
             ui.add(egui::Label::new(RichText::new(&j.title).font(FontId::new(14.0, FontFamily::Name("semibold".into())))).truncate());
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if err {
-                    let r = ui.add(egui::Button::new(icon(ic::CLOSE, 10.0).color(pal().dim)).frame(false)).on_hover_text(t!("common.close"));
-                    named(&r, egui::Role::Button, t!("ops_panel.close_error"));
-                    if r.clicked() {
-                        close = Some(j.id);
-                    }
+                if err && remove(ui, t!("ops_panel.close_error")) {
+                    close = Some(j.id);
                 }
                 if let Some(f) = j.fraction() {
                     ui.label(RichText::new(fmt_pct(f)).font(FontId::new(18.0, FontFamily::Name("semibold".into()))));

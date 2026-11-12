@@ -40,3 +40,12 @@ ops_panel.none:
 ops_panel.close_error:
   en: Dismiss operation error
   pl: Zamknij błąd operacji
+ops_panel.clear:
+  en: Clear history
+  pl: Wyczyść historię
+ops_panel.clear_tip:
+  en: Remove the finished operations; the running ones stay
+  pl: Usuń zakończone operacje; trwające zostają
+ops_panel.remove:
+  en: Remove from history
+  pl: Usuń z historii
