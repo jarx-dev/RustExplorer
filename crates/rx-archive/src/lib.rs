@@ -307,9 +307,10 @@ pub fn extract_entries(archive: &Path, picks: &[(String, PathBuf)], password: Op
 }
 
 /// With a password given, data that does not decode or fails its checksum means the password is
-/// wrong (a stored 7z entry only shows it in the CRC); a full disk or a denied write stays an error.
+/// wrong (a stored 7z entry only shows it in the CRC, BZip2 as InvalidInput); a full disk or a
+/// denied write stays an error.
 fn bad_password(password: Option<&str>, e: &io::Error) -> bool {
-    password.is_some() && matches!(e.kind(), io::ErrorKind::InvalidData | io::ErrorKind::Other)
+    password.is_some() && matches!(e.kind(), io::ErrorKind::InvalidData | io::ErrorKind::InvalidInput | io::ErrorKind::Other)
 }
 
 /// A new file, never one already there: two entries that Windows sees as one name ("Readme.txt"
@@ -595,10 +596,39 @@ fn gather(paths: &[PathBuf], base: &Path, skip: &Path) -> Result<Vec<(PathBuf, S
     Ok(out)
 }
 
+/// How a new archive is made, as 7-Zip's "Add to archive" asks for it.
+#[derive(Clone)]
+pub struct PackOpts {
+    /// 0 (stored as is) to 9 (ultra)
+    pub level: u32,
+    /// one of methods(kind); not used at level 0
+    pub method: &'static str,
+    /// none or empty: not encrypted; ZIP gets AES-256, 7z its own AES-256
+    pub password: Option<String>,
+    /// 7z with a password: the list of names is encrypted too, so even it asks for the password
+    pub hide_names: bool,
+}
+
+impl Default for PackOpts {
+    fn default() -> Self {
+        PackOpts { level: 5, method: "Deflate", password: None, hide_names: false }
+    }
+}
+
+/// The compression methods a new archive of `kind` ("zip" or "7z") can use, the usual one first.
+pub fn methods(kind: &str) -> &'static [&'static str] {
+    if kind == "7z" { &["LZMA2", "LZMA", "PPMd", "BZip2"] } else { &["Deflate"] }
+}
+
 /// Packs `paths` (files and folders, named relative to `base`) into `dest`, a new .zip or .7z by
-/// its extension. The archive file is claimed first (it must not exist), so two jobs never write
-/// one; a failed pack removes only what it made.
+/// its extension, with the default options.
 pub fn pack(paths: &[PathBuf], base: &Path, dest: &Path, progress: Progress) -> Result<usize, String> {
+    pack_with(paths, base, dest, &PackOpts::default(), progress)
+}
+
+/// pack() with the options chosen. The archive file is claimed first (it must not exist), so two
+/// jobs never write one; a failed pack removes only what it made.
+pub fn pack_with(paths: &[PathBuf], base: &Path, dest: &Path, opts: &PackOpts, progress: Progress) -> Result<usize, String> {
     let kind = ext(dest);
     if kind != "zip" && kind != "7z" {
         return Err(t!("rx_archive.cant_create", kind = kind));
@@ -607,7 +637,7 @@ pub fn pack(paths: &[PathBuf], base: &Path, dest: &Path, progress: Progress) -> 
     let run = std::panic::AssertUnwindSafe(|| {
         let items = gather(paths, base, dest)?;
         let total: u64 = items.iter().filter(|i| !i.2).filter_map(|i| std::fs::metadata(&i.0).ok()).map(|m| m.len()).sum();
-        if kind == "zip" { pack_zip(&items, file, total, progress) } else { pack_7z(&items, file, total, progress) }
+        if kind == "zip" { pack_zip(&items, file, opts, total, progress) } else { pack_7z(&items, file, opts, total, progress) }
     });
     let r = std::panic::catch_unwind(run).unwrap_or_else(|_| Err(t!("rx_archive.internal").into()));
     if r.is_err() {
@@ -616,11 +646,11 @@ pub fn pack(paths: &[PathBuf], base: &Path, dest: &Path, progress: Progress) -> 
     r
 }
 
-fn pack_zip(items: &[(PathBuf, String, bool)], file: File, total: u64, progress: Progress) -> Result<usize, String> {
+fn pack_zip(items: &[(PathBuf, String, bool)], file: File, o: &PackOpts, total: u64, progress: Progress) -> Result<usize, String> {
     let mut w = zip::ZipWriter::new(BufWriter::new(file));
     let (mut done, mut files) = (0, 0);
     for (path, name, dir) in items {
-        done += zip_add(&mut w, Some(path), name, *dir)?;
+        done += zip_add(&mut w, Some(path), name, *dir, o)?;
         if !*dir {
             files += 1;
             progress(done, total);
@@ -632,13 +662,21 @@ fn pack_zip(items: &[(PathBuf, String, bool)], file: File, total: u64, progress:
 
 type ZipOut = zip::ZipWriter<BufWriter<File>>;
 
-/// Writes entry `name` (a folder when `dir`) from file `path` (none: an empty folder), deflated,
-/// with the file's local date as Explorer's "Wyślij do > Folder skompresowany". Returns its bytes.
-fn zip_add(w: &mut ZipOut, path: Option<&Path>, name: &str, dir: bool) -> Result<u64, String> {
-    use zip::write::SimpleFileOptions;
+/// Writes entry `name` (a folder when `dir`) from file `path` (none: an empty folder), deflated
+/// (stored at level 0) and AES-encrypted as `o` says, with the file's local date as Explorer's
+/// "Wyślij do > Folder skompresowany". Returns its bytes.
+fn zip_add(w: &mut ZipOut, path: Option<&Path>, name: &str, dir: bool, o: &PackOpts) -> Result<u64, String> {
+    use zip::write::FileOptions;
     let err = |e: &dyn std::fmt::Display| e.to_string();
     let md = path.and_then(|p| std::fs::metadata(p).ok());
-    let mut opts = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let mut opts = match o.level {
+        0 => FileOptions::<()>::default().compression_method(zip::CompressionMethod::Stored),
+        l => FileOptions::<()>::default().compression_method(zip::CompressionMethod::Deflated).compression_level(Some(l.min(9) as i64)),
+    };
+    if let Some(pw) = o.password.as_deref().filter(|p| !p.is_empty()) {
+        // folders are written without it (add_directory drops it)
+        opts = opts.with_aes_encryption(zip::AesMode::Aes256, pw);
+    }
     if let Some(t) = md.as_ref().and_then(|m| m.modified().ok()) {
         use chrono::{Datelike, Timelike};
         let d = chrono::DateTime::<chrono::Local>::from(t);
@@ -664,9 +702,26 @@ fn zip_finish(w: ZipOut) -> Result<(), String> {
     io::Write::flush(&mut out).map_err(|e| e.to_string())
 }
 
-fn pack_7z(items: &[(PathBuf, String, bool)], file: File, total: u64, progress: Progress) -> Result<usize, String> {
+fn pack_7z(items: &[(PathBuf, String, bool)], file: File, o: &PackOpts, total: u64, progress: Progress) -> Result<usize, String> {
+    use sevenz_rust2::encoder_options::{AesEncoderOptions, Bzip2Options, Lzma2Options, LzmaOptions, PpmdOptions};
+    use sevenz_rust2::{EncoderConfiguration, EncoderMethod};
     let err = |e: &dyn std::fmt::Display| e.to_string();
     let mut w = sevenz_rust2::ArchiveWriter::new(file).map_err(|e| err(&e))?;
+    let l = o.level.min(9);
+    let method: EncoderConfiguration = match (l, o.method) {
+        (0, _) => EncoderMethod::COPY.into(),
+        (_, "LZMA") => LzmaOptions::from_level(l).into(),
+        (_, "PPMd") => PpmdOptions::from_level(l).into(),
+        (_, "BZip2") => Bzip2Options::from_level(l).into(),
+        _ => Lzma2Options::from_level(l).into(),
+    };
+    let mut chain = vec![method];
+    if let Some(pw) = o.password.as_deref().filter(|p| !p.is_empty()) {
+        // the first method is applied last: compressed, then encrypted
+        chain.insert(0, AesEncoderOptions::new(pw.into()).into());
+    }
+    w.set_content_methods(chain);
+    w.set_encrypt_header(o.hide_names);
     let (mut done, mut files) = (0, 0);
     for (path, name, dir) in items {
         let entry = sevenz_rust2::ArchiveEntry::from_path(path, name.clone());
@@ -936,7 +991,7 @@ fn update_zip(archive: &Path, tmp: &Path, plan: &Plan, progress: Progress) -> Re
         progress(i as u64 + 1, total);
     }
     for (k, (path, name, dir)) in plan.add.iter().enumerate() {
-        zip_add(&mut w, path.as_deref(), name, *dir)?;
+        zip_add(&mut w, path.as_deref(), name, *dir, &PackOpts::default())?;
         progress((z.len() + k + 1) as u64, total);
     }
     zip_finish(w)
@@ -1079,6 +1134,37 @@ mod tests {
         assert_eq!(extract_entries(&arc, &[("Dokumenty/Żółw.txt".into(), picked.join("ż.txt"))], None, &mut |_, _| {}).unwrap(), (1, 0));
         assert_eq!(std::fs::read_to_string(picked.join("ż.txt")).unwrap(), "zażółć gęślą jaźń".repeat(100));
         std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    #[test]
+    fn options_levels_methods_and_passwords() {
+        let cases: [(&str, u32, &str, bool); 7] = [
+            ("zip", 0, "Deflate", false),
+            ("zip", 9, "Deflate", true),
+            ("7z", 0, "LZMA2", true),
+            ("7z", 1, "LZMA", false),
+            ("7z", 9, "PPMd", true),
+            ("7z", 5, "BZip2", false),
+            ("7z", 7, "LZMA2", true),
+        ];
+        for (i, (kind, level, method, hide)) in cases.into_iter().enumerate() {
+            let d = tmp(&format!("opts-{i}"));
+            let src = d.join("src");
+            let paths = sample(&src);
+            let arc = d.join(format!("p.{kind}"));
+            let o = PackOpts { level, method, password: Some("tajne hasło".into()), hide_names: hide };
+            assert_eq!(pack_with(&paths, &src, &arc, &o, &mut |_, _| {}).unwrap(), 2, "{i}");
+            let ctx = format!("{kind} {level} {method}");
+            assert!(extract(&arc, &d.join("none"), None, &mut |_, _| {}) == Err(Fail::Password), "{ctx}: no password");
+            let r = extract(&arc, &d.join("bad"), Some("zle"), &mut |_, _| {});
+            assert!(r == Err(Fail::Password), "{ctx}: wrong password {r:?}");
+            // names hidden only in a 7z that asks for it
+            assert_eq!(list(&arc).is_err(), kind == "7z" && hide, "{ctx}");
+            let out = d.join("out");
+            assert_eq!(extract(&arc, &out, Some("tajne hasło"), &mut |_, _| {}).unwrap(), (2, 0), "{ctx}");
+            assert_eq!(std::fs::read_to_string(out.join("Dokumenty/Żółw.txt")).unwrap(), "zażółć gęślą jaźń".repeat(100), "{ctx}");
+            std::fs::remove_dir_all(&d).unwrap();
+        }
     }
 
     #[test]

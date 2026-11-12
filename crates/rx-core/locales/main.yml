@@ -68,20 +68,95 @@ main.pack.name:
   en: Archive name
   pl: Nazwa archiwum
 main.pack.format:
-  en: "Format:"
-  pl: "Format:"
+  en: Format
+  pl: Format
 main.pack.zip_tip:
-  en: Opens on any system without extra software
-  pl: Otworzy go każdy system bez dodatkowych programów
+  en: Opens on any computer
+  pl: Otworzy każdy komputer
 main.pack.7z_tip:
-  en: Smaller file, takes longer to compress
-  pl: Mniejszy plik, pakowanie trwa dłużej
+  en: Smaller file, packs slower
+  pl: Mniejszy plik, pakuje wolniej
 main.pack.bad_name:
   en: "A name can't contain any of these characters: \\ / : * ? \" < > |"
   pl: "Nazwa nie może zawierać znaków \\ / : * ? \" < > |"
 main.pack.go:
   en: Compress
   pl: Spakuj
+main.pack.level:
+  en: Compression
+  pl: Kompresja
+main.pack.level_0:
+  en: None
+  pl: Brak
+main.pack.level_0_tip:
+  en: Files are stored as they are
+  pl: Pliki zapisane bez zmian
+main.pack.level_1:
+  en: Fastest
+  pl: Najszybsza
+main.pack.level_1_tip:
+  en: Quickest, biggest file
+  pl: Najszybciej, największy plik
+main.pack.level_3:
+  en: Fast
+  pl: Szybka
+main.pack.level_3_tip:
+  en: Quick, a little smaller file
+  pl: Szybko, trochę mniejszy plik
+main.pack.level_5:
+  en: Normal
+  pl: Normalna
+main.pack.level_5_tip:
+  en: A good balance of time and size
+  pl: Rozsądny czas i rozmiar
+main.pack.level_7:
+  en: Maximum
+  pl: Wysoka
+main.pack.level_7_tip:
+  en: Smaller file, takes longer
+  pl: Mniejszy plik, trwa dłużej
+main.pack.level_9:
+  en: Ultra
+  pl: Ultra
+main.pack.level_9_tip:
+  en: Smallest file, slowest, most memory
+  pl: Najmniejszy plik, najwolniej, najwięcej pamięci
+main.pack.method:
+  en: Method
+  pl: Metoda
+main.pack.protect:
+  en: Protect with a password
+  pl: Chroń hasłem
+main.pack.password:
+  en: Password
+  pl: Hasło
+main.pack.password2:
+  en: Repeat password
+  pl: Powtórz hasło
+main.pack.show_pw:
+  en: Show password
+  pl: Pokaż hasło
+main.pack.hide_pw:
+  en: Hide password
+  pl: Ukryj hasło
+main.pack.hide_names:
+  en: Encrypt file names
+  pl: Szyfruj nazwy plików
+main.pack.hide_names_tip:
+  en: Without the password nobody sees what is inside
+  pl: Bez hasła nikt nie zobaczy, co jest w środku
+main.pack.pw_differ:
+  en: The passwords don't match
+  pl: Hasła się różnią
+main.pack.aes_zip:
+  en: Windows Explorer can't open an encrypted ZIP. 7-Zip, WinRAR and this app can.
+  pl: Eksplorator Windows nie otworzy zaszyfrowanego ZIP-a. 7-Zip, WinRAR i ta aplikacja tak.
+main.pack.aes_zip_short:
+  en: AES-256 encryption of the files
+  pl: Szyfrowanie plików AES-256
+main.pack.aes_7z:
+  en: AES-256 encryption of the files
+  pl: Szyfrowanie plików AES-256
 main.settings.language:
   en: Language / Język
   pl: Language / Język

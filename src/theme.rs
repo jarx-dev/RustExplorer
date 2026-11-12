@@ -25,6 +25,10 @@ pub(crate) mod ic {
     pub const CALC: &str = "\u{E8EF}";
     /// Package (a box), for "Spakuj…"
     pub const PACK: &str = "\u{E7B8}";
+    /// Lock, Show (an eye) and Hide (an eye struck through), for the archive password
+    pub const LOCK: &str = "\u{E72E}";
+    pub const EYE: &str = "\u{E890}";
+    pub const EYE_OFF: &str = "\u{ED1A}";
     pub const SETTINGS: &str = "\u{E713}";
     /// Globe, for Ustawienia ▸ Language / Język
     pub const GLOBE: &str = "\u{E774}";
@@ -663,4 +667,112 @@ pub(crate) fn menu_entry(ui: &mut Ui, glyph: &str, label: &str, key: &str) -> Re
 /// A 32px text field with a hairline border (Windows 11 TextBox).
 pub(crate) fn field_frame() -> egui::Frame {
     egui::Frame::new().fill(pal().field).stroke(Stroke::new(1.0, pal().line)).corner_radius(cr(4.0)).inner_margin(Margin::symmetric(10, 5))
+}
+
+/// A full-width TextBox: field_frame() with the accent line under it while typing, and `trail`
+/// (a suffix or a button) at its right end. Returns the text edit's response.
+pub(crate) fn edit_field(ui: &mut Ui, text: &mut String, hint: &str, secret: bool, id: &str, trail: impl FnOnce(&mut Ui)) -> Response {
+    let mut out = None;
+    let fr = field_frame().show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.horizontal(|ui| {
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                trail(ui);
+                let e = egui::TextEdit::singleline(text).id(egui::Id::unique(id)).frame(egui::Frame::NONE).password(secret).hint_text(hint).desired_width(ui.available_width());
+                out = Some(ui.add(e));
+            });
+        });
+    });
+    let r = out.expect("drawn above");
+    if r.has_focus() {
+        let b = fr.response.rect;
+        ui.painter().line_segment([b.left_bottom() + vec2(2.0, -1.0), b.right_bottom() + vec2(-2.0, -1.0)], Stroke::new(2.0, pal().accent));
+    }
+    r
+}
+
+/// Windows 11's ToggleSwitch (40x20): accent with the knob right when on, an outline when off.
+pub(crate) fn switch(ui: &mut Ui, on: &mut bool, name: &str) -> Response {
+    let (rect, mut r) = ui.allocate_exact_size(vec2(40.0, 20.0), Sense::click());
+    if r.clicked() {
+        *on = !*on;
+        r.mark_changed();
+    }
+    let (enabled, now) = (ui.is_enabled(), *on);
+    r.widget_info(|| egui::WidgetInfo::selected(egui::Role::Switch, enabled, now, name));
+    let t = ui.ctx().animate_bool_responsive(r.id, *on);
+    let p = ui.painter();
+    let hot = r.hovered() && enabled;
+    if *on {
+        p.rect_filled(rect, cr(10.0), if hot { pal().accent_hover } else { pal().accent });
+    } else {
+        p.rect(rect, cr(10.0), if hot { shade(10) } else { Color32::TRANSPARENT }, Stroke::new(1.0, pal().dim), StrokeKind::Inside);
+    }
+    // the knob grows a little under the pointer, as in WinUI
+    let x = egui::lerp((rect.left() + 10.0)..=(rect.right() - 10.0), t);
+    p.circle_filled(pos2(x, rect.center().y), if hot { 7.0 } else { 6.0 }, if *on { pal().on_accent } else { pal().dim });
+    if r.has_focus() {
+        focus_ring(p, rect.expand(3.0), 13.0);
+    }
+    r
+}
+
+/// A row of choices in one track, the picked one raised on a field-coloured pill (WinUI's
+/// segmented control). Returns whether the choice changed.
+pub(crate) fn segmented<T: PartialEq + Copy>(ui: &mut Ui, value: &mut T, items: &[(T, &str, &str)]) -> bool {
+    let mut changed = false;
+    egui::Frame::new().fill(pal().widget).corner_radius(cr(6.0)).inner_margin(Margin::same(2)).show(ui, |ui| {
+        ui.spacing_mut().item_spacing.x = 2.0;
+        let n = items.len() as f32;
+        let w = (ui.available_width() - 2.0 * (n - 1.0)) / n;
+        ui.horizontal(|ui| {
+            for (v, label, tip) in items {
+                let on = *value == *v;
+                let text = RichText::new(*label).size(13.0).color(if on { pal().text } else { pal().dim });
+                let mut b = egui::Button::new(text).min_size(vec2(w, 28.0)).corner_radius(cr(4.0));
+                if on {
+                    b = b.fill(pal().field).stroke(Stroke::new(1.0, pal().line));
+                }
+                let r = ui.add_sized(vec2(w, 28.0), b);
+                let enabled = ui.is_enabled();
+                r.widget_info(|| egui::WidgetInfo::selected(egui::Role::RadioButton, enabled, on, *label));
+                if r.on_hover_text(*tip).clicked() && !on {
+                    *value = *v;
+                    changed = true;
+                }
+            }
+        });
+    });
+    changed
+}
+
+/// A radio choice drawn as a card: a title with a line under it, the picked one outlined in accent.
+pub(crate) fn choice_card(ui: &mut Ui, on: bool, title: &str, sub: &str, width: f32) -> Response {
+    let (rect, r) = ui.allocate_exact_size(vec2(width, 58.0), Sense::click());
+    let enabled = ui.is_enabled();
+    r.widget_info(|| egui::WidgetInfo::selected(egui::Role::RadioButton, enabled, on, title));
+    let p = ui.painter();
+    let fill = if on { pal().accent.gamma_multiply(0.10) } else if r.hovered() { shade(8) } else { pal().field };
+    let edge = if on { Stroke::new(1.5, pal().accent) } else { Stroke::new(1.0, pal().line) };
+    p.rect(rect, cr(6.0), fill, edge, StrokeKind::Inside);
+    // the WinUI radio mark: a ring, filled with a dot of the ground when picked
+    let c = pos2(rect.left() + 22.0, rect.center().y);
+    if on {
+        p.circle_filled(c, 9.0, pal().accent);
+        p.circle_filled(c, 4.0, pal().on_accent);
+    } else {
+        p.circle_stroke(c, 8.5, Stroke::new(1.0, pal().dim));
+    }
+    let x = rect.left() + 42.0;
+    let wrap = rect.right() - x - 10.0;
+    let t = p.layout(title.to_string(), FontId::new(14.0, FontFamily::Name("semibold".into())), pal().text, wrap);
+    let s = p.layout(sub.to_string(), FontId::proportional(12.5), pal().dim, wrap);
+    let top = rect.center().y - (t.size().y + 2.0 + s.size().y) / 2.0;
+    let th = t.size().y;
+    p.galley(pos2(x, top), t, pal().text);
+    p.galley(pos2(x, top + th + 2.0), s, pal().dim);
+    if r.has_focus() {
+        focus_ring(p, rect.expand(3.0), 9.0);
+    }
+    r
 }
