@@ -182,14 +182,21 @@ impl App {
                         ui.label(RichText::new(if n > 0 { t!("ops_panel.running", n = n) } else { t!("ops_panel.none").into() }).color(pal().dim));
                     });
                 });
-                // what runs on top, then the history from the newest
-                let order = jobs.iter().filter(|j| j.running()).chain(jobs.iter().rev().filter(|j| !j.running()));
-                egui::ScrollArea::vertical().max_height(480.0).auto_shrink([false, true]).show(ui, |ui| {
-                    for j in order {
-                        ui.add_space(5.0);
-                        ui.separator();
-                        ui.add_space(3.0);
-                        close = close.or(self.op_card(ui, j));
+                let mut card = |ui: &mut Ui, j: &Job| {
+                    ui.add_space(5.0);
+                    ui.separator();
+                    ui.add_space(3.0);
+                    close = close.or(self.op_card(ui, j));
+                };
+                // what runs stays in sight on top; the history from the newest scrolls under it, about
+                // three finished cards (three lines each) high, so the panel does not grow with it
+                for j in jobs.iter().filter(|j| j.running()) {
+                    card(ui, j);
+                }
+                let three = 3.0 * (3.0 * ui.text_style_height(&egui::TextStyle::Body) + 28.0);
+                egui::ScrollArea::vertical().id_salt("ops_history").max_height(three).auto_shrink([false, true]).show(ui, |ui| {
+                    for j in jobs.iter().rev().filter(|j| !j.running()) {
+                        card(ui, j);
                     }
                 });
             });
