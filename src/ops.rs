@@ -160,9 +160,9 @@ impl App {
         let mut clear = false;
         egui::Popup::new(popup_id, ui.ctx().clone(), &resp, ui.layer_id())
             .open_memory(resp.clicked().then_some(egui::SetOpenCommand::Toggle))
-            // one panel for the whole app: it stays open while tabs and folders change, until its
-            // button or Esc closes it
-            .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
+            // one panel for the whole app; a click anywhere else in the window (a file, a tab) folds
+            // it back into the status bar, as do its button and Esc
+            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
             .align(egui::RectAlign::TOP_START)
             .gap(6.0)
             .width(PANEL_W)
