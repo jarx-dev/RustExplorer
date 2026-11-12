@@ -1,0 +1,11 @@
+# The app's own copy and move (rx-core/src/copy.rs): what the note says when it stops.
+_version: 2
+copy.failed:
+  en: "Not copied: “%{name}”: %{e}"
+  pl: "Nie skopiowano „%{name}”: %{e}"
+copy.not_removed:
+  en: "Copied, but “%{name}” stayed in its old place: %{e}"
+  pl: "Skopiowano, ale „%{name}” zostało w starym miejscu: %{e}"
+copy.changed:
+  en: "Moved, but files changed while it ran stayed in the old place: %{n}"
+  pl: "Przeniesiono, ale pliki zmienione w trakcie zostały w starym miejscu: %{n}"

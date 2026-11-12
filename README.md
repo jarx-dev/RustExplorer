@@ -122,8 +122,12 @@ navigate; the badge on the status bar turns the lock off.
 | 🔄 **Self-update** | A new version installs itself when you are idle; if it fails to start, the previous one comes back. Details below. |
 | 📌 **Tray** | An icon next to the clock; clicking it shows or hides the window. Closing the window hides it to the tray (no taskbar button), and starting the program again restores it; "Exit" exits the program. |
 
-Copying, moving and deleting go through the Windows shell, so you get the same progress windows and
-conflict prompts as in Explorer. `Delete` sends to the Recycle Bin without asking, as in Windows 11;
+Copying and moving inside the program use its own copy, with progress in the Operations panel:
+several files at a time (one at a time on a hard disk), so a folder of thousands of small files
+copies several times faster than in Explorer. When a name is already taken in the target, the
+Windows shell takes over with its conflict prompt, as it does for links and folders that need
+administrator consent. Files dragged out to other programs or copied with `Ctrl+C` work as in
+Explorer. `Delete` sends to the Recycle Bin without asking, as in Windows 11;
 a file that does not fit in the Bin (e.g. from a network drive) is deleted permanently, but only
 after the shell's warning.
 
@@ -212,7 +216,8 @@ flowchart LR
   is turned on in Windows). This entry lifts the 260-character limit only for direct Win32 calls
   (undoing a rename, "Always keep on this device", the folder
   watcher); listing, new folder and rename go through `std::fs`, which gets around the limit even
-  without the manifest. Deleting, copying and moving (`SHFileOperationW`), opening, properties, the
+  without the manifest. The program's own copy and move add the `\\?\` prefix to long paths
+  themselves. Deleting, copying and moving through the shell (`SHFileOperationW`), opening, properties, the
   Windows menu and thumbnails are shell calls that this entry does not cover: with paths over 260
   characters they may still fail (untested). No DPI, controls or theme entries, so the look does
   not change; no segment heap: 1-2 MB less private memory out of about 112 MB, and CPU with

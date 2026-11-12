@@ -483,6 +483,8 @@ struct App {
     rename: Option<Rename>,
     addr_edit: Option<String>,
     msg: Option<String>,
+    /// the note shown and since when (src/bars.rs: it goes after a while)
+    msg_at: Option<(String, f64)>,
     pending: Vec<Act>,
     tx: Sender<Msg>,
     rx: Receiver<Msg>,

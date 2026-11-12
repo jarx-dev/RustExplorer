@@ -11,6 +11,7 @@ use std::time::{Duration, Instant, SystemTime};
 // first: t! is in scope for the modules after it
 #[macro_use]
 pub mod i18n;
+pub mod copy;
 pub mod icon;
 pub mod index;
 pub mod ops;

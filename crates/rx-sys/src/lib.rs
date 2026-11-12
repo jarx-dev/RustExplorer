@@ -194,6 +194,119 @@ pub fn copy_into_with(paths: &[PathBuf], dir: &Path, cut: bool, progress: &mut d
     (ok, undo, left)
 }
 
+/// Wklej and a drop: the app's own copy (rx_core::copy) wherever it can, else Windows' own
+/// (`copy_into_with`: a name already taken, links, a folder needing the administrator's consent).
+/// Like `copy_into_with`, with the note saying where the app's own copy stopped.
+pub fn transfer(paths: &[PathBuf], dir: &Path, cut: bool, progress: &mut dyn FnMut(u64, u64)) -> (bool, rx_core::undo::Undo, usize, Option<String>) {
+    use rx_core::copy::{self, Outcome};
+    if let Some(plan) = copy::plan(paths, dir, cut, &WinFs) {
+        // a disk with a head to move reads and writes one file at a time; SSDs and shares take four
+        let workers = if seeks(dir) || paths.first().is_some_and(|p| seeks(p)) { 1 } else { 4 };
+        let (r, made) = copy::run(&plan, workers, &WinFs, progress);
+        if r != Outcome::Denied {
+            // only what this run made: the plan took no name already there, and an item put in the
+            // target by someone else meanwhile is not this operation's to take back
+            let made: std::collections::HashSet<PathBuf> = made.into_iter().collect();
+            let done: Vec<PathBuf> = paths.iter().filter(|p| p.file_name().is_some_and(|n| made.contains(&dir.join(n)))).cloned().collect();
+            let (undo, left) = rx_core::undo::transferred(&done, dir, cut, &vec![false; done.len()], &[], rx_core::undo::stamp);
+            let note = if let Outcome::Failed(e) = r { Some(e) } else { None };
+            return (note.is_none(), undo, left, note);
+        }
+    }
+    let (ok, undo, left) = copy_into_with(paths, dir, cut, progress);
+    (ok, undo, left, None)
+}
+
+/// rx_core::copy on Windows. CopyFileExW keeps a file's attributes, times and alternate streams.
+/// Through Windows' file cache: past it (COPY_FILE_NO_BUFFERING, robocopy /J) measured slower on
+/// the laptop's SSD for 500 MB and for 3 GB alike.
+struct WinFs;
+
+impl rx_core::copy::Fs for WinFs {
+    fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64)) -> std::io::Result<()> {
+        unsafe extern "system" fn told(_: i64, done: i64, _: i64, _: i64, _: u32, _: LPPROGRESS_ROUTINE_CALLBACK_REASON, _: windows::Win32::Foundation::HANDLE, _: windows::Win32::Foundation::HANDLE, data: *const std::ffi::c_void) -> COPYPROGRESSROUTINE_PROGRESS {
+            let f = unsafe { &mut *(data as *mut &mut dyn FnMut(u64)) };
+            f(done as u64);
+            PROGRESS_CONTINUE
+        }
+        let mut f: &mut dyn FnMut(u64) = progress;
+        unsafe { CopyFileExW(&long(from), &long(to), Some(told), Some(&mut f as *mut _ as *const _), None, COPY_FILE_FAIL_IF_EXISTS) }.map_err(io_error)
+    }
+
+    fn rename(&self, from: &Path, to: &Path) -> std::io::Result<()> {
+        // no MOVEFILE_REPLACE_EXISTING: a file put there meanwhile is an error, not replaced
+        unsafe { MoveFileExW(&long(from), &long(to), MOVE_FILE_FLAGS(0)) }.map_err(io_error)
+    }
+
+    fn same_volume(&self, from: &Path, to: &Path) -> bool {
+        volume(from).zip(volume(to)).is_some_and(|(a, b)| a.eq_ignore_ascii_case(&b))
+    }
+
+    fn dir_made(&self, from: &Path, to: &Path) {
+        // what Explorer carries over to a copied folder: hidden (.git), system, read-only, archive
+        let keep = FILE_ATTRIBUTE_HIDDEN.0 | FILE_ATTRIBUTE_SYSTEM.0 | FILE_ATTRIBUTE_READONLY.0 | FILE_ATTRIBUTE_ARCHIVE.0 | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED.0;
+        unsafe {
+            let a = GetFileAttributesW(&long(from));
+            if a != INVALID_FILE_ATTRIBUTES && a & keep != 0 {
+                let _ = SetFileAttributesW(&long(to), FILE_FLAGS_AND_ATTRIBUTES(a & keep));
+            }
+        }
+    }
+}
+
+/// `p` for a Win32 call: past 259 characters with the \\?\ prefix, which works without
+/// LongPathsEnabled (std does the same for its own calls). The app's paths are absolute.
+fn long(p: &Path) -> HSTRING {
+    let w: Vec<u16> = p.as_os_str().encode_wide().collect();
+    let u = |s: &str| s.encode_utf16().collect::<Vec<u16>>();
+    let w = if w.len() < 260 || w.starts_with(&u(r"\\?\")) {
+        w
+    } else if w.starts_with(&u(r"\\")) {
+        [u(r"\\?\UNC\"), w[2..].to_vec()].concat()
+    } else {
+        [u(r"\\?\"), w].concat()
+    };
+    HSTRING::from_wide(&w)
+}
+
+/// A Win32 failure as std reads it (its kind, Windows' own words): `windows` hands std the
+/// HRESULT, which std does not know as "access denied" and the like.
+fn io_error(e: windows::core::Error) -> std::io::Error {
+    let c = e.code().0 as u32;
+    std::io::Error::from_raw_os_error(if c >> 16 == 0x8007 { (c & 0xFFFF) as i32 } else { c as i32 })
+}
+
+/// The root of the volume `p` is on ("C:\", "\\serwer\udział\", a folder a disk is mounted on).
+fn volume(p: &Path) -> Option<String> {
+    let mut buf = [0u16; 1024];
+    unsafe { GetVolumePathNameW(&HSTRING::from(p), &mut buf) }.ok()?;
+    Some(from_wide(&buf))
+}
+
+/// Whether `p` is on a disk with a head to move (Windows says "seek penalty"); a share or a disk
+/// that does not answer counts as not.
+fn seeks(p: &Path) -> bool {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::IO::DeviceIoControl;
+    use windows::Win32::System::Ioctl::*;
+    let Some(root) = volume(p) else { return false };
+    unsafe {
+        let mut name = [0u16; 64];
+        if GetVolumeNameForVolumeMountPointW(&HSTRING::from(root), &mut name).is_err() {
+            return false;
+        }
+        // the volume itself ("\\?\Volume{…}" with no backslash at the end) answers for its disk; no rights are asked
+        let name = from_wide(&name);
+        let share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+        let Ok(vol) = CreateFileW(&HSTRING::from(name.trim_end_matches('\\')), 0, share, None, OPEN_EXISTING, FILE_FLAGS_AND_ATTRIBUTES(0), None) else { return false };
+        let q = STORAGE_PROPERTY_QUERY { PropertyId: StorageDeviceSeekPenaltyProperty, QueryType: PropertyStandardQuery, ..Default::default() };
+        let (mut d, mut n) = (DEVICE_SEEK_PENALTY_DESCRIPTOR::default(), 0u32);
+        let asked = DeviceIoControl(vol, IOCTL_STORAGE_QUERY_PROPERTY, Some(&q as *const _ as *const _), size_of_val(&q) as u32, Some(&mut d as *mut _ as *mut _), size_of_val(&d) as u32, Some(&mut n), None);
+        let _ = CloseHandle(vol);
+        asked.is_ok() && d.IncursSeekPenalty
+    }
+}
+
 /// Hears an IFileOperation: its progress, and the top-level items that got a new name.
 #[windows::core::implement(IFileOperationProgressSink)]
 struct Sink {
@@ -1041,6 +1154,101 @@ mod tests {
         assert!(ok && !seen.is_empty() && seen.iter().all(|&r| r == (0, 0)) && took.as_millis() < 5000, "{seen:?} {took:?}");
         assert_eq!(std::fs::read_dir(base.join("b").join("drzewo").join("sub3")).unwrap().count(), 100);
 
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn the_own_copy_keeps_progress_attributes_and_undo() {
+        let base = std::env::current_exe().unwrap().parent().unwrap().join(format!("rx-test-own-{}", std::process::id()));
+        let (src, dst, mv) = (base.join("src"), base.join("dst"), base.join("mv"));
+        for d in [src.join("tree/.git"), dst.clone(), mv.clone()] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        for i in 0..50 {
+            std::fs::write(src.join(format!("tree/.git/f{i}")), [b'x'; 3000]).unwrap();
+        }
+        let hidden = |p: &Path| unsafe { GetFileAttributesW(&HSTRING::from(p)) } & FILE_ATTRIBUTE_HIDDEN.0 != 0;
+        unsafe { SetFileAttributesW(&HSTRING::from(src.join("tree/.git").as_path()), FILE_ATTRIBUTE_HIDDEN) }.unwrap();
+        let big = src.join("big.bin");
+        std::fs::write(&big, vec![5u8; 20 << 20]).unwrap();
+        let total = (20 << 20) + 50 * 3000;
+
+        let mut seen = vec![];
+        let (ok, undo, left, note) = transfer(&[src.join("tree"), big.clone()], &dst, false, &mut |d, t| seen.push((d, t)));
+        eprintln!("{} reports, last {:?}; {undo:?}", seen.len(), seen.last());
+        assert!(ok && left == 0 && note.is_none() && seen.last() == Some(&(total, total)) && seen.windows(2).all(|w| w[0].0 <= w[1].0));
+        assert_eq!(std::fs::read(dst.join("big.bin")).unwrap(), std::fs::read(&big).unwrap());
+        assert!(hidden(&dst.join("tree/.git")) && std::fs::read_dir(dst.join("tree/.git")).unwrap().count() == 50);
+        assert_eq!(undo, Undo::Created(vec![(dst.join("tree"), rx_core::undo::stamp(&dst.join("tree"))), (dst.join("big.bin"), rx_core::undo::stamp(&dst.join("big.bin")))], "undo.what.copy"));
+
+        // Windows' errors reach the engine with std's kinds (a refusal hands over to Windows' copy)
+        let e = rx_core::copy::Fs::copy_file(&WinFs, &big, &dst.join("big.bin"), &mut |_| {}).unwrap_err();
+        assert_eq!(e.kind(), std::io::ErrorKind::AlreadyExists, "{e}");
+
+        // past 260 characters: through \\?\ (works with LongPathsEnabled off)
+        let deep = (0..6).fold(src.join("gleboki"), |p, i| p.join(format!("{i}{}", "x".repeat(50))));
+        std::fs::create_dir_all(&deep).unwrap();
+        std::fs::write(deep.join("plik.txt"), "rx").unwrap();
+        let (ok, _, _, note) = transfer(&[src.join("gleboki")], &dst, false, &mut |_, _| {});
+        let copied = dst.join(deep.strip_prefix(&src).unwrap()).join("plik.txt");
+        assert!(ok && note.is_none() && copied.as_os_str().len() > 300 && copied.exists(), "{note:?}");
+
+        // a move on one volume: renamed, and Ctrl+Z puts it back
+        let (ok, undo, _, note) = transfer(std::slice::from_ref(&big), &mv, true, &mut |_, _| {});
+        assert!(ok && note.is_none() && !big.exists() && mv.join("big.bin").exists());
+        assert_eq!(undo, Undo::Moved(vec![(mv.join("big.bin"), big.clone())]));
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    /// Windows' copy against the app's own on this machine's disk, for one file of RX_BENCH_MB
+    /// megabytes or a folder of RX_BENCH_FILES files of 20 KB:
+    /// `set RX_BENCH_MB=500` and `rx_sys-….exe bench --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn bench() {
+        let var = |k| std::env::var(k).ok().and_then(|v| v.parse::<usize>().ok());
+        let (mb, files) = (var("RX_BENCH_MB"), var("RX_BENCH_FILES"));
+        let base = std::env::current_exe().unwrap().parent().unwrap().join(format!("rx-test-bench-{}", std::process::id()));
+        let item = base.join("zrodlo");
+        // not zeros: nothing on the way may compress or skip them
+        let mut x = 0x2545_f491_4f6c_dd1du64;
+        let mut fill = |p: &Path, bytes: usize| {
+            let mut w = std::io::BufWriter::new(std::fs::File::create(p).unwrap());
+            for _ in 0..bytes / 8 {
+                x ^= x << 13;
+                x ^= x >> 7;
+                x ^= x << 17;
+                std::io::Write::write_all(&mut w, &x.to_le_bytes()).unwrap();
+            }
+        };
+        let total = match (mb, files) {
+            (Some(mb), _) => {
+                std::fs::create_dir_all(&base).unwrap();
+                fill(&item, mb << 20);
+                mb << 20
+            }
+            (_, Some(n)) => {
+                for i in 0..n {
+                    let d = item.join(format!("d{}", i % 10));
+                    std::fs::create_dir_all(&d).unwrap();
+                    fill(&d.join(format!("f{i}.txt")), 20 << 10);
+                }
+                n * (20 << 10)
+            }
+            _ => return,
+        };
+        init_com();
+        for round in 0..2 {
+            for own in [round == 1, round == 0] {
+                let dir = base.join(format!("{round}{own}"));
+                std::fs::create_dir_all(&dir).unwrap();
+                let t = std::time::Instant::now();
+                let ok = if own { transfer(std::slice::from_ref(&item), &dir, false, &mut |_, _| {}).0 } else { copy_into_with(std::slice::from_ref(&item), &dir, false, &mut |_, _| {}).0 };
+                let s = t.elapsed().as_secs_f64();
+                eprintln!("{} round {round}: {ok} {s:.2} s, {:.0} MB/s", if own { "own" } else { "windows" }, total as f64 / 1048576.0 / s);
+                std::fs::remove_dir_all(&dir).unwrap();
+            }
+        }
         std::fs::remove_dir_all(&base).unwrap();
     }
 

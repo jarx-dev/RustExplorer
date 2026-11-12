@@ -291,6 +291,9 @@ bars.tab.middle_click:
   pl: Środkowy klik zamyka kartę
 
 # ---------- status bar ----------
+bars.status.note_close:
+  en: Close the note
+  pl: Zamknij komunikat
 bars.status.left_pane:
   en: "Left pane · "
   pl: "Lewy panel · "

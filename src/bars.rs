@@ -2,6 +2,9 @@
 
 use super::*;
 
+/// How long a note in the status bar stays, in seconds.
+const NOTE_SECS: f64 = 10.0;
+
 /// A 32px text field with an optional leading `lead` label and a clear button (or `trail` while
 /// empty). Returns whether the text changed (typed, cleared, Esc) and the field's response. `id`
 /// lets a shortcut or button focus it.
@@ -850,9 +853,26 @@ impl App {
                         ui.add(egui::Spinner::new().size(12.0));
                         ui.label(t!("bars.status.indexing")).on_hover_text(t!("bars.status.indexing_tip"));
                     }
-                    if let Some(m) = &self.msg {
+                    if let Some(m) = self.msg.clone() {
                         ui.add_space(16.0);
-                        ui.add(egui::Label::new(RichText::new(m).color(pal().text)).truncate());
+                        // a note goes after NOTE_SECS from when it first showed, or at its ×; the
+                        // pointer on it keeps it while it is read
+                        let now = ui.input(|i| i.time);
+                        if self.msg_at.as_ref().is_none_or(|(s, _)| *s != m) {
+                            self.msg_at = Some((m.clone(), now));
+                        }
+                        let close = ui.add(egui::Button::new(icon(ic::CLOSE, 10.0).color(pal().dim)).frame(false)).on_hover_text(t!("bars.status.note_close"));
+                        named(&close, egui::Role::Button, t!("bars.status.note_close"));
+                        let r = ui.add(egui::Label::new(RichText::new(&m).color(pal().text)).truncate());
+                        if r.hovered() || close.hovered() {
+                            self.msg_at = Some((m, now));
+                        }
+                        let left = NOTE_SECS - (now - self.msg_at.as_ref().map_or(now, |a| a.1));
+                        if close.clicked() || left <= 0.0 {
+                            (self.msg, self.msg_at) = (None, None);
+                        } else {
+                            ui.ctx().request_repaint_after(std::time::Duration::from_secs_f64(left));
+                        }
                     }
                 });
             });

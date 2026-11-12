@@ -187,6 +187,7 @@ impl App {
             rename: None,
             addr_edit: None,
             msg: None,
+            msg_at: None,
             pending: vec![],
             tx,
             rx,
@@ -813,7 +814,7 @@ impl App {
                         self.pasting = Some((seq, job.clone()));
                         self.background(ctx, t!("actions.job.move", place = place(&dir)), names(&clip), move |p| {
                             let _running = job;
-                            let done = sys::copy_into_with(&clip, &dir, true, p);
+                            let done = sys::transfer(&clip, &dir, true, p);
                             if done.0 {
                                 sys::clip::paste_done(seq);
                             }
@@ -957,7 +958,7 @@ impl App {
                     // the note says how it went; undo() says whether it was a full success
                     self.background(ctx, t!("actions.job.undo").into(), String::new(), move |_| {
                         let (ok, n) = undo(u);
-                        (ok, vec![Msg::Note(n)])
+                        (Ok(ok), vec![Msg::Note(n)])
                     });
                 }
                 None => self.msg = Some(t!("actions.undo.nothing").into()),
@@ -1163,7 +1164,7 @@ impl App {
         }
         if !plain.is_empty() {
             let title = if cut { t!("actions.job.move", place = place(&dir)) } else { t!("actions.job.copy", place = place(&dir)) };
-            self.background(ctx, title, names(&plain), move |p| transferred(sys::copy_into_with(&plain, &dir, cut, p)));
+            self.background(ctx, title, names(&plain), move |p| transferred(sys::transfer(&plain, &dir, cut, p)));
         }
     }
 
@@ -1245,8 +1246,9 @@ impl App {
     /// (notes, undo records) is taken in, and the list reloads after. Each is a job of the
     /// Operacje panel; one that reports (done, total) through its argument gets a percentage,
     /// one that does not shows an indeterminate bar. `f` says whether it went through: a cancel
-    /// or failure leaves the panel without a confirmation (its note, if any, says what happened).
-    pub(crate) fn background(&self, ctx: &egui::Context, title: String, source: String, f: impl FnOnce(rx_archive::Progress) -> (bool, Vec<Msg>) + Send + 'static) {
+    /// leaves the panel without a confirmation (its note, if any, says what happened); an error
+    /// stays in the history as a failed operation.
+    pub(crate) fn background(&self, ctx: &egui::Context, title: String, source: String, f: impl FnOnce(rx_archive::Progress) -> (Result<bool, String>, Vec<Msg>) + Send + 'static) {
         let (tx, busy, ops, ctx) = (self.tx.clone(), self.busy.clone(), self.ops.clone(), ctx.clone());
         busy.fetch_add(1, AO::SeqCst);
         let id = ops.start(title, source);
@@ -1259,12 +1261,16 @@ impl App {
             };
             // a panic must still end the job, or it runs in the panel and blocks updates for good
             let msgs = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut report))) {
-                Ok((true, msgs)) => {
+                Ok((Ok(true), msgs)) => {
                     ops.finish(id, Ok(String::new()));
                     msgs
                 }
-                Ok((false, msgs)) => {
+                Ok((Ok(false), msgs)) => {
                     ops.remove(id);
+                    msgs
+                }
+                Ok((Err(e), msgs)) => {
+                    ops.finish(id, Err(e));
                     msgs
                 }
                 Err(_) => {
@@ -1934,12 +1940,12 @@ pub(crate) fn free_name(dir: &Path, stem: &str, ext: &str, taken: &[PathBuf]) ->
 
 /// Delete to the Recycle Bin (off the UI thread): what Ctrl+Z restores, and a note when part of it
 /// was deleted for good.
-fn recycled(paths: Vec<PathBuf>) -> (bool, Vec<Msg>) {
+fn recycled(paths: Vec<PathBuf>) -> (Result<bool, String>, Vec<Msg>) {
     let since = SystemTime::now();
     let ok = sys::recycle(&paths);
     let until = SystemTime::now();
     let (u, note) = rx_core::undo::deleted(&paths, |p| p.symlink_metadata().is_err(), sys::has_bin, since, until);
-    (ok, std::iter::once(Msg::Undo(u)).chain(note.map(|n| Msg::Note(n.into()))).collect())
+    (Ok(ok), std::iter::once(Msg::Undo(u)).chain(note.map(|n| Msg::Note(n.into()))).collect())
 }
 
 /// What an operation works on, for the Operacje panel: "a.txt", or "a.txt (+4)" for more.
@@ -1958,10 +1964,11 @@ pub(crate) fn place(p: &Path) -> String {
 }
 
 /// A copy or move's undo record, and a note when some items cannot be taken back; with whether
-/// nothing was cancelled or failed.
-fn transferred((ok, u, left): (bool, Undo, usize)) -> (bool, Vec<Msg>) {
+/// nothing was cancelled, or what the app's own copy stopped on (shown as a note too).
+fn transferred((ok, u, left, failed): (bool, Undo, usize, Option<String>)) -> (Result<bool, String>, Vec<Msg>) {
     let note = (left > 0).then(|| Msg::Note(t!("actions.taken_names_note", n = left)));
-    (ok, std::iter::once(Msg::Undo(u)).chain(note).collect())
+    let msgs = std::iter::once(Msg::Undo(u)).chain(note).chain(failed.clone().map(Msg::Note)).collect();
+    (failed.map_or(Ok(ok), Err), msgs)
 }
 
 /// Takes back one operation (off the UI thread), never overwriting anything; the note says how it
