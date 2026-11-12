@@ -23,6 +23,7 @@ Every text the UI shows is a key in `crates/rx-core/locales/*.yml` (both `en` an
 - Never put the archive password on a command line. It travels in `RX_PW`.
 - Never kill processes by name. The installed copy, its update guard (`--update-guard`) and the copy under test may all be running.
 - Never call the installed Everything (SDK, IPC or `es.exe`) for search. "Search everywhere" uses its own index (`rx_core::index`), loaded only on demand and dropped from RAM after use.
+- Never open a PR on one review of your own. Before `gh pr create`, the whole diff gets two independent reviews (the `dual-review` skill where it exists), every confirmed finding is fixed or answered, and the PR body names the reviewers and the verdict. One reviewer alone let an access-denied bug in the copy engine through; the second pair caught it.
 
 ## Owner habits (keep them through any UX cleanup)
 
