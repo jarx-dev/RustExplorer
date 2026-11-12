@@ -838,6 +838,25 @@ pub fn set_run_at_sign_in(name: &str, cmd: Option<&str>) -> Result<(), String> {
     r.ok().map_err(|e| rx_core::t!("rx_sys.registry", e = e.message()))
 }
 
+/// A notification from the app's own icon by the clock (`tray`: tray-icon's window for it), shown
+/// by Windows 10/11 as a toast. False when that window has no icon to show it from.
+pub fn tray_balloon(tray: *mut std::ffi::c_void, title: &str, text: &str) -> bool {
+    fn put<const N: usize>(to: &mut [u16; N], s: &str) {
+        for (d, c) in to.iter_mut().zip(s.encode_utf16().take(N - 1)) {
+            *d = c;
+        }
+    }
+    let mut nid = NOTIFYICONDATAW { cbSize: size_of::<NOTIFYICONDATAW>() as u32, hWnd: HWND(tray), uFlags: NIF_INFO, dwInfoFlags: NIIF_INFO | NIIF_RESPECT_QUIET_TIME, ..Default::default() };
+    put(&mut nid.szInfoTitle, title);
+    put(&mut nid.szInfo, text);
+    // shortcut: tray-icon keeps its icon's id private (a counter from 1); its window holds that
+    // one icon only, so the first id the shell takes is it. Upgrade if tray-icon exposes the id.
+    (1..=32).any(|id| {
+        nid.uID = id;
+        unsafe { Shell_NotifyIconW(NIM_MODIFY, &nid).as_bool() }
+    })
+}
+
 /// A secret kept for this user by Windows (Menedżer poświadczeń), not in the app's files.
 pub fn secret(name: &str) -> Option<String> {
     use windows::Win32::Security::Credentials::{CredFree, CredReadW, CREDENTIALW, CRED_TYPE_GENERIC};

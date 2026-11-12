@@ -166,3 +166,9 @@ tray.show:
 tray.exit:
   en: Exit
   pl: Zakończ
+tray.updated:
+  en: "%{app} updated to %{v}"
+  pl: "%{app} zaktualizowany do %{v}"
+tray.updated_text:
+  en: A new version is running.
+  pl: Działa nowa wersja.

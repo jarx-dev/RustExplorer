@@ -242,6 +242,11 @@ fn skip_file(exe: &Path) -> PathBuf {
     exe.with_extension("update-skip")
 }
 
+/// What the staged build brings (the manifest's notes), for it to tell once it runs.
+fn notes_file(exe: &Path) -> PathBuf {
+    exe.with_extension("update-notes")
+}
+
 fn failed_path(exe: &Path) -> PathBuf {
     exe.with_extension("failed.exe")
 }
@@ -310,6 +315,7 @@ fn check_and_download(url: &Url) -> Result<Option<PathBuf>, String> {
         write_atomically(&staged, &bytes).map_err(|e| format!("zapis {}: {e}", staged.display()))?;
     }
     log(format!("update: {} ready ({})", m.build, m.notes));
+    let _ = std::fs::write(notes_file(&exe), &m.notes);
     Ok(Some(staged))
 }
 
@@ -400,6 +406,20 @@ pub fn finish_pending_update(args: &[String]) {
         platform::wait_for_exit(pid, OLD_EXIT_TIMEOUT);
     }
     log(format!("update: started as {BUILD}"));
+}
+
+/// Started by an update: what it brought (its notes, maybe empty), once per process.
+pub fn just_updated() -> Option<String> {
+    static TOLD: AtomicBool = AtomicBool::new(false);
+    if !AFTER_UPDATE.load(Ordering::Relaxed) || TOLD.swap(true, Ordering::Relaxed) {
+        return None;
+    }
+    let file = std::env::current_exe().ok().map(|e| notes_file(&e));
+    let notes = file.as_ref().and_then(|f| std::fs::read_to_string(f).ok()).unwrap_or_default();
+    if let Some(f) = file {
+        let _ = std::fs::remove_file(f);
+    }
+    Some(notes.trim().to_string())
 }
 
 /// The window is up: tell the guard, forget a previously failed build and remove the leftovers
