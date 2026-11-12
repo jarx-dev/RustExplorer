@@ -202,10 +202,12 @@ pub fn transfer(paths: &[PathBuf], dir: &Path, cut: bool, progress: &mut dyn FnM
     if let Some(plan) = copy::plan(paths, dir, cut, &WinFs) {
         // a disk with a head to move reads and writes one file at a time; SSDs and shares take four
         let workers = if seeks(dir) || paths.first().is_some_and(|p| seeks(p)) { 1 } else { 4 };
-        let r = copy::run(&plan, workers, &WinFs, progress);
+        let (r, made) = copy::run(&plan, workers, &WinFs, progress);
         if r != Outcome::Denied {
-            // the plan took no name already there: nothing replaced, nothing renamed
-            let (undo, left) = rx_core::undo::transferred(paths, dir, cut, &vec![false; paths.len()], &[], rx_core::undo::stamp);
+            // only what this run made: the plan took no name already there, and an item put in the
+            // target by someone else meanwhile is not this operation's to take back
+            let done: Vec<PathBuf> = paths.iter().filter(|p| p.file_name().is_some_and(|n| made.contains(&dir.join(n)))).cloned().collect();
+            let (undo, left) = rx_core::undo::transferred(&done, dir, cut, &vec![false; done.len()], &[], rx_core::undo::stamp);
             let note = if let Outcome::Failed(e) = r { Some(e) } else { None };
             return (note.is_none(), undo, left, note);
         }
@@ -229,6 +231,11 @@ impl rx_core::copy::Fs for WinFs {
         let mut f: &mut dyn FnMut(u64) = progress;
         // shortcut: a path over 260 characters works only with long paths on in Windows; add the \\?\ prefix if that ever bites
         unsafe { CopyFileExW(&HSTRING::from(from), &HSTRING::from(to), Some(told), Some(&mut f as *mut _ as *const _), None, COPY_FILE_FAIL_IF_EXISTS) }.map_err(std::io::Error::from)
+    }
+
+    fn rename(&self, from: &Path, to: &Path) -> std::io::Result<()> {
+        // no MOVEFILE_REPLACE_EXISTING: a file put there meanwhile is an error, not replaced
+        unsafe { MoveFileExW(&HSTRING::from(from), &HSTRING::from(to), MOVE_FILE_FLAGS(0)) }.map_err(std::io::Error::from)
     }
 
     fn same_volume(&self, from: &Path, to: &Path) -> bool {

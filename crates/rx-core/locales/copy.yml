@@ -6,3 +6,6 @@ copy.failed:
 copy.not_removed:
   en: "Copied, but “%{name}” stayed in its old place: %{e}"
   pl: "Skopiowano, ale „%{name}” zostało w starym miejscu: %{e}"
+copy.changed:
+  en: "Moved, but files changed while it ran stayed in the old place: %{n}"
+  pl: "Przeniesiono, ale pliki zmienione w trakcie zostały w starym miejscu: %{n}"
