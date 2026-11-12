@@ -247,6 +247,204 @@ fn work_dir() -> PathBuf {
     temp_root().join(format!("wklej-{}-{}", std::process::id(), N.fetch_add(1, AO::SeqCst)))
 }
 
+/// The Spakuj dialog while open: what is typed, and what is packed (its subtitle).
+pub(crate) struct PackAsk {
+    pub(crate) name: String,
+    pub(crate) what: String,
+    pub(crate) protect: bool,
+    pub(crate) pw: String,
+    pub(crate) pw2: String,
+    pub(crate) show: bool,
+    pub(crate) focused: bool,
+}
+
+impl PackAsk {
+    pub(crate) fn new(name: String, what: String) -> Self {
+        PackAsk { name, what, protect: false, pw: String::new(), pw2: String::new(), show: false, focused: false }
+    }
+}
+
+/// A label over a control, as WinUI's Header.
+fn caption(ui: &mut Ui, text: &str) {
+    ui.label(RichText::new(text).size(13.0));
+    ui.add_space(6.0);
+}
+
+/// A settings row: a glyph (or its empty column), a title with a line under it, and a switch at
+/// the right end.
+fn switch_row(ui: &mut Ui, glyph: &str, title: &str, sub: &str, on: &mut bool) {
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
+        let (g, _) = ui.allocate_exact_size(vec2(32.0, 36.0), Sense::hover());
+        ui.painter().text(pos2(g.left() + 8.0, g.center().y), Align2::LEFT_CENTER, glyph, icon_font(16.0), pal().text);
+        ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.y = 1.0;
+            ui.label(title);
+            ui.label(RichText::new(sub).size(12.5).color(pal().dim));
+        });
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            switch(ui, on, title);
+        });
+    });
+}
+
+impl App {
+    /// Spakuj, laid out as a Windows 11 ContentDialog with 7-Zip's choices: the name, the format,
+    /// the level and the method, and an optional password. Enter packs, Esc or Anuluj gives up.
+    pub(crate) fn pack_dialog(&mut self, ctx: &egui::Context) {
+        let Some(a) = &mut self.ask_pack else { return };
+        let (kind, o) = (&mut self.pack_kind, &mut self.pack_opts);
+        if !rx_archive::methods(kind).contains(&o.method) {
+            o.method = rx_archive::methods(kind)[0];
+        }
+        // names Windows refuses; the archive's extension is added by the format
+        let bad = a.name.trim().is_empty() || a.name.contains(['\\', '/', ':', '*', '?', '"', '<', '>', '|']);
+        let differ = a.protect && a.pw != a.pw2;
+        let ok = !bad && !differ && !(a.protect && a.pw.is_empty());
+        let (mut go, mut cancel, mut enter) = (false, false, false);
+        let shadow = egui::Shadow { offset: [0, 8], blur: 32, spread: 0, color: Color32::from_black_alpha(if dark() { 110 } else { 50 }) };
+        let frame = egui::Frame::new().fill(pal().field).stroke(Stroke::new(1.0, pal().line)).corner_radius(cr(8.0)).shadow(shadow);
+        let r = egui::Modal::new(egui::Id::unique("spakuj")).frame(frame).show(ctx, |ui| {
+            ui.set_width(520.0);
+            egui::Frame::new().inner_margin(Margin { left: 24, right: 24, top: 24, bottom: 20 }).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    let (tile, _) = ui.allocate_exact_size(vec2(40.0, 40.0), Sense::hover());
+                    ui.painter().rect_filled(tile, cr(8.0), pal().accent.gamma_multiply(0.14));
+                    ui.painter().text(tile.center(), Align2::CENTER_CENTER, ic::PACK, icon_font(20.0), pal().accent);
+                    ui.add_space(8.0);
+                    ui.vertical(|ui| {
+                        ui.spacing_mut().item_spacing.y = 0.0;
+                        ui.label(RichText::new(t!("main.pack.title")).heading());
+                        ui.add(egui::Label::new(RichText::new(&a.what).color(pal().dim)).truncate());
+                    });
+                });
+                ui.add_space(20.0);
+                caption(ui, t!("main.pack.name"));
+                let ext = format!(".{kind}");
+                let e = edit_field(ui, &mut a.name, "", false, "spakuj-nazwa", |ui| {
+                    ui.label(RichText::new(ext).color(pal().dim));
+                });
+                if !a.focused {
+                    e.request_focus();
+                    a.focused = true;
+                }
+                enter |= e.lost_focus();
+                if bad && !a.name.is_empty() {
+                    ui.add_space(4.0);
+                    ui.label(RichText::new(t!("main.pack.bad_name")).size(12.5).color(pal().red));
+                }
+                ui.add_space(16.0);
+                caption(ui, t!("main.pack.format"));
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 8.0;
+                    let w = (ui.available_width() - 8.0) / 2.0;
+                    if choice_card(ui, *kind == "zip", "ZIP", t!("main.pack.zip_tip"), w).clicked() {
+                        *kind = "zip";
+                    }
+                    if choice_card(ui, *kind == "7z", "7z", t!("main.pack.7z_tip"), w).clicked() {
+                        *kind = "7z";
+                    }
+                });
+                ui.add_space(16.0);
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(t!("main.pack.level")).size(13.0));
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.add_enabled_ui(o.level > 0, |ui| {
+                            // a ComboBox with its WinUI look: a filled box with a hairline, not bare text
+                            let w = &mut ui.visuals_mut().widgets;
+                            w.inactive.weak_bg_fill = pal().widget;
+                            w.inactive.bg_stroke = Stroke::new(1.0, pal().line);
+                            w.hovered.bg_stroke = Stroke::new(1.0, pal().line);
+                            egui::ComboBox::from_id_salt("spakuj-metoda").width(96.0).selected_text(o.method).show_ui(ui, |ui| {
+                                for m in rx_archive::methods(kind) {
+                                    ui.selectable_value(&mut o.method, *m, *m);
+                                }
+                            });
+                        });
+                        ui.label(RichText::new(t!("main.pack.method")).size(13.0).color(pal().dim));
+                    });
+                });
+                ui.add_space(6.0);
+                let levels = [
+                    (0, t!("main.pack.level_0"), t!("main.pack.level_0_tip")),
+                    (1, t!("main.pack.level_1"), t!("main.pack.level_1_tip")),
+                    (3, t!("main.pack.level_3"), t!("main.pack.level_3_tip")),
+                    (5, t!("main.pack.level_5"), t!("main.pack.level_5_tip")),
+                    (7, t!("main.pack.level_7"), t!("main.pack.level_7_tip")),
+                    (9, t!("main.pack.level_9"), t!("main.pack.level_9_tip")),
+                ];
+                segmented(ui, &mut o.level, &levels);
+                ui.add_space(20.0);
+                let y = ui.cursor().top();
+                ui.painter().hline(ui.max_rect().x_range(), y, Stroke::new(1.0, pal().line));
+                ui.add_space(14.0);
+                let sub = if *kind == "7z" { t!("main.pack.aes_7z") } else { t!("main.pack.aes_zip_short") };
+                switch_row(ui, ic::LOCK, t!("main.pack.protect"), sub, &mut a.protect);
+                if a.protect {
+                    ui.add_space(10.0);
+                    let show = &mut a.show;
+                    let e = edit_field(ui, &mut a.pw, t!("main.pack.password"), !*show, "spakuj-haslo", |ui| {
+                        let (glyph, tip) = if *show { (ic::EYE_OFF, t!("main.pack.hide_pw")) } else { (ic::EYE, t!("main.pack.show_pw")) };
+                        let b = ui.add(egui::Button::new(icon(glyph, 14.0).color(pal().dim)).frame(false).min_size(vec2(24.0, 20.0)));
+                        named(&b, egui::Role::Button, tip);
+                        if b.on_hover_text(tip).clicked() {
+                            *show = !*show;
+                        }
+                    });
+                    enter |= e.lost_focus();
+                    ui.add_space(8.0);
+                    let e = edit_field(ui, &mut a.pw2, t!("main.pack.password2"), !a.show, "spakuj-haslo2", |_| {});
+                    enter |= e.lost_focus();
+                    if differ && !a.pw2.is_empty() {
+                        ui.add_space(4.0);
+                        ui.label(RichText::new(t!("main.pack.pw_differ")).size(12.5).color(pal().red));
+                    }
+                    ui.add_space(12.0);
+                    if *kind == "7z" {
+                        switch_row(ui, "", t!("main.pack.hide_names"), t!("main.pack.hide_names_tip"), &mut o.hide_names);
+                    } else {
+                        // encrypted ZIPs are AES ones, which Windows' own ZIP folders cannot open
+                        egui::Frame::new().fill(pal().widget).corner_radius(cr(6.0)).inner_margin(Margin::symmetric(12, 10)).show(ui, |ui| {
+                            ui.set_width(ui.available_width());
+                            ui.horizontal(|ui| {
+                                ui.label(icon(ic::INFO, 14.0).color(pal().accent));
+                                ui.add_space(4.0);
+                                ui.add(egui::Label::new(RichText::new(t!("main.pack.aes_zip")).size(12.5)).wrap());
+                            });
+                        });
+                    }
+                }
+            });
+            // the footer band with the buttons, as a ContentDialog's
+            let foot = CornerRadius { nw: 0, ne: 0, sw: 8, se: 8 };
+            egui::Frame::new().fill(pal().bar).corner_radius(foot).inner_margin(Margin::symmetric(24, 18)).show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.spacing_mut().item_spacing.x = 8.0;
+                    let size = vec2(120.0, 32.0);
+                    let plain = egui::Button::new(t!("common.cancel")).min_size(size).fill(pal().field).stroke(Stroke::new(1.0, pal().line));
+                    cancel = ui.add(plain).clicked();
+                    let main = egui::Button::new(RichText::new(t!("main.pack.go")).color(pal().on_accent)).min_size(size).fill(pal().accent);
+                    go |= ui.add_enabled(ok, main).clicked();
+                });
+            });
+            go |= enter && ok && ui.input(|i| i.key_pressed(Key::Enter));
+        });
+        if go {
+            // "raport.zip" typed in full keeps one extension
+            let n = a.name.trim();
+            let stem = n.strip_suffix(&format!(".{}", self.pack_kind)).filter(|s| !s.is_empty()).unwrap_or(n).to_string();
+            let mut opts = self.pack_opts.clone();
+            opts.password = Some(std::mem::take(&mut a.pw)).filter(|p| a.protect && !p.is_empty());
+            opts.hide_names &= opts.password.is_some() && self.pack_kind == "7z";
+            self.ask_pack = None;
+            self.pending.push(Act::PackAs(stem, self.pack_kind, opts));
+        } else if cancel || r.should_close() {
+            self.ask_pack = None;
+        }
+    }
+}
+
 /// A file opened from an archive for editing: its copy, the archive and the entry, and the copy's
 /// time when last seen (a new time means it was saved).
 pub(crate) struct Watched {

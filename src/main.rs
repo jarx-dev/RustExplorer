@@ -262,10 +262,10 @@ enum Act {
     Extract,
     /// unpack the selected archives straight into their folder, no new folder of their name
     ExtractHere,
-    /// ask for the name and the format of a new archive of the selection (the Spakuj dialog)
+    /// ask for the name, format, compression and password of a new archive of the selection (the Spakuj dialog)
     Pack,
-    /// pack the selection here into `name`.`kind` ("zip" or "7z")
-    PackAs(String, &'static str),
+    /// pack the selection here into `name`.`kind` ("zip" or "7z") with these options
+    PackAs(String, &'static str, rx_archive::PackOpts),
     /// a change to an archive's contents (true: rename what it made); asked first when it deletes
     ArchiveChange(PathBuf, rx_archive::Change, bool),
     /// a RAR made into a ZIP copy, then that copy's folder (the archive and the folder in it)
@@ -398,13 +398,14 @@ struct App {
     ask_vt_key: Option<(String, Option<PathBuf>, bool)>,
     /// further encrypted archives (whether their last password was wrong, unpack here), asked one at a time
     pw_queue: std::collections::VecDeque<(PathBuf, bool, bool)>,
-    /// the Spakuj dialog: the archive's name as typed; `pack_kind` is the format picked last
-    ask_pack: Option<String>,
+    /// the Spakuj dialog; `pack_kind` and `pack_opts` (no password kept) are what was picked last
+    ask_pack: Option<archive::PackAsk>,
     /// a Tak/Anuluj question (deleting from an archive, writing an edited copy back, RAR to ZIP)
     ask: Option<archive::Ask>,
     /// files opened from archives, watched for saves (archive.rs)
     arc_watch: Vec<archive::Watched>,
     pack_kind: &'static str,
+    pack_opts: rx_archive::PackOpts,
     show_hidden: bool,
     /// Widok ▸ Motyw, as given to egui (kept here for save())
     theme: egui::ThemePreference,
@@ -926,51 +927,7 @@ impl eframe::App for App {
                 self.ask_pw = self.pw_queue.pop_front().map(|(a, w, h)| (a, String::new(), w, h));
             }
         }
-        // Spakuj: the archive's name and its format; Enter packs, Esc or Anuluj gives up
-        if let Some(name) = &mut self.ask_pack {
-            let (mut go, mut cancel) = (false, false);
-            let kind = &mut self.pack_kind;
-            let r = egui::Modal::new(egui::Id::unique("spakuj")).show(&ctx, |ui| {
-                ui.set_width(380.0);
-                ui.label(RichText::new(t!("main.pack.title")).heading());
-                ui.add_space(8.0);
-                ui.horizontal(|ui| {
-                    let e = ui.add(egui::TextEdit::singleline(name).hint_text(t!("main.pack.name")).desired_width(ui.available_width() - 40.0));
-                    if !e.has_focus() && !e.lost_focus() {
-                        e.request_focus();
-                    }
-                    go = e.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-                    ui.label(RichText::new(format!(".{kind}")).color(pal().dim));
-                });
-                ui.add_space(8.0);
-                ui.horizontal(|ui| {
-                    ui.label(t!("main.pack.format"));
-                    ui.radio_value(kind, "zip", "ZIP").on_hover_text(t!("main.pack.zip_tip"));
-                    ui.radio_value(kind, "7z", "7z").on_hover_text(t!("main.pack.7z_tip"));
-                });
-                // names Windows refuses; the archive's extension is added by the format
-                let bad = name.trim().is_empty() || name.contains(['\\', '/', ':', '*', '?', '"', '<', '>', '|']);
-                if bad && !name.is_empty() {
-                    ui.label(RichText::new(t!("main.pack.bad_name")).color(pal().red));
-                }
-                go &= !bad;
-                ui.add_space(12.0);
-                ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                    let plain = |t| egui::Button::new(t).min_size(vec2(96.0, 32.0)).fill(pal().field).stroke(Stroke::new(1.0, pal().line));
-                    cancel = ui.add(plain(t!("common.cancel"))).clicked();
-                    go |= ui.add_enabled(!bad, plain(t!("main.pack.go"))).clicked();
-                });
-            });
-            if go {
-                // "raport.zip" typed in full keeps one extension
-                let n = name.trim();
-                let stem = n.strip_suffix(&format!(".{}", self.pack_kind)).filter(|s| !s.is_empty()).unwrap_or(n).to_string();
-                self.ask_pack = None;
-                self.pending.push(Act::PackAs(stem, self.pack_kind));
-            } else if cancel || r.should_close() {
-                self.ask_pack = None;
-            }
-        }
+        self.pack_dialog(&ctx);
         // a Tak/Anuluj question; Enter says yes, Esc or Anuluj no
         if let Some(q) = &self.ask {
             let (mut yes, mut no) = (false, false);
@@ -1285,6 +1242,11 @@ fn main() -> eframe::Result {
             // test runs: "Analiza miejsca" from the start, optionally with the biggest files listed
             app.space = is_shot && args.iter().any(|a| a == "--space");
             app.about = is_shot && args.iter().any(|a| a == "--about");
+            // the Spakuj dialog as a 7z with a password typed, for a picture of all its options
+            if is_shot && args.iter().any(|a| a == "--pack") {
+                app.pack_kind = "7z";
+                app.ask_pack = Some(archive::PackAsk { protect: true, pw: "secret".into(), pw2: "secret".into(), ..archive::PackAsk::new("Report".into(), "Folder 1 (+2)".into()) });
+            }
             app.shot_biggest = app.space && args.iter().any(|a| a == "--biggest");
             if let Some(s) = select {
                 if app.space {

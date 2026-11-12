@@ -132,6 +132,7 @@ impl App {
             ask: None,
             arc_watch: vec![],
             pack_kind: "zip",
+            pack_opts: rx_archive::PackOpts::default(),
             show_hidden: false,
             theme: egui::ThemePreference::System,
             lock_format: false,
@@ -906,18 +907,19 @@ impl App {
                         [one] => one.file_stem(),
                         _ => dir.file_name(),
                     };
-                    self.ask_pack = Some(stem.map_or(t!("actions.archive_stem").into(),|s| s.to_string_lossy().into_owned()));
+                    let stem = stem.map_or(t!("actions.archive_stem").into(), |s| s.to_string_lossy().into_owned());
+                    self.ask_pack = Some(archive::PackAsk::new(stem, names(&sel)));
                 }
             }
             Act::ArchiveChange(arc, change, rename) => self.change_archive(arc, change, rename, ctx),
             Act::ConvertArchive(arc, inner) => self.convert_archive(arc, inner, ctx),
-            Act::PackAs(stem, kind) => {
+            Act::PackAs(stem, kind, opts) => {
                 if !sel.is_empty() {
                     let dest = free_name(&dir, &stem, kind, &[]);
                     let name = dest.file_name().unwrap_or_default().to_string_lossy().into_owned();
                     let base = dir.clone();
                     self.archive_job(t!("actions.job.pack", name = name), names(&sel), ctx, move |p| {
-                        let files = rx_archive::pack(&sel, &base, &dest, p)?;
+                        let files = rx_archive::pack_with(&sel, &base, &dest, &opts, p)?;
                         Ok(t!("actions.packed", name = name, files = files))
                     });
                 }
