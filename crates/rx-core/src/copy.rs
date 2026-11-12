@@ -140,7 +140,8 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, ctl: &Control, progress: &m
             let all: Vec<_> = (0..workers.max(1))
                 .map(|_| {
                     s.spawn(|| {
-                        while !stop.load(Relaxed) && ctl.go_on() {
+                        // after a pause: stop if another file failed meanwhile
+                        while ctl.go_on() && !stop.load(Relaxed) {
                             let i = next.fetch_add(1, Relaxed);
                             let Some((from, to, len)) = plan.files.get(i) else { break };
                             let before = stamp(from);
@@ -169,10 +170,7 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, ctl: &Control, progress: &m
                 })
                 .collect();
             while !all.iter().all(|w| w.is_finished()) {
-                // a paused job keeps its count, speed and chart as they were
-                if !ctl.paused() {
-                    progress(done.load(Relaxed).min(plan.total), plan.total);
-                }
+                progress(done.load(Relaxed).min(plan.total), plan.total);
                 std::thread::sleep(Duration::from_millis(100));
             }
         });

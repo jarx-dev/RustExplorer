@@ -210,9 +210,9 @@ pub fn transfer(paths: &[PathBuf], dir: &Path, cut: bool, ctl: &rx_core::ops::Co
             let made: std::collections::HashSet<PathBuf> = made.into_iter().collect();
             let done: Vec<PathBuf> = paths.iter().filter(|p| p.file_name().is_some_and(|n| made.contains(&dir.join(n)))).cloned().collect();
             let (undo, left) = rx_core::undo::transferred(&done, dir, cut, &vec![false; done.len()], &[], rx_core::undo::stamp);
-            // a folder moved in part (cancelled) is in both places: no record could take it back,
-            // and without one Ctrl+Z would undo the operation before
-            let partial = cut && matches!(r, Outcome::Cancelled(_)) && done.iter().any(|p| p.exists());
+            // a folder moved in part (cancelled, or a source that could not go) is in both places:
+            // no record could take it back, and without one Ctrl+Z would undo the operation before
+            let partial = cut && r != Outcome::Done && done.iter().any(|p| p.exists());
             let undo = if partial { rx_core::undo::Undo::Blocked("undo.what.move_partial") } else { undo };
             let note = match r {
                 Outcome::Failed(e) => Some(Err(e)),

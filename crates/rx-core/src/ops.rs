@@ -109,6 +109,11 @@ impl Job {
             (self.samples, self.speed, self.last) = (vec![], 0.0, (now, done));
         }
         (self.done, self.total) = (done, total);
+        // paused: no samples, and the next one after Resume does not count the pause
+        if self.control.as_ref().is_some_and(|c| c.paused()) {
+            self.last = (now, done);
+            return false;
+        }
         let dt = now.duration_since(self.last.0).as_secs_f64();
         if dt < SAMPLE_EVERY.as_secs_f64() {
             return false;
@@ -327,6 +332,20 @@ pub fn fmt_count(n: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_pause_is_not_counted_in_the_speed() {
+        let c = Arc::new(Control::default());
+        let t = Instant::now();
+        let mut j = Job { control: Some(c.clone()), ..Job::new(1, String::new(), String::new(), t) };
+        j.progress(0, 100, t);
+        assert!(j.progress(50, 100, t + Duration::from_secs(1)));
+        c.set_paused(true);
+        assert!(!j.progress(50, 100, t + Duration::from_secs(60)));
+        c.set_paused(false);
+        assert!(j.progress(100, 100, t + Duration::from_secs(61)));
+        assert_eq!((j.speed, j.samples.len()), (50.0, 2));
+    }
 
     #[test]
     fn a_paused_worker_waits_until_resumed_or_cancelled() {

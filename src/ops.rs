@@ -275,7 +275,7 @@ impl App {
             ui.label(RichText::new(j.ended_clock()).color(pal().dim));
         } else {
             let s = j.status();
-            let s = if j.control.as_ref().is_some_and(|c| c.paused() && !c.cancelled()) {
+            let s = if j.control.as_ref().is_some_and(|c| c.armed() && c.paused() && !c.cancelled()) {
                 [t!("ops_panel.paused").to_string(), s].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ")
             } else {
                 s
