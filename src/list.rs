@@ -401,8 +401,10 @@ impl App {
                 }
             }
         }
-        // clicking empty space clears the selection
-        let empty_click = ui.input(|i| i.pointer.primary_clicked() && i.pointer.interact_pos().is_some_and(|p| list_rect.contains(p)));
+        // clicking empty space clears the selection; a click on a dialog above the list (its
+        // layer on top there) is not one, or Spakuj's own button emptied what it was to pack
+        let layer = ui.layer_id();
+        let empty_click = ui.input(|i| i.pointer.primary_clicked() && i.pointer.interact_pos().is_some_and(|p| list_rect.contains(p) && ui.ctx().layer_id_at(p).is_none_or(|l| l == layer)));
         if empty_click && !any_clicked && !ui.ctx().any_popup_open() {
             self.tree_focus = None;
             let t = self.tab();
