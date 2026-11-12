@@ -187,6 +187,7 @@ impl App {
             rename: None,
             addr_edit: None,
             msg: None,
+            msg_at: None,
             pending: vec![],
             tx,
             rx,
