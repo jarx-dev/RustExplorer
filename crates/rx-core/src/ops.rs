@@ -22,6 +22,11 @@ impl Control {
     pub fn arm(&self) {
         self.armed.store(true, Relaxed);
     }
+    /// Past the part that can stop: the buttons go, and a late click does nothing.
+    pub fn disarm(&self) {
+        self.armed.store(false, Relaxed);
+        self.paused.store(false, Relaxed);
+    }
     pub fn armed(&self) -> bool {
         self.armed.load(Relaxed)
     }
@@ -322,6 +327,25 @@ pub fn fmt_count(n: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_paused_worker_waits_until_resumed_or_cancelled() {
+        let c = Arc::new(Control::default());
+        c.set_paused(true);
+        let worker = |c: &Arc<Control>| {
+            let c = c.clone();
+            std::thread::spawn(move || c.go_on())
+        };
+        let w = worker(&c);
+        std::thread::sleep(Duration::from_millis(250));
+        assert!(!w.is_finished());
+        c.set_paused(false);
+        assert!(w.join().unwrap());
+        c.set_paused(true);
+        let w = worker(&c);
+        c.cancel();
+        assert!(!w.join().unwrap());
+    }
 
     #[test]
     fn samples_speed_and_restart() {

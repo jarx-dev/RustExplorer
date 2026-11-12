@@ -183,6 +183,9 @@ undo.what.copy_taken:
 undo.what.move_taken:
   en: a move onto names already in use
   pl: przeniesienia na zajęte nazwy
+undo.what.move_partial:
+  en: a move cancelled half way
+  pl: przeniesienia anulowanego w połowie
 undo.what.no_bin:
   en: a delete from a drive without a Recycle Bin
   pl: usunięcia z dysku bez Kosza

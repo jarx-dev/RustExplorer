@@ -169,16 +169,22 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, ctl: &Control, progress: &m
                 })
                 .collect();
             while !all.iter().all(|w| w.is_finished()) {
-                progress(done.load(Relaxed).min(plan.total), plan.total);
+                // a paused job keeps its count, speed and chart as they were
+                if !ctl.paused() {
+                    progress(done.load(Relaxed).min(plan.total), plan.total);
+                }
                 std::thread::sleep(Duration::from_millis(100));
             }
         });
+        // past the files nothing stops: no buttons for the deletes of a move or Windows' own copy after a refusal
+        ctl.disarm();
         if let Some((from, e)) = error.into_inner().unwrap() {
             return fail(&from, e);
         }
-        let cancelled = ctl.cancelled();
         let was = was.into_inner().unwrap();
         let copied = was.iter().filter(|w| w.is_some()).count();
+        // a click after the last file came through is no cancel
+        let cancelled = ctl.cancelled() && copied < plan.files.len();
         if cancelled {
             // folders made for what did not come, deepest first; one with something in it stays
             for (_, to) in plan.dirs.iter().rev() {
@@ -186,7 +192,7 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, ctl: &Control, progress: &m
             }
         }
         // folders last: their attributes (read-only) could stop the files going in
-        for (from, to) in plan.dirs.iter().filter(|d| !cancelled || d.1.exists()) {
+        for (from, to) in &plan.dirs {
             fs.dir_made(from, to);
         }
         if !cancelled {
@@ -206,7 +212,8 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, ctl: &Control, progress: &m
                 stuck.get_or_insert((from, e));
             }
         }
-        for (from, _) in plan.dirs.iter().rev() {
+        // after a cancel a folder stays where its copy was taken away again (an empty one too)
+        for (from, _) in plan.dirs.iter().rev().filter(|d| !cancelled || d.1.exists()) {
             // not empty: what stayed above is in it
             match remove(from, true) {
                 Err(e) if e.kind() != io::ErrorKind::DirectoryNotEmpty => _ = stuck.get_or_insert((from, e)),
@@ -400,6 +407,8 @@ mod tests {
     fn a_cancelled_move_keeps_each_file_once_and_leaves_no_half() {
         let b = base("cancel");
         let (src, dst) = (b.join("src"), b.join("dst"));
+        // empty from the start: it stays in its place
+        std::fs::create_dir_all(src.join("tree/empty/deeper")).unwrap();
         let ctl = std::sync::Arc::new(Control::default());
         let fs = T { cancel: Some(("f5.txt", ctl.clone())), ..NONE };
         let p = plan(&[src.join("a.bin"), src.join("tree")], &dst, true, &fs).unwrap();
@@ -413,6 +422,8 @@ mod tests {
         assert!(dst.join("a.bin").exists() && !src.join("a.bin").exists());
         assert_eq!(dst.join("tree").exists(), moved > 0);
         assert_eq!(made.contains(&dst.join("tree")), moved > 0);
+        assert!(src.join("tree/empty/deeper").is_dir() && !dst.join("tree/empty").exists());
+        assert!(!ctl.armed(), "no buttons once it stopped");
         std::fs::remove_dir_all(&b).unwrap();
     }
 
