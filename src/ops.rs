@@ -216,7 +216,11 @@ impl App {
                 ui.vertical(|ui| {
                     ui.set_width(w);
                     ui.add(egui::Label::new(j.outcome()).wrap());
-                    ui.label(RichText::new(j.summary()).color(pal().dim));
+                    // what it worked on, so the history says which files it was
+                    if !j.source.is_empty() {
+                        ui.add(egui::Label::new(RichText::new(&j.source).color(pal().dim)).truncate());
+                    }
+                    ui.label(RichText::new(format!("{} · {}", j.ended_clock(), j.summary())).color(pal().dim));
                 });
                 if remove(ui, t!("ops_panel.remove")) {
                     close = Some(j.id);
@@ -246,6 +250,7 @@ impl App {
                 ui.label(icon(ic::CLOSE, 10.0).color(pal().red));
                 ui.add(egui::Label::new(RichText::new(j.outcome()).color(pal().red)).wrap());
             });
+            ui.label(RichText::new(j.ended_clock()).color(pal().dim));
         } else {
             let s = j.status();
             if !s.is_empty() {
