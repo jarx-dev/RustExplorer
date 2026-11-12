@@ -30,8 +30,9 @@ impl Control {
     pub fn armed(&self) -> bool {
         self.armed.load(Relaxed)
     }
+    /// Paused only while armed: a click that lands just after `disarm` changes nothing.
     pub fn paused(&self) -> bool {
-        self.paused.load(Relaxed)
+        self.armed() && self.paused.load(Relaxed)
     }
     pub fn cancelled(&self) -> bool {
         self.cancelled.load(Relaxed)
@@ -336,6 +337,7 @@ mod tests {
     #[test]
     fn a_pause_is_not_counted_in_the_speed() {
         let c = Arc::new(Control::default());
+        c.arm();
         let t = Instant::now();
         let mut j = Job { control: Some(c.clone()), ..Job::new(1, String::new(), String::new(), t) };
         j.progress(0, 100, t);
@@ -350,6 +352,7 @@ mod tests {
     #[test]
     fn a_paused_worker_waits_until_resumed_or_cancelled() {
         let c = Arc::new(Control::default());
+        c.arm();
         c.set_paused(true);
         let worker = |c: &Arc<Control>| {
             let c = c.clone();
