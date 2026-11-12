@@ -125,9 +125,9 @@ przechodzeniu; plakietka na pasku stanu wyłącza blokadę.
 | 📋 **Schowek i przeciąganie** | Kopiuj i Wytnij kładą pliki w schowku Windows (jak Eksplorator), więc wklejasz je w Eksploratorze, na pulpicie czy w poczcie, a pliki skopiowane tam wklejasz tutaj; elementy archiwów zostają w schowku programu. Pliki z innych programów upuszczasz na listę, na folder albo na kartę, co kładzie je w folderze tej karty (kopia, z `Shift` przeniesienie), a wiersz przeciągnięty poza okno idzie dalej jako zwykłe przeciąganie Windows. |
 | 🪟 **Menu Windows** | „Więcej opcji Windows…” na końcu menu prawego klawisza (albo `Shift`+prawy klik) pokazuje menu Eksploratora dla zaznaczenia: „Wyślij do”, „Otwórz za pomocą”, 7-Zip, Git, „Zwolnij miejsce” i „Zawsze zachowuj na tym urządzeniu” w OneDrive. |
 | ↩️ **Cofnij** | `Ctrl+Z` cofa ostatnie operacje (do 30): usunięcie do Kosza (przywrócenie z Kosza), przeniesienie (z powrotem), kopiowanie (kopie do Kosza, tylko nowo utworzone), zmianę nazwy, nowy folder i kopię `.bak`; nigdy niczego nie nadpisuje, a element zmieniony od tamtej pory pomija. Czego cofnąć się nie da (usunięcie z dysku bez Kosza, zmiany w archiwach, pliki zastąpione przy kopiowaniu), mówi pasek stanu; poleceń z menu Windows program nie cofa. |
-| ⏳ **Operacje** | Jeden panel na kopiowanie, przenoszenie, wypakowywanie i skany ze wszystkich kart: nad czym pracuje każde zadanie, z jaką szybkością i kiedy się skończyło. Pokazuje około trzech wpisów i się przewija; × usuwa jeden wpis, „Wyczyść historię” usuwa zakończone, a kliknięcie w innym miejscu okna zwija panel do paska. |
-| 🛡️ **VirusTotal** | „Sprawdź w VirusTotal” w menu prawego klawisza szuka pliku po SHA-256, więc nic z pliku nie wychodzi z komputera; wysyłka tylko na Twoje żądanie z podglądu. Pozycja jest wyszarzona, dopóki nie wpiszesz klucza API w Plik ▸ Ustawienia ▸ Klucz VirusTotal… (trzymanego w Menedżerze poświadczeń Windows). |
-| 🔄 **Samoaktualizacja** | Nowa wersja instaluje się sama, gdy nic nie robisz; jeśli się nie uruchomi, wraca poprzednia. Potem powiadomienie Windows mówi, która wersja działa, a zmaksymalizowane okno wraca zmaksymalizowane. Szczegóły niżej. |
+| ⏳ **Operacje** | Jeden panel w pasku stanu na kopiowanie, przenoszenie, wypakowywanie i sprawdzanie w VirusTotal ze wszystkich kart, z szybkością i historią. |
+| 🛡️ **VirusTotal** | „Sprawdź w VirusTotal” w menu prawego klawisza szuka pliku po SHA-256, więc plik opuszcza komputer tylko wtedy, gdy go wyślesz; potrzebny jest darmowy klucz API (Plik ▸ Ustawienia). |
+| 🔄 **Samoaktualizacja** | Nowa wersja instaluje się sama, gdy nic nie robisz; jeśli się nie uruchomi, wraca poprzednia. Szczegóły niżej. |
 | 📌 **Zasobnik** | Ikona przy zegarze; kliknięcie jej pokazuje albo chowa okno. Zamknięcie okna chowa je do zasobnika (bez przycisku na pasku zadań), a ponowne uruchomienie programu je przywraca; „Zakończ” kończy program. |
 
 Kopiowanie i przenoszenie w programie idą jego własnym mechanizmem, z postępem w panelu
@@ -306,8 +306,7 @@ Wersja Rusta jest przypięta w `rust-toolchain.toml`.
 
 Wydania na GitHubie buduje GitHub Actions (workflow „Wydanie”, uruchamiany ręcznie z `main`):
 EXE, `latest.json` dla aktualizacji i atestacja pochodzenia pliku. Każdy PR i każda zmiana na
-`main` przechodzi build i testy na Windows (workflow „CI”); zmiana samych dokumentów (`*.md`
-w katalogu głównym, `docs/`, `LICENSE`) pomija build.
+`main` przechodzi build i testy na Windows (workflow „CI”).
 
 ### Własny serwer aktualizacji
 
