@@ -116,10 +116,12 @@ navigate; the badge on the status bar turns the lock off.
 | ⭐ **Bookmarks** | Favourite folders in the tree on the left, next to quick access. |
 | 🌳 **Path tree** | The tree on the left shows only the path to the current folder; "… N more folders" expands that level, and File ▸ Settings ▸ Full folder tree shows them all. |
 | 🧰 **Tools** | A `.bak` copy with one shortcut (`Ctrl+B`), ZIP extraction, a terminal in the current folder, copying the path (from a Samba network drive as a Linux path `/home/<user>/…`), "Lock format (keep sorting)". |
-| 📋 **Clipboard and dragging** | Copy and Cut put files on the Windows clipboard (like Explorer), so you can paste them in Explorer, on the desktop or in a mail client, and files copied there can be pasted here; archive items stay in the program's own clipboard. You drop files from other programs onto the list or onto a folder (copy; with `Shift`, move), and a row dragged outside the window carries on as an ordinary Windows drag. |
+| 📋 **Clipboard and dragging** | Copy and Cut put files on the Windows clipboard (like Explorer), so you can paste them in Explorer, on the desktop or in a mail client, and files copied there can be pasted here; archive items stay in the program's own clipboard. You drop files from other programs onto the list, onto a folder or onto a tab, which puts them in that tab's folder (copy; with `Shift`, move), and a row dragged outside the window carries on as an ordinary Windows drag. |
 | 🪟 **Windows menu** | "Show more options…" at the end of the right-click menu (or `Shift`+right-click) shows Explorer's own menu for the selection: "Send to", "Open with", 7-Zip, Git, "Free up space" and "Always keep on this device" in OneDrive. |
 | ↩️ **Undo** | `Ctrl+Z` undoes the most recent operations (up to 30): deleting to the Recycle Bin (restores from the Bin), a move (moves back), a copy (the copies go to the Bin, newly created ones only), a rename, a new folder and a `.bak` copy; it never overwrites anything and skips an item that has changed since. What cannot be undone (deleting from disk without the Bin, changes inside archives, files replaced during a copy) is reported by the status bar; commands from the Windows menu are not undone by the program. |
-| 🔄 **Self-update** | A new version installs itself when you are idle; if it fails to start, the previous one comes back. Details below. |
+| ⏳ **Operations** | One panel for copying, moving, extracting and scans from all tabs: what each job works on, its speed and when it ended. It shows about three entries and scrolls; × removes one entry, "Clear history" removes the finished ones, and a click elsewhere in the window collapses the panel to its bar. |
+| 🛡️ **VirusTotal** | "Check on VirusTotal" in the right-click menu looks a file up by its SHA-256, so nothing of the file leaves the computer; uploading happens only when you ask for it in the preview. The entry is greyed out until you enter an API key in File ▸ Settings ▸ VirusTotal key… (kept in Windows Credential Manager). |
+| 🔄 **Self-update** | A new version installs itself when you are idle; if it fails to start, the previous one comes back. Afterwards a Windows notification says which version is running, and a maximized window comes back maximized. Details below. |
 | 📌 **Tray** | An icon next to the clock; clicking it shows or hides the window. Closing the window hides it to the tray (no taskbar button), and starting the program again restores it; "Exit" exits the program. |
 
 Copying and moving inside the program use its own copy, with progress in the Operations panel:
@@ -298,7 +300,8 @@ The Rust version is pinned in `rust-toolchain.toml`.
 
 Releases on GitHub are built by GitHub Actions (the "Wydanie" (Release) workflow, started manually from `main`):
 the EXE, `latest.json` for updates and a build provenance attestation for the file. Every PR and every
-change to `main` goes through a build and tests on Windows (the "CI" workflow).
+change to `main` goes through a build and tests on Windows (the "CI" workflow); a change that touches
+only documents (`*.md` in the root, `docs/`, `LICENSE`) skips the build.
 
 ### Your own update server
 
