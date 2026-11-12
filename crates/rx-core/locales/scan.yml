@@ -61,6 +61,12 @@ scan.key.title:
 scan.key.info:
   en: You'll find a free key after signing in at virustotal.com. The app keeps it in Windows Credential Manager.
   pl: Darmowy klucz znajdziesz po zalogowaniu na virustotal.com. Program trzyma go w Menedżerze poświadczeń Windows.
+scan.key.limit:
+  en: "If your key allows only one lookup a day, create a new account: new accounts get a much higher limit."
+  pl: "Jeśli Twój klucz pozwala tylko na jedno sprawdzenie dziennie, załóż nowe konto: nowe konta dostają znacznie większy limit."
+scan.no_key:
+  en: "Enter your VirusTotal API key first: File ▸ Settings ▸ VirusTotal key…"
+  pl: "Najpierw wpisz klucz API VirusTotal: Plik ▸ Ustawienia ▸ Klucz VirusTotal…"
 scan.key.page:
   en: Open the key page
   pl: Otwórz stronę z kluczem
