@@ -243,6 +243,21 @@ impl App {
                 if err && remove(ui, t!("ops_panel.close_error")) {
                     close = Some(j.id);
                 }
+                // pause and cancel, for a job that takes them (the app's own copy, once its files start)
+                if let Some(c) = j.control.as_ref().filter(|c| j.running() && c.armed() && !c.cancelled()) {
+                    let button = |ui: &mut Ui, code: &str, name: &str| {
+                        let r = ui.add(egui::Button::new(icon(code, 12.0).color(pal().dim)).frame(false)).on_hover_text(name);
+                        named(&r, egui::Role::Button, name);
+                        r.clicked()
+                    };
+                    if button(ui, ic::CLOSE, t!("ops_panel.cancel")) {
+                        c.cancel();
+                    }
+                    let paused = c.paused();
+                    if button(ui, if paused { ic::PLAY } else { ic::PAUSE }, if paused { t!("ops_panel.resume") } else { t!("ops_panel.pause") }) {
+                        c.set_paused(!paused);
+                    }
+                }
                 if let Some(f) = j.fraction() {
                     ui.label(RichText::new(fmt_pct(f)).font(FontId::new(18.0, FontFamily::Name("semibold".into()))));
                 }
@@ -260,6 +275,11 @@ impl App {
             ui.label(RichText::new(j.ended_clock()).color(pal().dim));
         } else {
             let s = j.status();
+            let s = if j.control.as_ref().is_some_and(|c| c.paused() && !c.cancelled()) {
+                [t!("ops_panel.paused").to_string(), s].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ")
+            } else {
+                s
+            };
             if !s.is_empty() {
                 ui.label(RichText::new(s).color(pal().dim));
             }

@@ -9,12 +9,14 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::Relaxed};
 use std::time::Duration;
 
+use crate::ops::Control;
 use crate::undo::stamp;
 
 /// What the platform does for a copy; Windows' in rx-sys, `std::fs` in the tests.
 pub trait Fs: Sync {
-    /// Copies one file to a new `to` (never over one), reporting the bytes copied so far.
-    fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64)) -> io::Result<()>;
+    /// Copies one file to a new `to` (never over one), reporting the bytes copied so far; when
+    /// `progress` says false (cancelled) it stops, leaves no part of `to` and returns an error.
+    fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64) -> bool) -> io::Result<()>;
     /// Renames on one volume, never over anything (std's rename on Windows replaces a file).
     fn rename(&self, from: &Path, to: &Path) -> io::Result<()>;
     /// Whether a rename can take `from` to `to` (one volume), rather than a copy and a delete.
@@ -87,14 +89,18 @@ pub enum Outcome {
     Denied,
     /// what went wrong, with the item's name; what was done before it stays
     Failed(String),
+    /// cancelled from the panel: the note says how much got through. Files copied whole stay
+    /// (and with a move their sources go); a half-copied one and folders left empty do not.
+    Cancelled(String),
 }
 
 /// Carries out `plan`: renames, folders, then the files `workers` at a time; `progress` hears
 /// (done, total) bytes on this thread about ten times a second. The first error stops the files
 /// not started yet. Sources of a move go only after all of it was copied, and only those still
 /// as they were when copied. With the outcome, the items' places in the target this run made
-/// (what Ctrl+Z may take back: not an item someone else put there meanwhile).
-pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, progress: &mut dyn FnMut(u64, u64)) -> (Outcome, Vec<PathBuf>) {
+/// (what Ctrl+Z may take back: not an item someone else put there meanwhile). From the files on,
+/// `ctl` pauses it between and inside files, or cancels it (see [`Outcome::Cancelled`]).
+pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, ctl: &Control, progress: &mut dyn FnMut(u64, u64)) -> (Outcome, Vec<PathBuf>) {
     let made = AtomicUsize::new(0);
     let tops = Mutex::new(vec![]);
     let made_it = |to: &Path| {
@@ -125,28 +131,34 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, progress: &mut dyn FnMut(u6
         }
         let (next, done, stop) = (AtomicUsize::new(0), AtomicU64::new(0), AtomicBool::new(false));
         let error: Mutex<Option<(PathBuf, io::Error)>> = Mutex::new(None);
-        // each source as it was copied: a move leaves one changed since (an editor's save)
+        // each source as it was before its copy, set once copied whole: a move leaves one changed
+        // since (an editor's save), and after a cancel one not copied
         let was = Mutex::new(vec![None; plan.files.len()]);
         progress(0, plan.total);
+        ctl.arm();
         std::thread::scope(|s| {
             let all: Vec<_> = (0..workers.max(1))
                 .map(|_| {
                     s.spawn(|| {
-                        while !stop.load(Relaxed) {
+                        while !stop.load(Relaxed) && ctl.go_on() {
                             let i = next.fetch_add(1, Relaxed);
                             let Some((from, to, len)) = plan.files.get(i) else { break };
-                            was.lock().unwrap()[i] = stamp(from);
+                            let before = stamp(from);
                             let mut seen = 0;
                             let r = fs.copy_file(from, to, &mut |n| {
                                 done.fetch_add(n.saturating_sub(seen), Relaxed);
                                 seen = seen.max(n);
+                                ctl.go_on()
                             });
                             match r {
                                 Ok(()) => {
                                     // a file that grew or shrank since the plan still ends at its share
                                     done.fetch_add(len.saturating_sub(seen), Relaxed);
+                                    was.lock().unwrap()[i] = Some(before);
                                     made_it(to);
                                 }
+                                // cancelled inside the file: its part is gone, not an error
+                                Err(_) if ctl.cancelled() => break,
                                 Err(e) => {
                                     stop.store(true, Relaxed);
                                     error.lock().unwrap().get_or_insert((from.clone(), e));
@@ -164,18 +176,30 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, progress: &mut dyn FnMut(u6
         if let Some((from, e)) = error.into_inner().unwrap() {
             return fail(&from, e);
         }
+        let cancelled = ctl.cancelled();
+        let was = was.into_inner().unwrap();
+        let copied = was.iter().filter(|w| w.is_some()).count();
+        if cancelled {
+            // folders made for what did not come, deepest first; one with something in it stays
+            for (_, to) in plan.dirs.iter().rev() {
+                let _ = std::fs::remove_dir(to);
+            }
+        }
         // folders last: their attributes (read-only) could stop the files going in
-        for (from, to) in &plan.dirs {
+        for (from, to) in plan.dirs.iter().filter(|d| !cancelled || d.1.exists()) {
             fs.dir_made(from, to);
         }
-        progress(plan.total, plan.total);
+        if !cancelled {
+            progress(plan.total, plan.total);
+        }
         if !plan.cut {
-            return Outcome::Done;
+            return if cancelled { Outcome::Cancelled(t!("copy.cancelled_copy", n = copied, total = plan.files.len())) } else { Outcome::Done };
         }
         // only what was copied, as it was: a file put into a source folder meanwhile stays, and its
         // folder too; one that cannot go (open elsewhere) does not stop the rest
         let (mut changed, mut stuck) = (0, None);
-        for ((from, _, _), was) in plan.files.iter().zip(was.into_inner().unwrap()) {
+        for ((from, _, _), was) in plan.files.iter().zip(was) {
+            let Some(was) = was else { continue };
             if stamp(from) != was {
                 changed += 1;
             } else if let Err(e) = remove(from, false) {
@@ -192,10 +216,14 @@ pub fn run(plan: &Plan, workers: usize, fs: &dyn Fs, progress: &mut dyn FnMut(u6
         match stuck {
             Some((from, e)) => Outcome::Failed(t!("copy.not_removed", name = name(from), e = e)),
             None if changed > 0 => Outcome::Failed(t!("copy.changed", n = changed)),
+            None if cancelled => Outcome::Cancelled(t!("copy.cancelled_move", n = copied, total = plan.files.len())),
             None => Outcome::Done,
         }
     })();
-    (r, tops.into_inner().unwrap())
+    let mut tops = tops.into_inner().unwrap();
+    // a folder taken away again after a cancel is not there to undo
+    tops.retain(|t| t.symlink_metadata().is_ok());
+    (r, tops)
 }
 
 /// A read-only file or folder goes too, as in Explorer's move.
@@ -227,19 +255,27 @@ mod tests {
         fail: Option<(&'static str, io::ErrorKind)>,
         /// a file saved anew (an editor) right after it was copied
         touch: Option<&'static str>,
+        /// the panel's cancel pressed while this file copies
+        cancel: Option<(&'static str, std::sync::Arc<Control>)>,
     }
 
-    const NONE: T = T { same: false, fail: None, touch: None };
+    const NONE: T = T { same: false, fail: None, touch: None, cancel: None };
 
     impl Fs for T {
-        fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64)) -> io::Result<()> {
+        fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64) -> bool) -> io::Result<()> {
             let named = |n: &str| from.file_name().is_some_and(|x| x == n);
             if let Some((n, kind)) = self.fail.filter(|f| named(f.0)) {
                 return Err(io::Error::new(kind, n));
             }
+            if let Some((_, ctl)) = self.cancel.as_ref().filter(|c| named(c.0)) {
+                ctl.cancel();
+            }
             assert!(!to.exists(), "never over a file: {to:?}");
             let n = std::fs::copy(from, to)?;
-            progress(n);
+            if !progress(n) {
+                std::fs::remove_file(to)?;
+                return Err(io::ErrorKind::Interrupted.into());
+            }
             if self.touch.is_some_and(named) {
                 std::fs::write(from, "saved again, longer").unwrap();
             }
@@ -270,7 +306,7 @@ mod tests {
     fn go(paths: &[PathBuf], dir: &Path, cut: bool, fs: &T) -> (Outcome, Vec<PathBuf>, Vec<(u64, u64)>) {
         let p = plan(paths, dir, cut, fs).expect("a plan");
         let mut seen = vec![];
-        let (r, mut made) = run(&p, 4, fs, &mut |d, t| seen.push((d, t)));
+        let (r, mut made) = run(&p, 4, fs, &Control::default(), &mut |d, t| seen.push((d, t)));
         made.sort();
         (r, made, seen)
     }
@@ -319,7 +355,7 @@ mod tests {
         let same = T { same: true, ..NONE };
         let p = plan(&[src.join("tree")], &dst, true, &same).unwrap();
         assert!(p.files.is_empty() && p.renames.len() == 1);
-        assert_eq!(run(&p, 4, &same, &mut |_, _| {}), (Outcome::Done, vec![dst.join("tree")]));
+        assert_eq!(run(&p, 4, &same, &Control::default(), &mut |_, _| {}), (Outcome::Done, vec![dst.join("tree")]));
         assert!(!src.join("tree").exists() && dst.join("tree/sub/f3.txt").exists());
 
         let fs = NONE;
@@ -328,7 +364,7 @@ mod tests {
         let p = plan(&[dst.join("tree"), src.join("a.bin")], &back, true, &fs).unwrap();
         // put in after the plan: not copied, so not deleted
         std::fs::write(dst.join("tree/sub/new.txt"), "new").unwrap();
-        assert_eq!(run(&p, 4, &fs, &mut |_, _| {}).0, Outcome::Done);
+        assert_eq!(run(&p, 4, &fs, &Control::default(), &mut |_, _| {}).0, Outcome::Done);
         assert!(!src.join("a.bin").exists() && back.join("tree/sub/f3.txt").exists() && back.join("a.bin").exists());
         assert!(!dst.join("tree/sub/f3.txt").exists() && dst.join("tree/sub/new.txt").exists() && !back.join("tree/sub/new.txt").exists());
 
@@ -355,6 +391,28 @@ mod tests {
         std::fs::set_permissions(src.join("tree/locked"), std::fs::Permissions::from_mode(0o755)).unwrap();
         assert!(matches!(&r, Outcome::Failed(m) if m.contains("held.txt")), "{r:?}");
         assert!(src.join("tree/locked/held.txt").exists() && !src.join("tree/sub").exists() && dst.join("tree/sub/f19.txt").exists());
+        std::fs::remove_dir_all(&b).unwrap();
+    }
+
+    /// Cancelled half way through a move: every file is in exactly one place, the one being
+    /// copied stays where it was, and no folder is left empty in the target.
+    #[test]
+    fn a_cancelled_move_keeps_each_file_once_and_leaves_no_half() {
+        let b = base("cancel");
+        let (src, dst) = (b.join("src"), b.join("dst"));
+        let ctl = std::sync::Arc::new(Control::default());
+        let fs = T { cancel: Some(("f5.txt", ctl.clone())), ..NONE };
+        let p = plan(&[src.join("a.bin"), src.join("tree")], &dst, true, &fs).unwrap();
+        // one at a time: a.bin, then the tree's files until f5
+        let (r, made) = run(&p, 1, &fs, &ctl, &mut |_, _| {});
+        assert!(matches!(&r, Outcome::Cancelled(_)), "{r:?}");
+        let there = |d: &Path| (0..20).filter(|i| d.join(format!("tree/sub/f{i}.txt")).exists()).count();
+        let moved = there(&dst);
+        assert_eq!(moved + there(&src), 20);
+        assert!(src.join("tree/sub/f5.txt").exists() && !dst.join("tree/sub/f5.txt").exists());
+        assert!(dst.join("a.bin").exists() && !src.join("a.bin").exists());
+        assert_eq!(dst.join("tree").exists(), moved > 0);
+        assert_eq!(made.contains(&dst.join("tree")), moved > 0);
         std::fs::remove_dir_all(&b).unwrap();
     }
 

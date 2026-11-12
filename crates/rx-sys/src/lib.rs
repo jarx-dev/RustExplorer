@@ -196,20 +196,25 @@ pub fn copy_into_with(paths: &[PathBuf], dir: &Path, cut: bool, progress: &mut d
 
 /// Wklej and a drop: the app's own copy (rx_core::copy) wherever it can, else Windows' own
 /// (`copy_into_with`: a name already taken, links, a folder needing the administrator's consent).
-/// Like `copy_into_with`, with the note saying where the app's own copy stopped.
-pub fn transfer(paths: &[PathBuf], dir: &Path, cut: bool, progress: &mut dyn FnMut(u64, u64)) -> (bool, rx_core::undo::Undo, usize, Option<String>) {
+/// Like `copy_into_with`, with the note saying where the app's own copy stopped: Err for an error,
+/// Ok for a cancel from the panel (`ctl`; Windows' copy never arms it, so it shows no buttons).
+pub fn transfer(paths: &[PathBuf], dir: &Path, cut: bool, ctl: &rx_core::ops::Control, progress: &mut dyn FnMut(u64, u64)) -> (bool, rx_core::undo::Undo, usize, Option<Result<String, String>>) {
     use rx_core::copy::{self, Outcome};
     if let Some(plan) = copy::plan(paths, dir, cut, &WinFs) {
         // a disk with a head to move reads and writes one file at a time; SSDs and shares take four
         let workers = if seeks(dir) || paths.first().is_some_and(|p| seeks(p)) { 1 } else { 4 };
-        let (r, made) = copy::run(&plan, workers, &WinFs, progress);
+        let (r, made) = copy::run(&plan, workers, &WinFs, ctl, progress);
         if r != Outcome::Denied {
             // only what this run made: the plan took no name already there, and an item put in the
             // target by someone else meanwhile is not this operation's to take back
             let made: std::collections::HashSet<PathBuf> = made.into_iter().collect();
             let done: Vec<PathBuf> = paths.iter().filter(|p| p.file_name().is_some_and(|n| made.contains(&dir.join(n)))).cloned().collect();
             let (undo, left) = rx_core::undo::transferred(&done, dir, cut, &vec![false; done.len()], &[], rx_core::undo::stamp);
-            let note = if let Outcome::Failed(e) = r { Some(e) } else { None };
+            let note = match r {
+                Outcome::Failed(e) => Some(Err(e)),
+                Outcome::Cancelled(n) => Some(Ok(n)),
+                _ => None,
+            };
             return (note.is_none(), undo, left, note);
         }
     }
@@ -223,13 +228,13 @@ pub fn transfer(paths: &[PathBuf], dir: &Path, cut: bool, progress: &mut dyn FnM
 struct WinFs;
 
 impl rx_core::copy::Fs for WinFs {
-    fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64)) -> std::io::Result<()> {
+    fn copy_file(&self, from: &Path, to: &Path, progress: &mut dyn FnMut(u64) -> bool) -> std::io::Result<()> {
         unsafe extern "system" fn told(_: i64, done: i64, _: i64, _: i64, _: u32, _: LPPROGRESS_ROUTINE_CALLBACK_REASON, _: windows::Win32::Foundation::HANDLE, _: windows::Win32::Foundation::HANDLE, data: *const std::ffi::c_void) -> COPYPROGRESSROUTINE_PROGRESS {
-            let f = unsafe { &mut *(data as *mut &mut dyn FnMut(u64)) };
-            f(done as u64);
-            PROGRESS_CONTINUE
+            let f = unsafe { &mut *(data as *mut &mut dyn FnMut(u64) -> bool) };
+            // PROGRESS_CANCEL: Windows stops and deletes the part of `to` already written
+            if f(done as u64) { PROGRESS_CONTINUE } else { PROGRESS_CANCEL }
         }
-        let mut f: &mut dyn FnMut(u64) = progress;
+        let mut f: &mut dyn FnMut(u64) -> bool = progress;
         unsafe { CopyFileExW(&long(from), &long(to), Some(told), Some(&mut f as *mut _ as *const _), None, COPY_FILE_FAIL_IF_EXISTS) }.map_err(io_error)
     }
 
@@ -1174,7 +1179,7 @@ mod tests {
         let total = (20 << 20) + 50 * 3000;
 
         let mut seen = vec![];
-        let (ok, undo, left, note) = transfer(&[src.join("tree"), big.clone()], &dst, false, &mut |d, t| seen.push((d, t)));
+        let (ok, undo, left, note) = transfer(&[src.join("tree"), big.clone()], &dst, false, &Default::default(), &mut |d, t| seen.push((d, t)));
         eprintln!("{} reports, last {:?}; {undo:?}", seen.len(), seen.last());
         assert!(ok && left == 0 && note.is_none() && seen.last() == Some(&(total, total)) && seen.windows(2).all(|w| w[0].0 <= w[1].0));
         assert_eq!(std::fs::read(dst.join("big.bin")).unwrap(), std::fs::read(&big).unwrap());
@@ -1182,19 +1187,22 @@ mod tests {
         assert_eq!(undo, Undo::Created(vec![(dst.join("tree"), rx_core::undo::stamp(&dst.join("tree"))), (dst.join("big.bin"), rx_core::undo::stamp(&dst.join("big.bin")))], "undo.what.copy"));
 
         // Windows' errors reach the engine with std's kinds (a refusal hands over to Windows' copy)
-        let e = rx_core::copy::Fs::copy_file(&WinFs, &big, &dst.join("big.bin"), &mut |_| {}).unwrap_err();
+        let e = rx_core::copy::Fs::copy_file(&WinFs, &big, &dst.join("big.bin"), &mut |_| true).unwrap_err();
         assert_eq!(e.kind(), std::io::ErrorKind::AlreadyExists, "{e}");
+        // cancelled from the panel inside a file: an error, and nothing of it left behind
+        let e = rx_core::copy::Fs::copy_file(&WinFs, &big, &dst.join("cut.bin"), &mut |_| false).unwrap_err();
+        assert!(!dst.join("cut.bin").exists(), "{e}");
 
         // past 260 characters: through \\?\ (works with LongPathsEnabled off)
         let deep = (0..6).fold(src.join("gleboki"), |p, i| p.join(format!("{i}{}", "x".repeat(50))));
         std::fs::create_dir_all(&deep).unwrap();
         std::fs::write(deep.join("plik.txt"), "rx").unwrap();
-        let (ok, _, _, note) = transfer(&[src.join("gleboki")], &dst, false, &mut |_, _| {});
+        let (ok, _, _, note) = transfer(&[src.join("gleboki")], &dst, false, &Default::default(), &mut |_, _| {});
         let copied = dst.join(deep.strip_prefix(&src).unwrap()).join("plik.txt");
         assert!(ok && note.is_none() && copied.as_os_str().len() > 300 && copied.exists(), "{note:?}");
 
         // a move on one volume: renamed, and Ctrl+Z puts it back
-        let (ok, undo, _, note) = transfer(std::slice::from_ref(&big), &mv, true, &mut |_, _| {});
+        let (ok, undo, _, note) = transfer(std::slice::from_ref(&big), &mv, true, &Default::default(), &mut |_, _| {});
         assert!(ok && note.is_none() && !big.exists() && mv.join("big.bin").exists());
         assert_eq!(undo, Undo::Moved(vec![(mv.join("big.bin"), big.clone())]));
         std::fs::remove_dir_all(&base).unwrap();
@@ -1243,7 +1251,7 @@ mod tests {
                 let dir = base.join(format!("{round}{own}"));
                 std::fs::create_dir_all(&dir).unwrap();
                 let t = std::time::Instant::now();
-                let ok = if own { transfer(std::slice::from_ref(&item), &dir, false, &mut |_, _| {}).0 } else { copy_into_with(std::slice::from_ref(&item), &dir, false, &mut |_, _| {}).0 };
+                let ok = if own { transfer(std::slice::from_ref(&item), &dir, false, &Default::default(), &mut |_, _| {}).0 } else { copy_into_with(std::slice::from_ref(&item), &dir, false, &mut |_, _| {}).0 };
                 let s = t.elapsed().as_secs_f64();
                 eprintln!("{} round {round}: {ok} {s:.2} s, {:.0} MB/s", if own { "own" } else { "windows" }, total as f64 / 1048576.0 / s);
                 std::fs::remove_dir_all(&dir).unwrap();

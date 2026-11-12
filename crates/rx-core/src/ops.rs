@@ -2,10 +2,49 @@
 //! progress and the texts shown for them. Workers report through [`Ops`]; the window only
 //! reads a copy ([`Ops::list`]), so neither waits on the other for long.
 
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::fmt_size;
+
+/// The panel's pause and cancel for one job. A job that can honour them arms it once it reaches
+/// the part that can stop (the own copy's files); until then, and for one that never does (a
+/// shell copy, the Recycle Bin), the panel shows no buttons.
+#[derive(Debug, Default)]
+pub struct Control {
+    armed: AtomicBool,
+    paused: AtomicBool,
+    cancelled: AtomicBool,
+}
+
+impl Control {
+    pub fn arm(&self) {
+        self.armed.store(true, Relaxed);
+    }
+    pub fn armed(&self) -> bool {
+        self.armed.load(Relaxed)
+    }
+    pub fn paused(&self) -> bool {
+        self.paused.load(Relaxed)
+    }
+    pub fn cancelled(&self) -> bool {
+        self.cancelled.load(Relaxed)
+    }
+    pub fn set_paused(&self, on: bool) {
+        self.paused.store(on, Relaxed);
+    }
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Relaxed);
+    }
+    /// For a worker between steps: holds while paused; false once cancelled (also while paused).
+    pub fn go_on(&self) -> bool {
+        while self.paused() && !self.cancelled() {
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        !self.cancelled()
+    }
+}
 
 /// How often a running job takes a speed sample; also the most a worker asks for a repaint.
 pub const SAMPLE_EVERY: Duration = Duration::from_millis(200);
@@ -43,13 +82,15 @@ pub struct Job {
     pub state: State,
     /// waits in a queue until then (VirusTotal's 4 requests a minute)
     pub queued: Option<Instant>,
+    /// pause and cancel from the panel, for a job that takes them
+    pub control: Option<Arc<Control>>,
     /// the last sample's time and count
     last: (Instant, u64),
 }
 
 impl Job {
     fn new(id: u64, title: String, source: String, now: Instant) -> Self {
-        Job { id, title, source, done: 0, total: None, start: now, end: None, ended_at: None, speed: 0.0, samples: vec![], state: State::Running, queued: None, last: (now, 0) }
+        Job { id, title, source, done: 0, total: None, start: now, end: None, ended_at: None, speed: 0.0, samples: vec![], state: State::Running, queued: None, control: None, last: (now, 0) }
     }
 
     /// Takes a count; true when a sample was taken (worth a repaint, at most every SAMPLE_EVERY).
@@ -162,9 +203,14 @@ impl Ops {
     }
 
     pub fn start(&self, title: String, source: String) -> u64 {
+        self.start_with(title, source, None)
+    }
+
+    /// A job the panel can pause and cancel through `control` (once the job arms it).
+    pub fn start_with(&self, title: String, source: String, control: Option<Arc<Control>>) -> u64 {
         self.with(|(next, jobs)| {
             *next += 1;
-            jobs.push(Job::new(*next, title, source, Instant::now()));
+            jobs.push(Job { control, ..Job::new(*next, title, source, Instant::now()) });
             *next
         })
     }
