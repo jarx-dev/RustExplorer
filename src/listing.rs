@@ -667,7 +667,8 @@ impl App {
         t.all = hits.iter().map(|&i| hit_entry(ix.hit(i as usize))).collect();
         // a cloud file's state is read now (the index's may be from before it was fetched or freed),
         // so a result shows its cloud mark as the folder does
-        // shortcut: one metadata read per cloud result on this thread, ~0.1 s at FOUND_CAP; move it to a thread if that shows
+        // shortcut: one metadata read per cloud result on this thread, ~0.1 s at FOUND_CAP;
+        // move it to a thread if that shows
         for e in t.all.iter_mut().filter(|e| !e.dir && self.clouds.iter().any(|c| e.path.starts_with(c))) {
             if let Ok(m) = std::fs::symlink_metadata(&e.path) {
                 e.attrs = m.file_attributes();

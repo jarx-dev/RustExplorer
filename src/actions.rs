@@ -748,7 +748,14 @@ impl App {
                     sys::init_com();
                     // as Otwórz: a file only in the cloud comes first
                     match if online { sys::cloud_fetch(&p) } else { Ok(()) } {
-                        Ok(()) => sys::open_with(&p, owner),
+                        Ok(()) => {
+                            if online {
+                                let _ = tx.send(Msg::Note(t!("actions.fetched").into()));
+                                let _ = tx.send(Msg::Fetched(p.clone(), true));
+                                ctx.request_repaint();
+                            }
+                            sys::open_with(&p, owner);
+                        }
                         Err(e) => {
                             let _ = tx.send(Msg::Note(t!("actions.fetch_failed", e = e)));
                             ctx.request_repaint();
@@ -871,7 +878,6 @@ impl App {
                     let (tx, ctx) = (self.tx.clone(), ctx.clone());
                     self.msg = Some(t!("actions.fetching").into());
                     std::thread::spawn(move || {
-                        sys::init_com();
                         let fetched = sys::cloud_fetch(&p);
                         let _ = tx.send(Msg::Note(match &fetched {
                             Ok(()) => t!("actions.fetched").into(),
@@ -1432,8 +1438,9 @@ impl App {
                 }
                 Msg::Fetched(p, ok) => {
                     if ok {
-                        // rows no watcher reads again (search results) show it as on this device
-                        if let Ok(m) = std::fs::symlink_metadata(&p) {
+                        // rows no watcher reads again (search results) show it as on this device;
+                        // only a cloud folder is asked, where a share may have stopped answering
+                        if let Some(m) = self.in_cloud(&p).then(|| std::fs::symlink_metadata(&p).ok()).flatten() {
                             self.tabs.iter_mut().flat_map(|t| t.all.iter_mut()).filter(|e| e.path == p).for_each(|e| e.attrs = m.file_attributes());
                         }
                         // its content is asked for now, whatever its attributes still say (an

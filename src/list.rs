@@ -714,7 +714,8 @@ impl App {
                     if let (Some(x), Some(r)) = (vt_x, vt) {
                         after = x + paint_badge(&clip, pos2(x, cy), &r, 20.0);
                     }
-                    // a search result also tells where it is: its folder, muted, after the name (short of the cloud mark)
+                    // a search result also tells where it is: its folder, muted, after the name
+                    // (short of the cloud mark)
                     if self.tabs[self.cur].found {
                         if let Some(dir) = e.path.parent() {
                             let d = p.layout(dir.display().to_string(), font.clone(), pal().dim, f32::INFINITY);
