@@ -981,6 +981,10 @@ impl App {
             Act::Refresh => {
                 self.pc_asked = false;
                 self.after_fs_change();
+                // no watcher reads results again; the biggest files keep no cloud mark (cloud_mark)
+                for t in self.tabs.iter_mut().filter(|t| t.found && !t.biggest) {
+                    fresh_cloud_attrs(&mut t.all, &self.clouds);
+                }
                 read_drives(self.tx.clone(), false);
                 self.preview = None;
             }

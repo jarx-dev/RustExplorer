@@ -665,15 +665,7 @@ impl App {
         };
         let (hits, total) = ix.search(&t.found_for.0, FOUND_CAP);
         t.all = hits.iter().map(|&i| hit_entry(ix.hit(i as usize))).collect();
-        // a cloud file's state is read now (the index's may be from before it was fetched or freed),
-        // so a result shows its cloud mark as the folder does
-        // shortcut: one metadata read per cloud result on this thread, ~0.1 s at FOUND_CAP;
-        // move it to a thread if that shows
-        for e in t.all.iter_mut().filter(|e| !e.dir && self.clouds.iter().any(|c| e.path.starts_with(c))) {
-            if let Ok(m) = std::fs::symlink_metadata(&e.path) {
-                e.attrs = m.file_attributes();
-            }
-        }
+        fresh_cloud_attrs(&mut t.all, &self.clouds);
         t.found_total = total;
     }
 
@@ -887,6 +879,19 @@ pub(crate) struct SpaceData {
     pub(crate) totals: Vec<u64>,
     pub(crate) kids: rx_core::index::Kids,
     pub(crate) gone: HashSet<u32>,
+}
+
+/// Search results in cloud folders read their state from the disk (the index's may be from
+/// before a file was fetched or freed), so they show the cloud mark as the folder does: when
+/// listed and on F5.
+// shortcut: one metadata read per cloud result on the UI thread, ~0.1 s at FOUND_CAP;
+// move it to a thread if that shows
+pub(crate) fn fresh_cloud_attrs(all: &mut [Entry], clouds: &[PathBuf]) {
+    for e in all.iter_mut().filter(|e| !e.dir && clouds.iter().any(|c| e.path.starts_with(c))) {
+        if let Ok(m) = std::fs::symlink_metadata(&e.path) {
+            e.attrs = m.file_attributes();
+        }
+    }
 }
 
 /// A list row for an index entry: the name alone (sorting, the filter, type-ahead); a results
