@@ -245,6 +245,12 @@ impl App {
         self.clouds.iter().any(|c| p.starts_with(c))
     }
 
+    /// A cloud file not on this device, as the disk says now (the bits `sys::cloud_fetch` acts on).
+    /// Only cloud folders are asked: they are local, where a share may have stopped answering.
+    pub(crate) fn not_here(&self, p: &Path) -> bool {
+        self.in_cloud(p) && std::fs::symlink_metadata(p).is_ok_and(|m| m.file_attributes() & (0x40000 | 0x400000) != 0)
+    }
+
     /// Whose sharing link "Kopiuj link" can ask for `p`: OneDrive's places (as Explorer names
     /// them) and Google Drive's streamed drive; the mirrored My Drive folder has no file ids.
     // shortcut: synced SharePoint libraries (OneDrive for Business, named after the company)
@@ -262,11 +268,12 @@ impl App {
     }
 
     /// The cloud state of a file in a cloud folder; none for folders, elsewhere, in archives and
-    /// for the deeper rows of Analiza miejsca, built from the index, whose attributes may be
-    /// minutes old (search results read theirs when listed).
+    /// for rows built from the index without a fresh look (the biggest files, deeper rows of
+    /// Analiza miejsca), whose attributes may be minutes old. Search results read theirs when listed.
     pub(crate) fn cloud_mark(&self, e: &Entry) -> Option<Cloud> {
         // attributes 0: an archive's item (a real file has at least FILE_ATTRIBUTE_NORMAL)
-        (e.depth == 0 && !e.dir && e.attrs != 0 && self.in_cloud(&e.path)).then(|| cloud_of(e.attrs))
+        let live = e.depth == 0 && !self.tabs[self.cur].biggest;
+        (live && !e.dir && e.attrs != 0 && self.in_cloud(&e.path)).then(|| cloud_of(e.attrs))
     }
 }
 

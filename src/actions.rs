@@ -740,11 +740,14 @@ impl App {
                 });
             }
             Act::OpenWith(p) => {
-                let (owner, tx, ctx) = (self.hwnd, self.tx.clone(), ctx.clone());
+                let (owner, tx, ctx, online) = (self.hwnd, self.tx.clone(), ctx.clone(), self.not_here(&p));
+                if online {
+                    self.msg = Some(t!("actions.fetching").into());
+                }
                 std::thread::spawn(move || {
                     sys::init_com();
-                    // as Otwórz: a file only in the cloud comes first (nothing to do for any other)
-                    match sys::cloud_fetch(&p) {
+                    // as Otwórz: a file only in the cloud comes first
+                    match if online { sys::cloud_fetch(&p) } else { Ok(()) } {
                         Ok(()) => sys::open_with(&p, owner),
                         Err(e) => {
                             let _ = tx.send(Msg::Note(t!("actions.fetch_failed", e = e)));
@@ -848,10 +851,10 @@ impl App {
                 }
             }
             Act::OpenPath(p) => {
+                // the disk's word, not the row's: a results row's attributes may be minutes old
+                let online = self.not_here(&p);
                 let t = self.tab();
-                let row = t.all.iter().find(|e| e.path == p);
-                let online = row.is_some_and(|e| rx_core::only_in_cloud(e.attrs));
-                let folder = match row {
+                let folder = match t.all.iter().find(|e| e.path == p) {
                     // a row knows what it is: no question to a drive that may have stopped answering
                     Some(e) => e.opens_as_folder() || (!t.in_archive() && rx_archive::can_extract(&p)),
                     // on Ten komputer a root is a drive (a file comes here too: from the map, out of an archive)
@@ -869,14 +872,15 @@ impl App {
                     self.msg = Some(t!("actions.fetching").into());
                     std::thread::spawn(move || {
                         sys::init_com();
-                        let note = match sys::cloud_fetch(&p) {
-                            Ok(()) => {
-                                sys::open(&p);
-                                t!("actions.fetched").into()
-                            }
+                        let fetched = sys::cloud_fetch(&p);
+                        let _ = tx.send(Msg::Note(match &fetched {
+                            Ok(()) => t!("actions.fetched").into(),
                             Err(e) => t!("actions.fetch_failed", e = e),
-                        };
-                        let _ = tx.send(Msg::Note(note));
+                        }));
+                        if fetched.is_ok() {
+                            let _ = tx.send(Msg::Fetched(p.clone(), true));
+                            let _ = tx.send(Msg::OpenFetched(p));
+                        }
                         ctx.request_repaint();
                     });
                 } else {
@@ -1428,6 +1432,10 @@ impl App {
                 }
                 Msg::Fetched(p, ok) => {
                     if ok {
+                        // rows no watcher reads again (search results) show it as on this device
+                        if let Ok(m) = std::fs::symlink_metadata(&p) {
+                            self.tabs.iter_mut().flat_map(|t| t.all.iter_mut()).filter(|e| e.path == p).for_each(|e| e.attrs = m.file_attributes());
+                        }
                         // its content is asked for now, whatever its attributes still say (an
                         // offline file of a share's archive keeps them, and comes when read)
                         self.preview_read(p);
@@ -1436,6 +1444,7 @@ impl App {
                         self.preview = None;
                     }
                 }
+                Msg::OpenFetched(p) => sys::open(&p),
                 Msg::Thumb(p, img) => {
                     // not for a folder left meanwhile
                     if let Some(t) = self.thumbs.get_mut(&p) {

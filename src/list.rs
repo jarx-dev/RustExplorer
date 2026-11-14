@@ -714,11 +714,12 @@ impl App {
                     if let (Some(x), Some(r)) = (vt_x, vt) {
                         after = x + paint_badge(&clip, pos2(x, cy), &r, 20.0);
                     }
-                    // a search result also tells where it is: its folder, muted, after the name
+                    // a search result also tells where it is: its folder, muted, after the name (short of the cloud mark)
                     if self.tabs[self.cur].found {
                         if let Some(dir) = e.path.parent() {
                             let d = p.layout(dir.display().to_string(), font.clone(), pal().dim, f32::INFINITY);
-                            clip.galley(pos2(after + 12.0, cy - d.size().y / 2.0), d, pal().dim);
+                            let dir_clip = p.with_clip_rect(Rect::from_min_max(name_rect.min, pos2(right, name_rect.bottom())).intersect(p.clip_rect()));
+                            dir_clip.galley(pos2(after + 12.0, cy - d.size().y / 2.0), d, pal().dim);
                         }
                     }
                 }
