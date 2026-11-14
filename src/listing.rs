@@ -352,6 +352,7 @@ impl Tab {
             scroll_to: None,
             scroll: (0.0, 0.0),
             side: 0,
+            pin: None,
             in_arc: false,
             asked: Default::default(),
             shown: false,

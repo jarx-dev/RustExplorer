@@ -51,6 +51,9 @@ pub(crate) mod ic {
     pub const EXTRACT: &str = "\u{E896}";
     pub const STAR: &str = "\u{E734}";
     pub const STAR_FILL: &str = "\u{E735}";
+    /// a tab pinned to its folder
+    pub const PIN: &str = "\u{E718}";
+    pub const UNPIN: &str = "\u{E77A}";
     pub const SELECT_ALL: &str = "\u{E8B3}";
     pub const TERMINAL: &str = "\u{E756}";
     pub const OPEN: &str = "\u{E8E5}";
