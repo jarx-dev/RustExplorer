@@ -538,22 +538,26 @@ pub fn open(path: &Path) -> Result<(), String> {
     let mut sei = SHELLEXECUTEINFOW {
         cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
         fMask: SEE_MASK_FLAG_NO_UI,
-        lpVerb: w!("open"),
+        // the default verb (no lpVerb): with NO_UI only it still offers "Otwórz za pomocą" for a type with no program
         lpFile: PCWSTR(file.as_ptr()),
         nShow: SW_SHOWNORMAL.0,
         ..Default::default()
     };
-    unsafe { ShellExecuteExW(&mut sei) }.map_err(|e| e.message())
+    unless_cancelled(unsafe { ShellExecuteExW(&mut sei) })
 }
 
 /// Windows' "Otwórz za pomocą" window for a file: pick a program, and if wanted keep it for the
-/// file's type. It stays until closed, so it is called off the UI thread. Err as for `open`; a
-/// window closed without a choice is no error.
+/// file's type. It stays until closed, so it is called off the UI thread. Err as for `open`.
 pub fn open_with(path: &Path, owner: isize) -> Result<(), String> {
     let file = HSTRING::from(path);
     let info = OPENASINFO { pcszFile: PCWSTR(file.as_ptr()), pcszClass: PCWSTR::null(), oaifInFlags: OAIF_ALLOW_REGISTRATION | OAIF_REGISTER_EXT | OAIF_EXEC };
-    match unsafe { SHOpenWithDialog(Some(HWND(owner as _)), &info) } {
-        Err(e) if e.code() != windows::core::HRESULT::from_win32(1223) => Err(e.message()), // 1223: ERROR_CANCELLED
+    unless_cancelled(unsafe { SHOpenWithDialog(Some(HWND(owner as _)), &info) })
+}
+
+/// The user's own "no" (a window closed without a choice, a declined UAC prompt) is no failure to report.
+fn unless_cancelled(r: windows::core::Result<()>) -> Result<(), String> {
+    match r {
+        Err(e) if e.code() != windows::Win32::Foundation::ERROR_CANCELLED.to_hresult() => Err(e.message()),
         _ => Ok(()),
     }
 }
@@ -1151,8 +1155,8 @@ mod tests {
 
     #[test]
     fn open_reports_why_windows_could_not() {
-        let gone = std::env::current_exe().unwrap().parent().unwrap().join("rx-test-brak.pdf");
-        assert!(open(&gone).is_err_and(|e| !e.trim().is_empty()));
+        let gone = std::env::current_exe().unwrap().parent().unwrap().join("rx-test-gone.pdf");
+        assert!(open(&gone).is_err_and(|e| !e.is_empty()));
     }
 
     #[test]
