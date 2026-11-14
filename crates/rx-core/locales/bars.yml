@@ -289,6 +289,15 @@ bars.tab.new_tip:
 bars.tab.middle_click:
   en: Middle-click closes the tab
   pl: Środkowy klik zamyka kartę
+bars.tab.pin:
+  en: Pin tab to this folder
+  pl: Przypnij kartę do tego folderu
+bars.tab.unpin:
+  en: Unpin tab
+  pl: Odepnij kartę
+bars.tab.pinned_to:
+  en: "Pinned to %{path}: returns there when you switch to another tab"
+  pl: "Przypięta do %{path}: wraca tam po przejściu na inną kartę"
 
 # ---------- status bar ----------
 bars.status.note_close:

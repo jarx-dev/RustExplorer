@@ -592,7 +592,10 @@ impl App {
             let n = self.tabs.len();
             for &i in &ids {
                 let label = self.tab_label(i);
-                let full = self.display_path(&self.tabs[i].path.clone());
+                let mut full = self.display_path(&self.tabs[i].path.clone());
+                if let Some(pin) = self.tabs[i].pin.clone() {
+                    full = format!("{full}\n{}", t!("bars.tab.pinned_to", path = self.display_path(&pin)));
+                }
                 let is_shown = i == shown;
                 // the inactive pane's tab is only outlined, so the white card marks the active pane
                 let card = if self.inactive_pane { pal().pane } else { pal().content };
@@ -648,7 +651,12 @@ impl App {
                     }
                 }
                 let kind = if is_pc(&self.tabs[i].path) { Kind::Computer } else { Kind::Folder };
-                paint_icon(p, Rect::from_min_size(pos2(rect.left() + 10.0, rect.center().y - 8.0), vec2(16.0, 16.0)), kind);
+                let at = Rect::from_min_size(pos2(rect.left() + 10.0, rect.center().y - 8.0), vec2(16.0, 16.0));
+                if self.tabs[i].pin.is_some() {
+                    p.text(at.center(), Align2::CENTER_CENTER, ic::PIN, icon_font(14.0), pal().accent);
+                } else {
+                    paint_icon(p, at, kind);
+                }
                 p.galley(pos2(rect.left() + 32.0, rect.center().y - galley.size().y / 2.0), galley, col);
                 let mut closed = false;
                 if closable && (active || resp.hovered()) {
@@ -669,12 +677,17 @@ impl App {
                 if resp.middle_clicked() {
                     self.pending.push(Act::CloseTab(i));
                 }
+                let pinned = self.tabs[i].pin.is_some();
                 let pending = &mut self.pending;
                 resp.context_menu(|ui| {
                     menu_style(ui);
                     // through `plus`, so the caller puts the tab in the right pane
                     if menu_item(ui, ic::ADD, t!("bars.cmd.new_tab"), "Ctrl+T") {
                         plus = true;
+                    }
+                    let (pic, what) = if pinned { (ic::UNPIN, t!("bars.tab.unpin")) } else { (ic::PIN, t!("bars.tab.pin")) };
+                    if menu_item(ui, pic, what, "") {
+                        pending.push(Act::PinTab(i));
                     }
                     if closable && menu_item(ui, ic::CLOSE, t!("bars.cmd.close_tab"), "Ctrl+W") {
                         pending.push(Act::CloseTab(i));

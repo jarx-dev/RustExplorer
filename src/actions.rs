@@ -270,18 +270,26 @@ impl App {
         self.told_tray = num("traynote") == Some(1.0);
         if !keep_start {
             let sides: Vec<u8> = kv.get("sides").map(|v| v.split(',').map(|x| (x == "1") as u8).collect()).unwrap_or_default();
+            // one per tab, empty for an unpinned one (a layout from before pins has none)
+            let pins: Vec<Option<PathBuf>> = kv.get("pins").map(|v| v.split('|').map(|p| Some(PathBuf::from(p)).filter(|p| !p.as_os_str().is_empty())).collect()).unwrap_or_default();
             // not asked of the disk here (a share that does not answer would hold the window back):
             // a folder that is gone says so in its list
-            let tabs: Vec<(PathBuf, u8)> = kv
+            let tabs: Vec<(PathBuf, u8, Option<PathBuf>)> = kv
                 .get("tabs")
-                .map(|t| t.split('|').map(PathBuf::from).zip(sides.iter().copied().chain(std::iter::repeat(0))).filter(|(p, _)| !p.as_os_str().is_empty()).collect())
+                .map(|t| {
+                    t.split('|')
+                        .enumerate()
+                        .map(|(i, p)| (PathBuf::from(p), sides.get(i).copied().unwrap_or(0), pins.get(i).cloned().flatten()))
+                        .filter(|(p, ..)| !p.as_os_str().is_empty())
+                        .collect()
+                })
                 .unwrap_or_default();
             if !tabs.is_empty() {
                 self.tabs = tabs
                     .into_iter()
-                    .map(|(p, side)| {
+                    .map(|(p, side, pin)| {
                         let mut t = Tab::new(p);
-                        t.side = side;
+                        (t.side, t.pin) = (side, pin);
                         t
                     })
                     .collect();
@@ -417,7 +425,23 @@ impl App {
     }
 
     pub(crate) fn navigate(&mut self, p: PathBuf) {
-        let t = self.tab();
+        self.navigate_tab(self.cur, p);
+    }
+
+    /// A pinned tab no pane shows goes back to its folder (Back returns to where it was), as
+    /// Total Commander's locked tabs do. Called every frame, before ui() moves `cur` about.
+    pub(crate) fn return_pinned(&mut self) {
+        for i in 0..self.tabs.len() {
+            let shown = i == self.cur || (self.split && i == self.other);
+            let t = &self.tabs[i];
+            if !shown && t.pin.as_ref().is_some_and(|p| *p != t.path) {
+                self.navigate_tab(i, t.pin.clone().unwrap());
+            }
+        }
+    }
+
+    pub(crate) fn navigate_tab(&mut self, i: usize, p: PathBuf) {
+        let t = &mut self.tabs[i];
         if p == t.path {
             return;
         }
@@ -427,10 +451,13 @@ impl App {
         // opening a folder (also one found everywhere) goes back to searching where you are
         (t.search_all, t.search) = (false, String::new());
         t.arrive();
-        self.apply_folder_sort(self.cur);
-        self.pc_asked = false;
-        self.addr_edit = None;
-        self.rename = None;
+        self.apply_folder_sort(i);
+        // the edits on screen belong to the shown tab: a hidden pinned tab going back keeps them
+        if i == self.cur {
+            self.pc_asked = false;
+            self.addr_edit = None;
+            self.rename = None;
+        }
         // thumbnails (64 KB each) are kept only for folders open in a tab; they used to pile up
         // for every folder ever shown
         let open: HashSet<&Path> = self.tabs.iter().map(|t| t.path.as_path()).collect();
@@ -543,6 +570,10 @@ impl App {
                 self.tabs.push(t);
                 self.cur = self.tabs.len() - 1;
                 self.apply_folder_sort(self.cur);
+            }
+            Act::PinTab(i) => {
+                let t = &mut self.tabs[i];
+                t.pin = if t.pin.is_some() { None } else { Some(t.path.clone()) };
             }
             Act::CloseTab(i) => {
                 if self.tabs.len() > 1 {

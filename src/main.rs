@@ -142,6 +142,8 @@ struct Tab {
     scroll: (f32, f32),
     /// which pane of the split view this tab belongs to (0 left, 1 right)
     side: u8,
+    /// the folder the tab is pinned to: free to go anywhere while shown, back here once its pane shows another tab
+    pin: Option<PathBuf>,
     /// the folder is an archive's (see archive.rs): by its name until its rows come, then as read
     in_arc: bool,
     /// the rows asked of a worker thread and what to select once they are in (listing.rs)
@@ -252,6 +254,8 @@ enum ViewMode {
 enum Act {
     NewTab(Option<PathBuf>),
     CloseTab(usize),
+    /// the tab pinned to its current folder, or unpinned
+    PinTab(usize),
     NewFolder,
     Rename,
     Delete,
@@ -627,9 +631,10 @@ impl eframe::App for App {
             egui::ThemePreference::Dark => 2,
         };
         let text = format!(
-            "zoom={}\nwidths={},{},{},{}\nnamew={}\nview={view}\ntheme={theme}\npreview={}\nhidden={}\ntraynote={}\nfulltree={}\nsplit={}\ncur={}\nother={}\ntabs={}\nsides={}\nlang={}",
+            "zoom={}\nwidths={},{},{},{}\nnamew={}\nview={view}\ntheme={theme}\npreview={}\nhidden={}\ntraynote={}\nfulltree={}\nsplit={}\ncur={}\nother={}\ntabs={}\nsides={}\npins={}\nlang={}",
             self.zoom, w[0], w[1], w[2], w[3], self.name_width, self.show_preview as u8, self.show_hidden as u8, self.told_tray as u8, self.tree_full as u8, self.split as u8, self.cur, self.other, tabs.join("|"),
             self.tabs.iter().map(|t| t.side.to_string()).collect::<Vec<_>>().join(","),
+            self.tabs.iter().map(|t| t.pin.as_ref().map(|p| p.display().to_string()).unwrap_or_default()).collect::<Vec<_>>().join("|"),
             rx_core::i18n::lang().code()
         );
         storage.set_string("uklad", text);
@@ -686,6 +691,7 @@ impl eframe::App for App {
         follow_theme(ctx);
         // here too: the first lists are read while the first frame is drawn, and a window started
         // in the tray has them when it is shown
+        self.return_pinned();
         self.send_listings(ctx);
         self.watch_shown(ctx);
         if self.shot.is_none() {
