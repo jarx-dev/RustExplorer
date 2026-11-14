@@ -262,12 +262,11 @@ impl App {
     }
 
     /// The cloud state of a file in a cloud folder; none for folders, elsewhere, in archives and
-    /// for rows built from the index (search results, deeper rows of Analiza miejsca), whose
-    /// attributes may be minutes old.
+    /// for the deeper rows of Analiza miejsca, built from the index, whose attributes may be
+    /// minutes old (search results read theirs when listed).
     pub(crate) fn cloud_mark(&self, e: &Entry) -> Option<Cloud> {
         // attributes 0: an archive's item (a real file has at least FILE_ATTRIBUTE_NORMAL)
-        let live = e.depth == 0 && !self.tabs[self.cur].found;
-        (live && !e.dir && e.attrs != 0 && self.in_cloud(&e.path)).then(|| cloud_of(e.attrs))
+        (e.depth == 0 && !e.dir && e.attrs != 0 && self.in_cloud(&e.path)).then(|| cloud_of(e.attrs))
     }
 }
 
@@ -659,6 +658,14 @@ impl App {
         };
         let (hits, total) = ix.search(&t.found_for.0, FOUND_CAP);
         t.all = hits.iter().map(|&i| hit_entry(ix.hit(i as usize))).collect();
+        // a cloud file's state is read now (the index's may be from before it was fetched or freed),
+        // so a result shows its cloud mark as the folder does
+        // shortcut: one metadata read per cloud result on this thread, ~0.1 s at FOUND_CAP; move it to a thread if that shows
+        for e in t.all.iter_mut().filter(|e| !e.dir && self.clouds.iter().any(|c| e.path.starts_with(c))) {
+            if let Ok(m) = std::fs::symlink_metadata(&e.path) {
+                e.attrs = m.file_attributes();
+            }
+        }
         t.found_total = total;
     }
 

@@ -223,7 +223,7 @@ impl App {
                     ui.add(egui::Label::new(RichText::new(text).color(color)).wrap());
                 });
                 if ui.link(t!("scan.report")).clicked() {
-                    let _ = sys::open(Path::new(&page));
+                    sys::open(Path::new(&page));
                 }
             }
             Some(Vt::Unknown(_)) => {
@@ -255,7 +255,7 @@ impl App {
             ui.add_space(4.0);
             ui.add(egui::Label::new(RichText::new(t!("scan.key.limit")).color(pal().dim)).wrap());
             if ui.link(t!("scan.key.page")).clicked() {
-                let _ = sys::open(Path::new(KEY_PAGE));
+                sys::open(Path::new(KEY_PAGE));
             }
             ui.add_space(8.0);
             let hint = if had { t!("scan.key.hint_new") } else { t!("scan.key.hint") };

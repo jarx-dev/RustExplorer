@@ -67,9 +67,6 @@ actions.fetched:
 actions.fetch_failed:
   en: "Couldn't download the file from the cloud: %{e}"
   pl: "Nie udało się pobrać pliku z chmury: %{e}"
-actions.open_failed:
-  en: "Windows couldn't open the file: %{e}"
-  pl: "Windows nie otworzył pliku: %{e}"
 actions.menu_mixed_folders:
   en: "The selected items are in different folders: the Windows menu applies only to the item under the pointer"
   pl: "Zaznaczone są w różnych folderach: menu Windows dotyczy tylko elementu pod kursorem"

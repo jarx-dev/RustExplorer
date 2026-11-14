@@ -531,34 +531,19 @@ pub fn rename_new(from: &Path, to: &Path) -> Result<(), String> {
     unsafe { MoveFileExW(&HSTRING::from(from), &HSTRING::from(to), MOVE_FILE_FLAGS(0)) }.map_err(|e| e.message())
 }
 
-/// Opens with the file's program. Err is Windows' reason, for the caller to show (an online-only
-/// OneDrive file while OneDrive is not running used to fail without a word).
-pub fn open(path: &Path) -> Result<(), String> {
-    let file = HSTRING::from(path);
-    let mut sei = SHELLEXECUTEINFOW {
-        cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
-        fMask: SEE_MASK_FLAG_NO_UI,
-        // the default verb (no lpVerb): with NO_UI only it still offers "Otwórz za pomocą" for a type with no program
-        lpFile: PCWSTR(file.as_ptr()),
-        nShow: SW_SHOWNORMAL.0,
-        ..Default::default()
-    };
-    unless_cancelled(unsafe { ShellExecuteExW(&mut sei) })
+pub fn open(path: &Path) {
+    unsafe {
+        ShellExecuteW(Some(HWND::default()), w!("open"), &HSTRING::from(path), PCWSTR::null(), PCWSTR::null(), SW_SHOWNORMAL);
+    }
 }
 
 /// Windows' "Otwórz za pomocą" window for a file: pick a program, and if wanted keep it for the
-/// file's type. It stays until closed, so it is called off the UI thread. Err as for `open`.
-pub fn open_with(path: &Path, owner: isize) -> Result<(), String> {
+/// file's type. It stays until closed, so it is called off the UI thread.
+pub fn open_with(path: &Path, owner: isize) {
     let file = HSTRING::from(path);
     let info = OPENASINFO { pcszFile: PCWSTR(file.as_ptr()), pcszClass: PCWSTR::null(), oaifInFlags: OAIF_ALLOW_REGISTRATION | OAIF_REGISTER_EXT | OAIF_EXEC };
-    unless_cancelled(unsafe { SHOpenWithDialog(Some(HWND(owner as _)), &info) })
-}
-
-/// The user's own "no" (a window closed without a choice, a declined UAC prompt) is no failure to report.
-fn unless_cancelled(r: windows::core::Result<()>) -> Result<(), String> {
-    match r {
-        Err(e) if e.code() != windows::Win32::Foundation::ERROR_CANCELLED.to_hresult() => Err(e.message()),
-        _ => Ok(()),
+    unsafe {
+        let _ = SHOpenWithDialog(Some(HWND(owner as _)), &info);
     }
 }
 
@@ -1151,12 +1136,6 @@ mod tests {
         while t.elapsed().as_millis() < HOLD_COUNT_MS.load(Relaxed) as u128 && !stop.load(Relaxed) {
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
-    }
-
-    #[test]
-    fn open_reports_why_windows_could_not() {
-        let gone = std::env::current_exe().unwrap().parent().unwrap().join("rx-test-gone.pdf");
-        assert!(open(&gone).is_err_and(|e| !e.is_empty()));
     }
 
     #[test]

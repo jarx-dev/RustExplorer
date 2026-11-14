@@ -743,9 +743,13 @@ impl App {
                 let (owner, tx, ctx) = (self.hwnd, self.tx.clone(), ctx.clone());
                 std::thread::spawn(move || {
                     sys::init_com();
-                    if let Err(e) = sys::open_with(&p, owner) {
-                        let _ = tx.send(Msg::Note(t!("actions.open_failed", e = e)));
-                        ctx.request_repaint();
+                    // as Otwórz: a file only in the cloud comes first (nothing to do for any other)
+                    match sys::cloud_fetch(&p) {
+                        Ok(()) => sys::open_with(&p, owner),
+                        Err(e) => {
+                            let _ = tx.send(Msg::Note(t!("actions.fetch_failed", e = e)));
+                            ctx.request_repaint();
+                        }
                     }
                 });
             }
@@ -845,7 +849,9 @@ impl App {
             }
             Act::OpenPath(p) => {
                 let t = self.tab();
-                let folder = match t.all.iter().find(|e| e.path == p) {
+                let row = t.all.iter().find(|e| e.path == p);
+                let online = row.is_some_and(|e| rx_core::only_in_cloud(e.attrs));
+                let folder = match row {
                     // a row knows what it is: no question to a drive that may have stopped answering
                     Some(e) => e.opens_as_folder() || (!t.in_archive() && rx_archive::can_extract(&p)),
                     // on Ten komputer a root is a drive (a file comes here too: from the map, out of an archive)
@@ -856,8 +862,25 @@ impl App {
                     self.navigate(p);
                 } else if archive::is_inside(&p) {
                     self.open_from_archive(p, ctx);
-                } else if let Err(e) = sys::open(&p) {
-                    self.msg = Some(t!("actions.open_failed", e = e));
+                } else if online {
+                    // fetched first, as Explorer does: a provider that is not running then says so,
+                    // where the file handed to its program failed without a word
+                    let (tx, ctx) = (self.tx.clone(), ctx.clone());
+                    self.msg = Some(t!("actions.fetching").into());
+                    std::thread::spawn(move || {
+                        sys::init_com();
+                        let note = match sys::cloud_fetch(&p) {
+                            Ok(()) => {
+                                sys::open(&p);
+                                t!("actions.fetched").into()
+                            }
+                            Err(e) => t!("actions.fetch_failed", e = e),
+                        };
+                        let _ = tx.send(Msg::Note(note));
+                        ctx.request_repaint();
+                    });
+                } else {
+                    sys::open(&p);
                 }
             }
             Act::Properties => {
