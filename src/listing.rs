@@ -269,7 +269,8 @@ impl App {
 
     /// The cloud state of a file in a cloud folder; none for folders, elsewhere, in archives and
     /// for rows built from the index without a fresh look (the biggest files, deeper rows of
-    /// Analiza miejsca), whose attributes may be minutes old. Search results read theirs when listed.
+    /// Analiza miejsca), whose attributes may be minutes old. Search results read theirs when listed
+/// and on F5 (`fresh_cloud_attrs`).
     pub(crate) fn cloud_mark(&self, e: &Entry) -> Option<Cloud> {
         // attributes 0: an archive's item (a real file has at least FILE_ATTRIBUTE_NORMAL)
         let live = e.depth == 0 && !self.tabs[self.cur].biggest;
