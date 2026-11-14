@@ -229,8 +229,12 @@ enum Msg {
     Changed(Vec<PathBuf>, bool),
     /// VirusTotal's answer about a file (scan.rs)
     Vt(PathBuf, Vt),
-    /// a download asked for in the preview ended (true: well): the file's preview is built again
+    /// a cloud file's download ended (true: well): its rows read their state again, its preview
+    /// is built again
     Fetched(PathBuf, bool),
+    /// a file only in the cloud came for Otwórz: opened on this thread (the shell's handlers
+    /// want its apartment)
+    OpenFetched(PathBuf),
     /// the items for Windows' menu (or why the disk did not give them) asked for at this time, to
     /// be shown at this point in the window (pixels; None: at the pointer)
     ShellMenu(Result<sys::menu::Items, String>, Option<(i32, i32)>, Instant),

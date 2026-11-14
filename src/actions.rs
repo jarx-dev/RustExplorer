@@ -740,10 +740,27 @@ impl App {
                 });
             }
             Act::OpenWith(p) => {
-                let owner = self.hwnd;
+                let (owner, tx, ctx, online) = (self.hwnd, self.tx.clone(), ctx.clone(), self.not_here(&p));
+                if online {
+                    self.msg = Some(t!("actions.fetching").into());
+                }
                 std::thread::spawn(move || {
                     sys::init_com();
-                    sys::open_with(&p, owner);
+                    // as Otwórz: a file only in the cloud comes first
+                    match if online { sys::cloud_fetch(&p) } else { Ok(()) } {
+                        Ok(()) => {
+                            if online {
+                                let _ = tx.send(Msg::Note(t!("actions.fetched").into()));
+                                let _ = tx.send(Msg::Fetched(p.clone(), true));
+                                ctx.request_repaint();
+                            }
+                            sys::open_with(&p, owner);
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Msg::Note(t!("actions.fetch_failed", e = e)));
+                            ctx.request_repaint();
+                        }
+                    }
                 });
             }
             Act::ShellMenu(p, at) => {
@@ -841,6 +858,8 @@ impl App {
                 }
             }
             Act::OpenPath(p) => {
+                // the disk's word, not the row's: a results row's attributes may be minutes old
+                let online = self.not_here(&p);
                 let t = self.tab();
                 let folder = match t.all.iter().find(|e| e.path == p) {
                     // a row knows what it is: no question to a drive that may have stopped answering
@@ -853,6 +872,23 @@ impl App {
                     self.navigate(p);
                 } else if archive::is_inside(&p) {
                     self.open_from_archive(p, ctx);
+                } else if online {
+                    // fetched first, as Explorer does: a provider that is not running then says so,
+                    // where the file handed to its program failed without a word
+                    let (tx, ctx) = (self.tx.clone(), ctx.clone());
+                    self.msg = Some(t!("actions.fetching").into());
+                    std::thread::spawn(move || {
+                        let fetched = sys::cloud_fetch(&p);
+                        let _ = tx.send(Msg::Note(match &fetched {
+                            Ok(()) => t!("actions.fetched").into(),
+                            Err(e) => t!("actions.fetch_failed", e = e),
+                        }));
+                        if fetched.is_ok() {
+                            let _ = tx.send(Msg::Fetched(p.clone(), true));
+                            let _ = tx.send(Msg::OpenFetched(p));
+                        }
+                        ctx.request_repaint();
+                    });
                 } else {
                     sys::open(&p);
                 }
@@ -1402,6 +1438,11 @@ impl App {
                 }
                 Msg::Fetched(p, ok) => {
                     if ok {
+                        // rows no watcher reads again (search results) show it as on this device;
+                        // only a cloud folder is asked, where a share may have stopped answering
+                        if let Some(m) = self.in_cloud(&p).then(|| std::fs::symlink_metadata(&p).ok()).flatten() {
+                            self.tabs.iter_mut().flat_map(|t| t.all.iter_mut()).filter(|e| e.path == p).for_each(|e| e.attrs = m.file_attributes());
+                        }
                         // its content is asked for now, whatever its attributes still say (an
                         // offline file of a share's archive keeps them, and comes when read)
                         self.preview_read(p);
@@ -1410,6 +1451,7 @@ impl App {
                         self.preview = None;
                     }
                 }
+                Msg::OpenFetched(p) => sys::open(&p),
                 Msg::Thumb(p, img) => {
                     // not for a folder left meanwhile
                     if let Some(t) = self.thumbs.get_mut(&p) {

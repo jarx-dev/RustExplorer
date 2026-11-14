@@ -245,6 +245,12 @@ impl App {
         self.clouds.iter().any(|c| p.starts_with(c))
     }
 
+    /// A cloud file not on this device, as the disk says now (the bits `sys::cloud_fetch` acts on).
+    /// Only cloud folders are asked: they are local, where a share may have stopped answering.
+    pub(crate) fn not_here(&self, p: &Path) -> bool {
+        self.in_cloud(p) && std::fs::symlink_metadata(p).is_ok_and(|m| m.file_attributes() & (0x40000 | 0x400000) != 0)
+    }
+
     /// Whose sharing link "Kopiuj link" can ask for `p`: OneDrive's places (as Explorer names
     /// them) and Google Drive's streamed drive; the mirrored My Drive folder has no file ids.
     // shortcut: synced SharePoint libraries (OneDrive for Business, named after the company)
@@ -262,11 +268,11 @@ impl App {
     }
 
     /// The cloud state of a file in a cloud folder; none for folders, elsewhere, in archives and
-    /// for rows built from the index (search results, deeper rows of Analiza miejsca), whose
-    /// attributes may be minutes old.
+    /// for rows built from the index without a fresh look (the biggest files, deeper rows of
+    /// Analiza miejsca), whose attributes may be minutes old. Search results read theirs when listed.
     pub(crate) fn cloud_mark(&self, e: &Entry) -> Option<Cloud> {
         // attributes 0: an archive's item (a real file has at least FILE_ATTRIBUTE_NORMAL)
-        let live = e.depth == 0 && !self.tabs[self.cur].found;
+        let live = e.depth == 0 && !self.tabs[self.cur].biggest;
         (live && !e.dir && e.attrs != 0 && self.in_cloud(&e.path)).then(|| cloud_of(e.attrs))
     }
 }
@@ -659,6 +665,15 @@ impl App {
         };
         let (hits, total) = ix.search(&t.found_for.0, FOUND_CAP);
         t.all = hits.iter().map(|&i| hit_entry(ix.hit(i as usize))).collect();
+        // a cloud file's state is read now (the index's may be from before it was fetched or freed),
+        // so a result shows its cloud mark as the folder does
+        // shortcut: one metadata read per cloud result on this thread, ~0.1 s at FOUND_CAP;
+        // move it to a thread if that shows
+        for e in t.all.iter_mut().filter(|e| !e.dir && self.clouds.iter().any(|c| e.path.starts_with(c))) {
+            if let Ok(m) = std::fs::symlink_metadata(&e.path) {
+                e.attrs = m.file_attributes();
+            }
+        }
         t.found_total = total;
     }
 
