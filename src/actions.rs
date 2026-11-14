@@ -740,10 +740,13 @@ impl App {
                 });
             }
             Act::OpenWith(p) => {
-                let owner = self.hwnd;
+                let (owner, tx, ctx) = (self.hwnd, self.tx.clone(), ctx.clone());
                 std::thread::spawn(move || {
                     sys::init_com();
-                    sys::open_with(&p, owner);
+                    if let Err(e) = sys::open_with(&p, owner) {
+                        let _ = tx.send(Msg::Note(t!("actions.open_failed", e = e)));
+                        ctx.request_repaint();
+                    }
                 });
             }
             Act::ShellMenu(p, at) => {
@@ -853,8 +856,8 @@ impl App {
                     self.navigate(p);
                 } else if archive::is_inside(&p) {
                     self.open_from_archive(p, ctx);
-                } else {
-                    sys::open(&p);
+                } else if let Err(e) = sys::open(&p) {
+                    self.msg = Some(t!("actions.open_failed", e = e));
                 }
             }
             Act::Properties => {

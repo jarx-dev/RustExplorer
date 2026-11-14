@@ -531,19 +531,30 @@ pub fn rename_new(from: &Path, to: &Path) -> Result<(), String> {
     unsafe { MoveFileExW(&HSTRING::from(from), &HSTRING::from(to), MOVE_FILE_FLAGS(0)) }.map_err(|e| e.message())
 }
 
-pub fn open(path: &Path) {
-    unsafe {
-        ShellExecuteW(Some(HWND::default()), w!("open"), &HSTRING::from(path), PCWSTR::null(), PCWSTR::null(), SW_SHOWNORMAL);
-    }
+/// Opens with the file's program. Err is Windows' reason, for the caller to show (an online-only
+/// OneDrive file while OneDrive is not running used to fail without a word).
+pub fn open(path: &Path) -> Result<(), String> {
+    let file = HSTRING::from(path);
+    let mut sei = SHELLEXECUTEINFOW {
+        cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+        fMask: SEE_MASK_FLAG_NO_UI,
+        lpVerb: w!("open"),
+        lpFile: PCWSTR(file.as_ptr()),
+        nShow: SW_SHOWNORMAL.0,
+        ..Default::default()
+    };
+    unsafe { ShellExecuteExW(&mut sei) }.map_err(|e| e.message())
 }
 
 /// Windows' "Otwórz za pomocą" window for a file: pick a program, and if wanted keep it for the
-/// file's type. It stays until closed, so it is called off the UI thread.
-pub fn open_with(path: &Path, owner: isize) {
+/// file's type. It stays until closed, so it is called off the UI thread. Err as for `open`; a
+/// window closed without a choice is no error.
+pub fn open_with(path: &Path, owner: isize) -> Result<(), String> {
     let file = HSTRING::from(path);
     let info = OPENASINFO { pcszFile: PCWSTR(file.as_ptr()), pcszClass: PCWSTR::null(), oaifInFlags: OAIF_ALLOW_REGISTRATION | OAIF_REGISTER_EXT | OAIF_EXEC };
-    unsafe {
-        let _ = SHOpenWithDialog(Some(HWND(owner as _)), &info);
+    match unsafe { SHOpenWithDialog(Some(HWND(owner as _)), &info) } {
+        Err(e) if e.code() != windows::core::HRESULT::from_win32(1223) => Err(e.message()), // 1223: ERROR_CANCELLED
+        _ => Ok(()),
     }
 }
 
@@ -1136,6 +1147,12 @@ mod tests {
         while t.elapsed().as_millis() < HOLD_COUNT_MS.load(Relaxed) as u128 && !stop.load(Relaxed) {
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
+    }
+
+    #[test]
+    fn open_reports_why_windows_could_not() {
+        let gone = std::env::current_exe().unwrap().parent().unwrap().join("rx-test-brak.pdf");
+        assert!(open(&gone).is_err_and(|e| !e.trim().is_empty()));
     }
 
     #[test]
