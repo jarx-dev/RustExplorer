@@ -147,7 +147,7 @@ after the shell's warning.
 | `Ctrl+T` / `Ctrl+W` | new / close tab | `Ctrl+Shift+N` | new folder |
 | `Ctrl+Shift+C` | copy path | `Ctrl` `+` / `−` / `0` | zoom |
 | `↑` `↓` `Home` `End` | move through the list (with `Shift`, select) | `PgUp` / `PgDn` | page up / down |
-| `Esc` | cancels a rename, clears the search | middle button on a tab | close the tab |
+| `Esc` | cancels a rename, clears the search | middle button on a tab | close the tab (not a pinned one) |
 | `Space` | size of the selected folders (in the Size column) | | |
 
 ## Under the hood
