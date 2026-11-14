@@ -608,6 +608,9 @@ impl App {
                 };
                 // Act::CloseTab keeps the app's last tab; a pane's last tab closes (the pane shows another)
                 let closable = n > 1;
+                // a pinned tab has no × and no middle-click close, as in browsers: only the menu and Ctrl+W
+                let pinned = self.tabs[i].pin.is_some();
+                let quick_close = closable && !pinned;
                 let galley = ui.painter().layout_no_wrap(label, font, col);
                 // room for × always, so a lone tab looks like a tab and keeps its width
                 let close_w = 26.0;
@@ -617,7 +620,7 @@ impl App {
                 if resp.drag_started_by(egui::PointerButton::Primary) {
                     resp.dnd_set_drag_payload(DraggedTab(i));
                 }
-                let resp = resp.on_hover_text(if closable { format!("{full}\n{}", t!("bars.tab.middle_click")) } else { full });
+                let resp = resp.on_hover_text(if quick_close { format!("{full}\n{}", t!("bars.tab.middle_click")) } else { full });
                 let p = ui.painter();
                 if is_shown {
                     let top = CornerRadius { nw: 8, ne: 8, sw: 0, se: 0 };
@@ -652,14 +655,14 @@ impl App {
                 }
                 let kind = if is_pc(&self.tabs[i].path) { Kind::Computer } else { Kind::Folder };
                 let at = Rect::from_min_size(pos2(rect.left() + 10.0, rect.center().y - 8.0), vec2(16.0, 16.0));
-                if self.tabs[i].pin.is_some() {
+                if pinned {
                     p.text(at.center(), Align2::CENTER_CENTER, ic::PIN, icon_font(14.0), pal().accent);
                 } else {
                     paint_icon(p, at, kind);
                 }
                 p.galley(pos2(rect.left() + 32.0, rect.center().y - galley.size().y / 2.0), galley, col);
                 let mut closed = false;
-                if closable && (active || resp.hovered()) {
+                if quick_close && (active || resp.hovered()) {
                     let c = Rect::from_center_size(pos2(rect.right() - 17.0, rect.center().y), vec2(24.0, 24.0));
                     let hover = ui.rect_contains_pointer(c);
                     if hover {
@@ -674,10 +677,9 @@ impl App {
                 if resp.clicked() && !closed {
                     clicked = Some(i);
                 }
-                if resp.middle_clicked() {
+                if resp.middle_clicked() && !pinned {
                     self.pending.push(Act::CloseTab(i));
                 }
-                let pinned = self.tabs[i].pin.is_some();
                 let pending = &mut self.pending;
                 resp.context_menu(|ui| {
                     menu_style(ui);

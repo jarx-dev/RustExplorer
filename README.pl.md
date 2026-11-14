@@ -153,7 +153,7 @@ na stałe dopiero po ostrzeżeniu powłoki.
 | `Ctrl+T` / `Ctrl+W` | nowa / zamknij kartę | `Ctrl+Shift+N` | nowy folder |
 | `Ctrl+Shift+C` | kopiuj ścieżkę | `Ctrl` `+` / `−` / `0` | powiększenie |
 | `↑` `↓` `Home` `End` | ruch po liście (z `Shift` zaznacza) | `PgUp` / `PgDn` | strona w górę / w dół |
-| `Esc` | anuluje zmianę nazwy, czyści szukanie | środkowy przycisk na karcie | zamknij kartę |
+| `Esc` | anuluje zmianę nazwy, czyści szukanie | środkowy przycisk na karcie | zamknij kartę (nie przypiętą) |
 | `Spacja` | wielkość zaznaczonych folderów (w kolumnie Wielkość) | | |
 
 ## Pod maską
