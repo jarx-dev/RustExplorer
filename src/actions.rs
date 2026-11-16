@@ -176,7 +176,7 @@ impl App {
             cut: false,
             clip_seq: sys::clip::seq(),
             clip_sys: false,
-            clip_files: sys::clip::has_files(),
+            clip_files: sys::clip::has_files() || sys::clip::has_contents(),
             pasting: None,
             ext: None,
             drag_out_done: false,
@@ -505,6 +505,14 @@ impl App {
         // files copied or cut in another program (or before this one started) come from the
         // Windows clipboard; read only now, on Wklej
         if matches!(a, Act::Paste) && self.clip.is_empty() && self.clip_files {
+            // files with no path here (copied over Remote Desktop, out of a ZIP in Explorer): only their contents
+            if !sys::clip::has_files() && sys::clip::has_contents() {
+                if self.tabs[self.cur].in_archive() {
+                    self.msg = Some(t!("actions.contents_not_in_archive").into());
+                    return;
+                }
+                return self.paste_contents(self.tabs[self.cur].path.clone(), ctx);
+            }
             // Windows offers a cut until its move here ends: a second paste meanwhile would move the same files again
             if self.pasting.as_ref().is_some_and(|(s, job)| *s == sys::clip::seq() && Arc::strong_count(job) > 1) {
                 self.msg = Some(t!("actions.cut_still_moving").into());
@@ -1239,6 +1247,15 @@ impl App {
         }
     }
 
+    /// Wklej of files the clipboard holds only as contents (`sys::clip::has_contents`): always a copy.
+    fn paste_contents(&mut self, dir: PathBuf, ctx: &egui::Context) {
+        self.background(ctx, t!("actions.job.copy", place = place(&dir)), t!("actions.clipboard_contents").into(), move |p, ctl| {
+            let (placed, stopped) = sys::clip::paste_contents(&dir, rx_archive::place_in, ctl, p);
+            let made = placed.iter().map(|q| (q.clone(), rx_core::undo::stamp(q))).collect();
+            transferred((stopped.is_none(), Undo::Created(made, "undo.what.copy"), 0, stopped))
+        });
+    }
+
     /// Once a frame: the Windows clipboard's number (one cheap call) and files dragged in from
     /// another program, with where the pointer is, which winit does not say during such a drag.
     pub(crate) fn clipboard_and_drops(&mut self, ctx: &egui::Context) {
@@ -1246,7 +1263,7 @@ impl App {
         if seq != self.clip_seq {
             // copied in another program, or a cut from here pasted there: what was copied here is
             // not on offer any more, as in Explorer
-            (self.clip_seq, self.clip_files, self.clip_sys) = (seq, sys::clip::has_files(), false);
+            (self.clip_seq, self.clip_files, self.clip_sys) = (seq, sys::clip::has_files() || sys::clip::has_contents(), false);
             self.clip.clear();
         }
         // the frame after a system drag of ours: its drop, if it came back here, arrives now
