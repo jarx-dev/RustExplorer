@@ -108,13 +108,43 @@ pub fn extract_here(archive: &Path, dir: &Path, pw: Option<&str>, progress: Prog
 
 /// `name` in `dir`, or "stem (2).ext", "stem (3).ext"… (a folder: "name (2)") when taken.
 fn free(dir: &Path, name: &str, folder: bool) -> PathBuf {
+    free_of(dir, name, folder, &Default::default())
+}
+
+/// `free`, also passing by the paths in `used` (lower case: Windows names ignore case).
+fn free_of(dir: &Path, name: &str, folder: bool, used: &std::collections::HashSet<String>) -> PathBuf {
     let p = Path::new(name);
     let (stem, ext) = match (folder, p.file_stem(), p.extension()) {
         (false, Some(s), Some(e)) => (s.to_string_lossy().into_owned(), format!(".{}", e.to_string_lossy())),
         _ => (name.to_string(), String::new()),
     };
     let at = |n: usize| dir.join(if n == 1 { name.to_string() } else { format!("{stem} ({n}){ext}") });
-    (1..).map(at).find(|p| p.symlink_metadata().is_err()).unwrap()
+    (1..).map(at).find(|p| p.symlink_metadata().is_err() && !used.contains(&p.to_string_lossy().to_lowercase())).unwrap()
+}
+
+/// Where files the clipboard holds only as contents go in `dir` (a pasted copy over Remote Desktop:
+/// each item named as "top\sub\file", with whether it is a folder). A top item whose name is taken
+/// there, or by an earlier item, gets "name (2)"… and the items under it follow it; a name with
+/// "..", a drive, a stream or a device gets None.
+pub fn place_in(dir: &Path, items: &[(String, bool)]) -> Vec<Option<PathBuf>> {
+    let mut tops: std::collections::HashMap<String, PathBuf> = Default::default();
+    let mut used = std::collections::HashSet::new();
+    items
+        .iter()
+        .map(|(name, folder)| {
+            let parts: Vec<&str> = name.split(['\\', '/']).filter(|s| !s.is_empty() && *s != ".").collect();
+            inside(dir, &parts.iter().collect::<PathBuf>())?;
+            let is_dir = *folder || parts.len() > 1;
+            let mut pick = || {
+                let p = free_of(dir, parts[0], is_dir, &used);
+                used.insert(p.to_string_lossy().to_lowercase());
+                p
+            };
+            // two top files are two files, whatever their names; a folder's items share it
+            let top = if is_dir { tops.entry(parts[0].to_lowercase()).or_insert_with(pick).clone() } else { pick() };
+            Some(parts[1..].iter().fold(top, |p, s| p.join(s)))
+        })
+        .collect()
 }
 
 /// Where an entry goes: its file or folder to write, or None to pass it by.
@@ -1088,6 +1118,20 @@ mod tests {
         std::fs::write(root.join("Dokumenty/Żółw.txt"), "zażółć gęślą jaźń".repeat(100)).unwrap();
         std::fs::write(root.join("raport.csv"), b"a;b\n1;2\n").unwrap();
         vec![root.join("Dokumenty"), root.join("raport.csv")]
+    }
+
+    #[test]
+    fn clipboard_contents_placed() {
+        let d = tmp("place");
+        std::fs::create_dir_all(d.join("Dok")).unwrap();
+        std::fs::write(d.join("a.txt"), b"").unwrap();
+        let items: Vec<(String, bool)> = [("Dok", true), ("Dok\\pod\\x.txt", false), ("a.txt", false), ("..\\zle.txt", false), ("c:x", false), ("b.txt", false), ("a (2).txt", false), ("B.txt", false), (".\\c.txt", false)]
+            .iter()
+            .map(|(n, f)| (n.to_string(), *f))
+            .collect();
+        let got = place_in(&d, &items);
+        let want = [Some(d.join("Dok (2)")), Some(d.join("Dok (2)").join("pod").join("x.txt")), Some(d.join("a (2).txt")), None, None, Some(d.join("b.txt")), Some(d.join("a (2) (2).txt")), Some(d.join("B (2).txt")), Some(d.join("c.txt"))];
+        assert_eq!(got, want);
     }
 
     fn round_trip(ext: &str) {

@@ -3,6 +3,9 @@ _version: 2
 rx_sys.internal:
   en: internal error
   pl: wewnętrzny błąd
+rx_sys.incomplete:
+  en: the other program sent only part of the data
+  pl: drugi program przysłał tylko część danych
 rx_sys.place_taken:
   en: the place is taken
   pl: miejsce jest zajęte

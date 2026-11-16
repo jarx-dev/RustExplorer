@@ -16,6 +16,12 @@ actions.clipboard_busy:
 actions.clipboard_busy_local:
   en: "Another program is using the Windows clipboard: you can paste only in this program"
   pl: "Schowek Windows jest zajęty przez inny program: wkleić można tylko w tym programie"
+actions.contents_not_in_archive:
+  en: "These files (copied over Remote Desktop or out of another program) can't be pasted into an archive: paste them into a folder first"
+  pl: "Tych plików (skopiowanych przez Pulpit zdalny lub z innego programu) nie można wkleić do archiwum: wklej je najpierw do folderu"
+actions.clipboard_contents:
+  en: Windows clipboard
+  pl: Schowek Windows
 actions.not_in_archive:
   en: "This command isn't available inside an archive: extract the files (Copy, Paste) and use it on them"
   pl: "Tego polecenia nie ma wewnątrz archiwum: wypakuj pliki (Kopiuj, Wklej) i użyj go na nich"
