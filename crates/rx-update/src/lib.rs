@@ -17,6 +17,8 @@
 //! points elsewhere, and `RUSTEXPLORER_UPDATE_URL=off` switches updates off.
 //! What happened is noted in `%APPDATA%\RustExplorer\update.log`.
 
+pub mod crash_report;
+
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::net::{Ipv4Addr, Ipv6Addr};

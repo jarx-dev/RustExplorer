@@ -517,6 +517,8 @@ struct App {
     /// since when the layout may differ from the one stored: the first key press or pointer move
     /// after the last save (see `save_soon`)
     unsaved: Option<Instant>,
+    /// store the layout at the next logic(): set by the crash-report switch
+    save_now: bool,
     shot: Option<PathBuf>,
     frames: u32,
     /// screenshot mode: seconds from the program's start to its first frame, and to the first
@@ -631,11 +633,12 @@ impl eframe::App for App {
             egui::ThemePreference::Dark => 2,
         };
         let text = format!(
-            "zoom={}\nwidths={},{},{},{}\nnamew={}\nview={view}\ntheme={theme}\npreview={}\nhidden={}\ntraynote={}\nfulltree={}\nsplit={}\ncur={}\nother={}\ntabs={}\nsides={}\npins={}\nlang={}",
+            "zoom={}\nwidths={},{},{},{}\nnamew={}\nview={view}\ntheme={theme}\npreview={}\nhidden={}\ntraynote={}\nfulltree={}\nsplit={}\ncur={}\nother={}\ntabs={}\nsides={}\npins={}\nlang={}\ncrashes={}",
             self.zoom, w[0], w[1], w[2], w[3], self.name_width, self.show_preview as u8, self.show_hidden as u8, self.told_tray as u8, self.tree_full as u8, self.split as u8, self.cur, self.other, tabs.join("|"),
             self.tabs.iter().map(|t| t.side.to_string()).collect::<Vec<_>>().join(","),
             self.tabs.iter().map(|t| t.pin.as_ref().map(|p| p.display().to_string()).unwrap_or_default()).collect::<Vec<_>>().join("|"),
-            rx_core::i18n::lang().code()
+            rx_core::i18n::lang().code(),
+            update::crash_report::enabled() as u8
         );
         storage.set_string("uklad", text);
         storage.set_string("sortowanie", sorts_to_text(&self.folder_sorts));
@@ -751,6 +754,13 @@ impl eframe::App for App {
             }
             self.trim_when_minimized(ctx);
             self.save_soon(ctx, frame);
+            // a switch that must hold even if the app crashes before eframe's next save (30 s)
+            if std::mem::take(&mut self.save_now) {
+                if let Some(storage) = frame.storage_mut() {
+                    eframe::App::save(self, storage);
+                    storage.flush();
+                }
+            }
             // here, not in ui(): it also runs while the window is minimized or in the tray
             if self.index.is_some() && !self.index_busy {
                 const KEEP: std::time::Duration = std::time::Duration::from_secs(300);
@@ -1109,6 +1119,7 @@ fn main() -> eframe::Result {
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         update::log(format!("app: panic: {info}"));
+        update::crash_report::report(info);
         default_hook(info);
     }));
     let shot = args.iter().position(|a| a == "--screenshot").and_then(|i| args.get(i + 1)).map(PathBuf::from);
@@ -1178,6 +1189,9 @@ fn main() -> eframe::Result {
                 sys::HIDE_NETWORK_DRIVES.store(true, std::sync::atomic::Ordering::Relaxed);
             }
             let layout = cc.storage.filter(|_| !is_shot).and_then(|st| st.get_string("uklad"));
+            // off until here, so a stored "off" holds from the start; a screenshot run is a test, and
+            // a layout from before the switch (no crashes= line) means on
+            update::crash_report::set_enabled(!is_shot && !layout.as_deref().is_some_and(|l| l.lines().any(|x| x == "crashes=0")));
             // before the window's texts and the tray menu are made; --lang en|pl sets a screenshot
             // run's (its throw-away layout has none, so English)
             let lang = args.iter().position(|a| a == "--lang").and_then(|i| args.get(i + 1)).and_then(|v| rx_core::i18n::Lang::from_code(v));

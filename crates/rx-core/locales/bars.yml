@@ -121,6 +121,12 @@ bars.file.lock_format:
 bars.file.autostart:
   en: Start with Windows
   pl: Uruchamiaj razem z Windows
+bars.file.crash_reports:
+  en: Send crash reports
+  pl: Wysyłaj raporty o awariach
+bars.file.crash_reports_tip:
+  en: "Anonymous: app version, Windows version and the place in the code where the app crashed. No file names or content."
+  pl: "Anonimowo: wersja aplikacji, wersja Windows i miejsce w kodzie, w którym aplikacja się wywróciła. Bez nazw plików i treści."
 bars.file.autostart_error:
   en: "Start with Windows: %{error}"
   pl: "Uruchamianie z Windows: %{error}"
