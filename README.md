@@ -327,6 +327,44 @@ builds and publishes every new commit on `main` every minute. On the computer ru
 `RUSTEXPLORER_UPDATE_URL=off` turns updates off, and a different `latest.json` address in that variable
 points them elsewhere. The update progress is logged in `%APPDATA%\RustExplorer\update.log`.
 
+## Crash reports
+
+After the first panic of a run (a Rust bug: usually the program then crashes, sometimes it
+recovers and goes on), it sends one short anonymous report so the bug can be found and fixed.
+It is on by default; switch it off in **File → Settings → Send crash reports** (Polish UI:
+**Plik → Ustawienia → Wysyłaj raporty o awariach**). The change applies at once and is saved
+right away.
+
+The whole report, three lines:
+
+```
+{"event_id":"5f1c0a9e2b7d4c3e8a6f1b2d3c4e5f60"}
+{"type":"event"}
+{"event_id":"5f1c0a9e2b7d4c3e8a6f1b2d3c4e5f60","level":"fatal","platform":"native","release":"rustexplorer@26.1104.2135","environment":"production","contexts":{"os":{"name":"Windows","version":"10.0.26100"}},"exception":{"values":[{"type":"panic","value":"src/main.rs:1234","mechanism":{"type":"panic","handled":false}}]},"fingerprint":["src/main.rs:1234"]}
+```
+
+That is: the program's build number (its build time in UTC, `YY.MMDD.HHMM`), the Windows version
+(with its build number) and the place in the program's source code where the panic happened
+(`file:line`). A path inside the program's repository stays as it is; a library from the cargo
+registry keeps the part from its crate folder (`ureq-2.12.1/src/pool.rs`); the standard library
+the part from `library/` (`core/src/option.rs`); any other path becomes the file name alone. `event_id` is random, new for every report. The
+request also has the `User-Agent` and `X-Sentry-Auth` headers with the program's name and version
+and the project's public key, nothing more.
+
+Never sent: the panic message (it can contain a file name or text), names or paths of your files,
+the computer name, your user name, e-mail addresses, any content, settings, logs, environment
+variables, an installation or user id, session data. At most one report per run; only release
+builds send (also your own `cargo build --release`), a debug build and screenshot runs never do.
+The program waits at most 3 s for the server, and any error is ignored.
+
+Where it goes: the author's own [Rustrak](https://github.com/rustrak/rustrak) server (open source,
+Sentry-compatible) at `errors.jarx.pl`. The data is not given to any third-party company. The
+traffic passes through Cloudflare, like that of any site behind Cloudflare. The report holds no IP
+address, but the server, like every web server, sees the connection's IP in its access log.
+
+The code that builds and sends the report is one short file you can check:
+[`crates/rx-update/src/crash_report.rs`](crates/rx-update/src/crash_report.rs).
+
 ## About the author
 
 RustExplorer was written by **Jarosław Hartwich** ([github.com/jarx-dev](https://github.com/jarx-dev)).

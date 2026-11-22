@@ -137,6 +137,11 @@ impl App {
                             self.msg = Some(t!("bars.file.autostart_error", error = e));
                         }
                     }
+                    let on = update::crash_report::enabled();
+                    if check_entry(ui, ic::CHECK, on, t!("bars.file.crash_reports"), "").on_hover_text(t!("bars.file.crash_reports_tip")).clicked() {
+                        update::crash_report::set_enabled(!on);
+                        self.save_now = true;
+                    }
                     if menu_item(ui, ic::SHIELD, t!("bars.file.vt_key"), "") {
                         p.push(Act::VtKey);
                     }

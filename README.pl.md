@@ -331,6 +331,45 @@ co minutę buduje i publikuje każdy nowy commit na `main`. Na komputerze z prog
 `RUSTEXPLORER_UPDATE_URL=off` wyłącza aktualizacje, a inny adres `latest.json` w tej zmiennej
 kieruje je gdzie indziej. Przebieg aktualizacji zapisuje się w `%APPDATA%\RustExplorer\update.log`.
 
+## Raporty o awariach
+
+Po pierwszej panice w danym uruchomieniu (błąd w Ruście: zwykle program się wtedy wywraca,
+czasem podnosi się i działa dalej) wysyła jeden krótki anonimowy raport, żeby dało się znaleźć
+i poprawić błąd. Domyślnie jest włączony; wyłączysz go w **Plik → Ustawienia → Wysyłaj
+raporty o awariach** (w angielskim interfejsie **File → Settings → Send crash reports**). Zmiana
+działa od razu i od razu się zapisuje.
+
+Cały raport, trzy linie:
+
+```
+{"event_id":"5f1c0a9e2b7d4c3e8a6f1b2d3c4e5f60"}
+{"type":"event"}
+{"event_id":"5f1c0a9e2b7d4c3e8a6f1b2d3c4e5f60","level":"fatal","platform":"native","release":"rustexplorer@26.1104.2135","environment":"production","contexts":{"os":{"name":"Windows","version":"10.0.26100"}},"exception":{"values":[{"type":"panic","value":"src/main.rs:1234","mechanism":{"type":"panic","handled":false}}]},"fingerprint":["src/main.rs:1234"]}
+```
+
+Czyli: numer kompilacji programu (czas budowania w UTC, `RR.MMDD.HHMM`), wersja Windows (z numerem
+kompilacji) i miejsce w kodzie źródłowym programu, w którym wystąpiła panika (`plik:linia`).
+Ścieżka z repozytorium programu zostaje bez zmian; biblioteka z rejestru cargo zachowuje część
+od katalogu crate'a (`ureq-2.12.1/src/pool.rs`); biblioteka standardowa część od `library/`
+(`core/src/option.rs`); każda inna ścieżka zamienia się w samą nazwę pliku. `event_id` jest losowy, nowy dla każdego raportu. Żądanie ma
+też nagłówki `User-Agent` i `X-Sentry-Auth` z nazwą i wersją programu oraz publicznym kluczem
+projektu, nic więcej.
+
+Nigdy nie jest wysyłane: komunikat paniki (bywa w nim nazwa pliku albo tekst), nazwy ani ścieżki
+Twoich plików, nazwa komputera, nazwa użytkownika, adresy e-mail, jakakolwiek treść, ustawienia,
+logi, zmienne środowiska, identyfikator instalacji lub użytkownika, dane sesji. Najwyżej jeden
+raport na uruchomienie; wysyłają tylko buildy release (także własny `cargo build --release`),
+build debug i uruchomienia do zrzutów ekranu nigdy. Program czeka na serwer najwyżej 3 s,
+a każdy błąd pomija.
+
+Dokąd: na własny serwer autora [Rustrak](https://github.com/rustrak/rustrak) (open source, zgodny
+z Sentry) pod `errors.jarx.pl`. Dane nie trafiają do żadnej firmy trzeciej. Ruch przechodzi przez
+Cloudflare, jak w przypadku każdej strony za Cloudflare. Raport nie zawiera adresu IP, ale serwer,
+jak każdy serwer WWW, widzi IP połączenia w logu dostępu.
+
+Kod, który buduje i wysyła raport, to jeden krótki plik do sprawdzenia:
+[`crates/rx-update/src/crash_report.rs`](crates/rx-update/src/crash_report.rs).
+
 ## O autorze
 
 RustExplorera napisał **Jarosław Hartwich** ([github.com/jarx-dev](https://github.com/jarx-dev)).

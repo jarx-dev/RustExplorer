@@ -647,13 +647,18 @@ pub(crate) fn cmd(ui: &mut Ui, label: &str, key: &str) -> bool {
 /// one of a group) shows when `on`; with `on` false the column stays empty, so plain commands in
 /// the same menu line up.
 pub(crate) fn check_item(ui: &mut Ui, mark: &str, on: bool, label: &str, key: &str) -> bool {
+    check_entry(ui, mark, on, label, key).clicked()
+}
+
+/// check_item's response, for an entry that also needs a tooltip.
+pub(crate) fn check_entry(ui: &mut Ui, mark: &str, on: bool, label: &str, key: &str) -> Response {
     use egui::AtomExt;
     let col = if on { pal().text } else { Color32::TRANSPARENT };
     let b = egui::Button::new((icon(mark, 12.0).color(col).atom_size(vec2(16.0, 16.0)), RichText::new(label)));
     let r = ui.add(if key.is_empty() { b } else { b.shortcut_text(key) });
     let role = if mark == ic::BULLET { egui::Role::MenuItemRadio } else { egui::Role::MenuItemCheckBox };
     r.widget_info(|| egui::WidgetInfo::selected(role, true, on, label));
-    r.clicked()
+    r
 }
 
 /// A menu item (menu bar and context menus alike): monochrome icon, label and the shortcut

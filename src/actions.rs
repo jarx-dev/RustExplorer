@@ -202,6 +202,7 @@ impl App {
             watcher,
             watched: vec![],
             unsaved: None,
+            save_now: false,
             shot,
             frames: 0,
             shot_first: None,
