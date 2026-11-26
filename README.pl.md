@@ -70,8 +70,8 @@ nie znaleźliśmy.
 ### Szukaj wszędzie
 
 Przycisk z dyskiem obok pola szukania przełącza je z bieżącego folderu na wszystkie dyski lokalne.
-Program ma własny indeks nazw plików na dysku: wczytuje go przy szukaniu (i skanuje dyski od nowa w tle,
-jeśli ostatni skan ma ponad 10 minut) i zwalnia z pamięci 5 minut po ostatnim zapytaniu. Polskie litery nie mają
+Program ma własny indeks nazw plików na dysku: wczytuje go przy szukaniu (i co jakiś czas skanuje dyski od nowa w tle,
+gdy szukasz) i zwalnia z pamięci 5 minut po ostatnim zapytaniu. Polskie litery nie mają
 znaczenia (`zolw` znajdzie `żółw`), a przy każdym wyniku jest jego folder.
 
 <picture>
@@ -136,7 +136,7 @@ gdy jakieś są ukryte; kliknięcie je pokazuje.
 | 🪜 **Widok płaski** | Wszystkie pliki z podfolderów na jednej liście (do 20 000), z filtrem i sortowaniem. |
 | 🌳 **Drzewo ścieżki** | Drzewo pokazuje tylko drogę do bieżącego folderu; „… jeszcze N folderów” rozwija poziom. Pełne drzewo jest w Plik ▸ Ustawienia. |
 | 💽 **Ten komputer i zakładki** | Dyski z paskiem zajętości (czerwony powyżej 90%) i systemem plików; ulubione foldery w drzewie. |
-| 📋 **Schowek i przeciąganie** | Kopiuj i Wytnij używają schowka Windows, więc pliki idą do i z Eksploratora, pulpitu czy programu pocztowego; pliki z innych programów upuszczasz na listę, folder albo kartę. |
+| 📋 **Schowek i przeciąganie** | Kopiuj i Wytnij używają schowka Windows, więc pliki idą do i z Eksploratora, pulpitu czy programu pocztowego (elementy archiwów zostają w schowku programu); pliki z innych programów upuszczasz na listę, folder albo kartę. |
 | 🪟 **Menu Windows** | „Więcej opcji Windows…” (albo `Shift`+prawy klik) otwiera menu Eksploratora: „Wyślij do”, „Otwórz za pomocą”, 7-Zip, Git, OneDrive. |
 | ↩️ **Cofnij** | `Ctrl+Z` cofa do 30 operacji: usunięcie do Kosza, przeniesienie, kopiowanie, zmianę nazwy, nowy folder, kopię `.bak`. Nigdy niczego nie nadpisuje; czego cofnąć się nie da, mówi pasek stanu. |
 | ⏳ **Operacje** | Jeden panel na kopiowanie, przenoszenie, wypakowywanie i sprawdzanie w VirusTotal ze wszystkich kart, z szybkością i historią; własne kopiowanie i przenoszenie programu można też wstrzymać i anulować. |
@@ -186,8 +186,8 @@ się nie da, a poleceń z menu Windows program nie cofa.
 
 - **Tylko Windows**: Windows 10 i 11 na x64. Bez wersji na ARM, macOS ani Linuksa.
 - **Bez zmiany nazw wielu plików naraz, porównywania i synchronizacji folderów, tagów, FTP i wtyczek.**
-- **RAR tylko do odczytu**: przeglądanie i wypakowanie, bez zmian w środku. Zaszyfrowany 7z i ZIP ze starym
-  szyfrowaniem ZipCrypto da się wypakować, ale nie zmienić.
+- **RAR tylko do odczytu**: przeglądanie i wypakowanie, bez zmian w środku. Zaszyfrowany 7z da się wypakować, ale nie zmienić;
+  ZIP zmienisz tylko wtedy, gdy nie musi w nim zostać żaden wpis ze starym szyfrowaniem ZipCrypto.
 - **Dwa języki**: angielski i polski.
 - **Bez podpisu cyfrowego**, więc Windows może ostrzec przy pierwszym uruchomieniu (niżej).
 - **Ścieżki dłuższe niż 260 znaków** działają przy listowaniu, zmianie nazwy i własnym kopiowaniu,
@@ -234,7 +234,8 @@ sterownik grafiki: samo puste okno egui zajmuje prawie tyle samo. Szczegóły w 
 ## Prywatność w skrócie
 
 Bez analityki i bez śledzenia. Program sam z siebie nie wysyła nigdzie nazw, ścieżek ani zawartości plików;
-plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Poza udziałami sieciowymi, których używasz (otwierane foldery, zmapowane dyski; łączy się z nimi Windows), wydanie z GitHuba z domyślnymi ustawieniami łączy się tylko z:
+plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Poza udziałami sieciowymi i plikami w chmurze, których używasz (otwierane foldery, zmapowane dyski, pliki
+dostępne tylko online, które Windows pobiera przy otwarciu), wydanie z GitHuba z domyślnymi ustawieniami łączy się tylko z:
 
 - **GitHubem** (github.com i serwer, z którego GitHub podaje pliki wydań), żeby sprawdzić, czy jest nowe wydanie (co minutę, co 15 minut przy oknie
   zminimalizowanym lub w zasobniku), i je pobrać. Zwykły `cargo build` nie sprawdza nigdy.
@@ -245,7 +246,7 @@ plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Poza ud
 
 Linki w Plik ▸ „O programie” otwierają się w przeglądarce, gdy je klikniesz.
 
-Na komputerze zostają: ustawienia, karty i wyniki VirusTotal (ścieżka i SHA-256 każdego pliku,
+Na komputerze zostają: ustawienia, karty, `update.log` (komunikaty aktualizacji i treść ewentualnej paniki) i wyniki VirusTotal (ścieżka i SHA-256 każdego pliku,
 który dostał werdykt) w `%APPDATA%\RustExplorer`; klucz API VirusTotal w Menedżerze poświadczeń Windows; indeks nazw
 plików (ok. 215 MB przy 3 mln nazw) w `%LOCALAPPDATA%\RustExplorer`; kopie plików otwartych lub podglądanych z archiwów
 w `%TEMP%`, usuwane przy którymś z kolejnych uruchomień, gdy przez dobę nikt ich nie używał.
@@ -341,7 +342,8 @@ flowchart LR
   podmieniany dopiero, gdy to się uda.
 - **Kopiowanie** (`rx_core::copy`, `CopyFileExW`) najpierw planuje całe drzewo, potem kopiuje 4 pliki
   naraz (1 na dysku talerzowym), z postępem w bajtach. Przeniesienie w obrębie woluminu to zmiana
-  nazwy; między dyskami źródło znika dopiero po skopiowaniu wszystkiego i tylko to, co skopiowano.
+  nazwy; między dyskami skopiowane pliki znikają ze źródła po zakończeniu kopiowania (także po anulowaniu), więc każdy
+  plik jest w jednym miejscu.
 - **Miniatury**: najwyżej 500 tekstur, a po przekroczeniu znikają najdawniej rysowane; wątek
   wczytuje je w kolejności zamawiania i pomija kafelki, które zdążyły zniknąć z ekranu. Folder
   3000 plików przewinięty do końca w Miniaturach zajmuje 141 MB pamięci prywatnej (przed limitem

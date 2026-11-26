@@ -70,8 +70,8 @@ nothing about it there.
 ### Search everywhere
 
 The drive button next to the search box switches it from the current folder to all local drives. The
-program keeps its own index of file names on disk: it loads it when you search (and rescans the drives in
-the background if the last scan is over 10 minutes old) and frees it from memory 5 minutes after the last query. Letters with
+program keeps its own index of file names on disk: it loads it when you search (and now and then rescans the drives in
+the background while you search) and frees it from memory 5 minutes after the last query. Letters with
 Polish diacritics match their plain forms (`zolw` finds `żółw`), and every result shows its folder.
 
 <picture>
@@ -135,7 +135,7 @@ hidden; a click shows them.
 | 🪜 **Flat view** | All files from the subfolders in one list (up to 20,000), with filter and sorting. |
 | 🌳 **Path tree** | The tree shows only the path to the current folder; "… N more folders" expands a level. A full tree is in File ▸ Settings. |
 | 💽 **This PC and bookmarks** | Drives with a usage bar (red above 90%) and file system; favourite folders in the tree. |
-| 📋 **Clipboard and dragging** | Copy and Cut use the Windows clipboard, so files go to and from Explorer, the desktop or a mail program; drop files from other programs onto the list, a folder or a tab. |
+| 📋 **Clipboard and dragging** | Copy and Cut use the Windows clipboard, so files go to and from Explorer, the desktop or a mail program (items inside an archive stay in the program's own clipboard); drop files from other programs onto the list, a folder or a tab. |
 | 🪟 **Windows menu** | "Show more options…" (or `Shift`+right-click) opens Explorer's own menu: "Send to", "Open with", 7-Zip, Git, OneDrive. |
 | ↩️ **Undo** | `Ctrl+Z` undoes up to 30 operations: delete to the Recycle Bin, move, copy, rename, new folder, `.bak` copy. It never overwrites anything; what cannot be undone, the status bar says. |
 | ⏳ **Operations** | One panel for the copying, moving, extracting and VirusTotal checks of all tabs, with speed and a history; the program's own copy and move can also be paused and cancelled. |
@@ -185,8 +185,8 @@ undone, and commands from the Windows menu are not undone by the program.
 
 - **Windows only**: Windows 10 and 11 on x64. No ARM build, no macOS or Linux.
 - **No batch renaming, folder comparison or synchronisation, tags, FTP or plugins.**
-- **RAR is read-only**: browse and extract, no changes inside. An encrypted 7z or an old-style ZipCrypto ZIP
-  can be extracted but not changed.
+- **RAR is read-only**: browse and extract, no changes inside. An encrypted 7z can be extracted but not changed;
+  a ZIP can be changed only if no entry with old-style ZipCrypto encryption has to stay in it.
 - **Two languages**: English and Polish.
 - **Not code-signed**, so Windows may warn on the first start (see below).
 - **Paths longer than 260 characters** work for listing, renaming and the program's own copy, but deleting
@@ -233,7 +233,8 @@ driver: an empty egui window alone takes almost as much. Details in [Under the h
 ## Privacy at a glance
 
 No analytics and no tracking. The program sends no file names, paths or contents anywhere on its own; a
-file goes to VirusTotal only if you choose to upload it. Apart from network shares you use (folders you open and mapped drives, reached through Windows), a release from GitHub, with default settings, connects only to:
+file goes to VirusTotal only if you choose to upload it. Apart from network shares and cloud files you use (folders you open, mapped drives, online-only files that
+Windows downloads when you open them), a release from GitHub, with default settings, connects only to:
 
 - **GitHub** (github.com and the host it serves release files from), to check for a new release (every minute, every 15 minutes while minimized or in the tray)
   and download it. A plain `cargo build` never checks.
@@ -244,7 +245,7 @@ file goes to VirusTotal only if you choose to upload it. Apart from network shar
 
 Links in File ▸ "About" open in your browser when you click them.
 
-Kept on your PC: settings, tabs and VirusTotal verdicts (path and SHA-256 of each file that got one) in
+Kept on your PC: settings, tabs, `update.log` (update messages and the text of any panic) and VirusTotal verdicts (path and SHA-256 of each file that got one) in
 `%APPDATA%\RustExplorer`; the VirusTotal API key in Windows Credential Manager; the index of file names
 (about 215 MB for 3 million names) in `%LOCALAPPDATA%\RustExplorer`; copies of files opened or previewed from archives
 in `%TEMP%`, removed at a later start once unused for a day.
@@ -338,7 +339,7 @@ flowchart LR
   replaced only once that has succeeded.
 - **Copying** (`rx_core::copy`, `CopyFileExW`) plans the whole tree first, then copies 4 files at a
   time (1 on a hard disk), with progress in bytes. A move within a volume is a rename; between drives
-  the source goes only after everything was copied, and only what was copied.
+  the copied files leave the source once the copying ends (also after a cancel), so each file is in one place.
 - **Thumbnails**: at most 500 textures; past that, the least recently drawn ones disappear. A thread
   loads them in the order they were requested and skips tiles that have already left the screen. A
   folder of 3000 files scrolled to the end in Thumbnails uses 141 MB of private memory (364 MB before
