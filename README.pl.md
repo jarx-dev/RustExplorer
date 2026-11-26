@@ -203,10 +203,11 @@ się nie da, a poleceń z menu Windows program nie cofa.
    „Więcej informacji” → „Uruchom mimo to”.
 
 Opcjonalnie: każde wydanie na GitHubie buduje GitHub Actions z tego repozytorium z atestacją
-pochodzenia, którą sprawdza [GitHub CLI](https://cli.github.com/):
+pochodzenia, którą sprawdza [GitHub CLI](https://cli.github.com/) (w cudzysłowie wpisz ścieżkę
+pobranego pliku):
 
 ```powershell
-gh attestation verify <ścieżka do pobranego .exe> -R jarx-dev/RustExplorer
+gh attestation verify "C:\sciezka\do\RustExplorer.exe" -R jarx-dev/RustExplorer
 ```
 
 Ustawienia i karty są w `%APPDATA%\RustExplorer`. Nowe wydania program pobiera sam, sprawdza ich
@@ -234,8 +235,8 @@ sterownik grafiki: samo puste okno egui zajmuje prawie tyle samo. Szczegóły w 
 ## Prywatność w skrócie
 
 Bez analityki i bez śledzenia. Program sam z siebie nie wysyła nigdzie nazw, ścieżek ani zawartości plików;
-plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Poza udziałami sieciowymi i plikami w chmurze, których używasz (otwierane foldery, zmapowane dyski, pliki
-dostępne tylko online, które Windows pobiera przy otwarciu), wydanie z GitHuba z domyślnymi ustawieniami łączy się tylko z:
+plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Udziały sieciowe i foldery w chmurze program czyta przez Windows, jak każdy inny folder.
+Sam program, w wydaniu z GitHuba z domyślnymi ustawieniami, łączy się przez internet tylko z:
 
 - **GitHubem** (github.com i serwer, z którego GitHub podaje pliki wydań), żeby sprawdzić, czy jest nowe wydanie (co minutę, co 15 minut przy oknie
   zminimalizowanym lub w zasobniku), i je pobrać. Zwykły `cargo build` nie sprawdza nigdy.
@@ -342,8 +343,8 @@ flowchart LR
   podmieniany dopiero, gdy to się uda.
 - **Kopiowanie** (`rx_core::copy`, `CopyFileExW`) najpierw planuje całe drzewo, potem kopiuje 4 pliki
   naraz (1 na dysku talerzowym), z postępem w bajtach. Przeniesienie w obrębie woluminu to zmiana
-  nazwy; między dyskami skopiowane pliki znikają ze źródła po zakończeniu kopiowania (także po anulowaniu), więc każdy
-  plik jest w jednym miejscu.
+  nazwy; między dyskami źródło każdego pliku, który został skopiowany i od tamtej
+  pory się nie zmienił, znika po zakończeniu kopiowania (także po anulowaniu); po błędzie źródło zostaje bez zmian.
 - **Miniatury**: najwyżej 500 tekstur, a po przekroczeniu znikają najdawniej rysowane; wątek
   wczytuje je w kolejności zamawiania i pomija kafelki, które zdążyły zniknąć z ekranu. Folder
   3000 plików przewinięty do końca w Miniaturach zajmuje 141 MB pamięci prywatnej (przed limitem

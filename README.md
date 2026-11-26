@@ -202,10 +202,11 @@ undone, and commands from the Windows menu are not undone by the program.
    "More info" → "Run anyway".
 
 Optional: every GitHub release is built by GitHub Actions from this repository with a provenance
-attestation, which the [GitHub CLI](https://cli.github.com/) checks:
+attestation, which the [GitHub CLI](https://cli.github.com/) checks (put the path of the file you downloaded
+in the quotes):
 
 ```powershell
-gh attestation verify <path to the downloaded .exe> -R jarx-dev/RustExplorer
+gh attestation verify "C:\path\to\RustExplorer.exe" -R jarx-dev/RustExplorer
 ```
 
 Settings and tabs are kept in `%APPDATA%\RustExplorer`. New releases are downloaded by the program
@@ -233,8 +234,8 @@ driver: an empty egui window alone takes almost as much. Details in [Under the h
 ## Privacy at a glance
 
 No analytics and no tracking. The program sends no file names, paths or contents anywhere on its own; a
-file goes to VirusTotal only if you choose to upload it. Apart from network shares and cloud files you use (folders you open, mapped drives, online-only files that
-Windows downloads when you open them), a release from GitHub, with default settings, connects only to:
+file goes to VirusTotal only if you choose to upload it. Network shares and cloud folders are read through Windows, like any other folder.
+The program itself, in a release from GitHub with default settings, connects over the internet only to:
 
 - **GitHub** (github.com and the host it serves release files from), to check for a new release (every minute, every 15 minutes while minimized or in the tray)
   and download it. A plain `cargo build` never checks.
@@ -339,7 +340,8 @@ flowchart LR
   replaced only once that has succeeded.
 - **Copying** (`rx_core::copy`, `CopyFileExW`) plans the whole tree first, then copies 4 files at a
   time (1 on a hard disk), with progress in bytes. A move within a volume is a rename; between drives
-  the copied files leave the source once the copying ends (also after a cancel), so each file is in one place.
+  the source of each file that was copied and has not changed since goes once the copying ends (also
+  after a cancel); after an error the source stays as it was.
 - **Thumbnails**: at most 500 textures; past that, the least recently drawn ones disappear. A thread
   loads them in the order they were requested and skips tiles that have already left the screen. A
   folder of 3000 files scrolled to the end in Thumbnails uses 141 MB of private memory (364 MB before
