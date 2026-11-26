@@ -242,14 +242,16 @@ The program itself, in a release from GitHub with default settings, connects ove
 - **errors.jarx.pl**, to send one short crash report after the program panics (an internal error); on by default, File ▸ Settings switches it off
   ([exactly what it contains](#crash-reports)).
 - **VirusTotal**, only when you click "Check on VirusTotal", with your own API key: it sends the file's
-  SHA-256, and the file only if you choose to upload it.
+  SHA-256, and the file only if you choose to upload it (an uploaded file also reaches antivirus
+  companies).
 
 Links in File ▸ "About" open in your browser when you click them.
 
 Kept on your PC: settings, tabs, `update.log` (update messages and the text of any panic) and VirusTotal verdicts (path and SHA-256 of each file that got one) in
 `%APPDATA%\RustExplorer`; the VirusTotal API key in Windows Credential Manager; the index of file names
 (about 215 MB for 3 million names) in `%LOCALAPPDATA%\RustExplorer`; copies of files opened or previewed from archives
-in `%TEMP%`, removed at a later start once unused for a day.
+in `%TEMP%`, which a later start tries to delete once RustExplorer has not opened them and nothing has
+changed them for a day.
 
 ## Crash reports
 
@@ -341,7 +343,7 @@ flowchart LR
 - **Copying** (`rx_core::copy`, `CopyFileExW`) plans the whole tree first, then copies 4 files at a
   time (1 on a hard disk), with progress in bytes. A move within a volume is a rename; between drives
   the source of each file that was copied and has not changed since goes once the copying ends (also
-  after a cancel); after an error the source stays as it was.
+  after a cancel); after a copy error the source stays as it was.
 - **Thumbnails**: at most 500 textures; past that, the least recently drawn ones disappear. A thread
   loads them in the order they were requested and skips tiles that have already left the screen. A
   folder of 3000 files scrolled to the end in Thumbnails uses 141 MB of private memory (364 MB before

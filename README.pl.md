@@ -243,14 +243,16 @@ Sam program, w wydaniu z GitHuba z domyślnymi ustawieniami, łączy się przez 
 - **errors.jarx.pl**, żeby po panice programu (błędzie wewnętrznym) wysłać jeden krótki raport; domyślnie włączone, wyłączysz w Plik ▸ Ustawienia
   ([co dokładnie zawiera](#raporty-o-awariach)).
 - **VirusTotal**, tylko gdy klikniesz „Sprawdź w VirusTotal”, z Twoim kluczem API: wysyła SHA-256
-  pliku, a sam plik tylko wtedy, gdy zdecydujesz się go wysłać.
+  pliku, a sam plik tylko wtedy, gdy zdecydujesz się go wysłać (wysłany plik trafia też do firm
+  antywirusowych).
 
 Linki w Plik ▸ „O programie” otwierają się w przeglądarce, gdy je klikniesz.
 
 Na komputerze zostają: ustawienia, karty, `update.log` (komunikaty aktualizacji i treść ewentualnej paniki) i wyniki VirusTotal (ścieżka i SHA-256 każdego pliku,
 który dostał werdykt) w `%APPDATA%\RustExplorer`; klucz API VirusTotal w Menedżerze poświadczeń Windows; indeks nazw
 plików (ok. 215 MB przy 3 mln nazw) w `%LOCALAPPDATA%\RustExplorer`; kopie plików otwartych lub podglądanych z archiwów
-w `%TEMP%`, usuwane przy którymś z kolejnych uruchomień, gdy przez dobę nikt ich nie używał.
+w `%TEMP%`, które program przy kolejnym uruchomieniu próbuje usunąć, gdy przez dobę ani ich nie otwierał,
+ani nic ich nie zmieniło.
 
 ## Raporty o awariach
 
@@ -344,7 +346,7 @@ flowchart LR
 - **Kopiowanie** (`rx_core::copy`, `CopyFileExW`) najpierw planuje całe drzewo, potem kopiuje 4 pliki
   naraz (1 na dysku talerzowym), z postępem w bajtach. Przeniesienie w obrębie woluminu to zmiana
   nazwy; między dyskami źródło każdego pliku, który został skopiowany i od tamtej
-  pory się nie zmienił, znika po zakończeniu kopiowania (także po anulowaniu); po błędzie źródło zostaje bez zmian.
+  pory się nie zmienił, znika po zakończeniu kopiowania (także po anulowaniu); po błędzie kopiowania źródło zostaje bez zmian.
 - **Miniatury**: najwyżej 500 tekstur, a po przekroczeniu znikają najdawniej rysowane; wątek
   wczytuje je w kolejności zamawiania i pomija kafelki, które zdążyły zniknąć z ekranu. Folder
   3000 plików przewinięty do końca w Miniaturach zajmuje 141 MB pamięci prywatnej (przed limitem
