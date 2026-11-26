@@ -57,7 +57,7 @@ nothing about it there.
 | | **RustExplorer** | **File Explorer** (Windows 11) |
 |---|---|---|
 | **Two folders side by side** | **Yes**: `F3`, each pane with its own tabs | **Tabs and separate windows** (`Ctrl+T`, `Ctrl+N`) ([Microsoft](https://support.microsoft.com/en-us/accessibility/windows/keyboard-shortcuts-in-windows)) |
-| **Archives** | **ZIP, 7z, RAR as folders**; ZIP and 7z changed in place; encrypted ones ask for the password when you extract them | **ZIP as a folder**; reads RAR, 7z and TAR, creates ZIP, 7z and TAR (24H2); "does not support operations on encrypted archive files" ([Microsoft](https://support.microsoft.com/en-us/windows/experience/storage-filemanagement/zip-and-unzip-files), [24H2](https://learn.microsoft.com/en-us/windows/whats-new/whats-new-windows-11-version-24h2)) |
+| **Archives** | **ZIP, 7z, RAR as folders**; ZIP and 7z changed in place; encrypted ones ask for the password when you extract the whole archive | **ZIP as a folder**; reads RAR, 7z and TAR, creates ZIP, 7z and TAR (24H2); "does not support operations on encrypted archive files" ([Microsoft](https://support.microsoft.com/en-us/windows/experience/storage-filemanagement/zip-and-unzip-files), [24H2](https://learn.microsoft.com/en-us/windows/whats-new/whats-new-windows-11-version-24h2)) |
 | **Name search across drives** | **Own index** of every local drive, loaded when you search | **Windows Search index**: Documents, Pictures, Music and the desktop by default, the whole PC in "Enhanced" mode ([Microsoft](https://support.microsoft.com/en-us/windows/experience/performance-optimization/search-indexing-in-windows)) |
 | **What fills the disk** | **Size list and tile map**, for a drive or a folder | **Settings ▸ Storage**, by category such as apps and temporary files ([Microsoft](https://support.microsoft.com/en-us/windows/experience/storage-filemanagement/storage-settings-in-windows)) |
 | **Recently changed files** | **Green for 3 hours**, out of the box | — |
@@ -205,7 +205,7 @@ Optional: every GitHub release is built by GitHub Actions from this repository w
 attestation, which the [GitHub CLI](https://cli.github.com/) checks:
 
 ```powershell
-gh attestation verify RustExplorer-<version>.exe -R jarx-dev/RustExplorer
+gh attestation verify <path to the downloaded .exe> -R jarx-dev/RustExplorer
 ```
 
 Settings and tabs are kept in `%APPDATA%\RustExplorer`. New releases are downloaded by the program
@@ -221,7 +221,7 @@ went from and to the same drive, and the search covers that single drive).
 | What | Result |
 |---|---|
 | Copying 5,000 files of 20 KB | **1.1–1.6 s** (8.3 s through the Windows shell copy it used before) |
-| Name search over 2.97 million files on drive C: | **2–4 ms** a query (12 ms for a single letter); the index loads in 0.2 s, takes 215 MB on disk and a full scan 31 s |
+| Name search over 2.97 million names (files and folders) on drive C: | **2–4 ms** a query (12 ms for a single letter); the index loads in 0.2 s, takes 215 MB on disk and a full scan 31 s |
 | Memory, window open, a folder of 3,000 files | **~113 MB** private memory |
 | Memory, minimized or in the tray | **~1 MB** working set |
 | CPU, idle window | ~0.01 s per minute |
@@ -233,7 +233,7 @@ driver: an empty egui window alone takes almost as much. Details in [Under the h
 ## Privacy at a glance
 
 No analytics and no tracking. The program sends no file names, paths or contents anywhere on its own; a
-file goes to VirusTotal only if you choose to upload it. Apart from network folders you open yourself, a release from GitHub, with default settings, connects only to:
+file goes to VirusTotal only if you choose to upload it. Apart from network shares you use (folders you open and mapped drives, reached through Windows), a release from GitHub, with default settings, connects only to:
 
 - **GitHub** (github.com and the host it serves release files from), to check for a new release (every minute, every 15 minutes while minimized or in the tray)
   and download it. A plain `cargo build` never checks.
@@ -244,9 +244,9 @@ file goes to VirusTotal only if you choose to upload it. Apart from network fold
 
 Links in File ▸ "About" open in your browser when you click them.
 
-Kept on your PC: settings, tabs and VirusTotal results (path and SHA-256 of each checked file) in
+Kept on your PC: settings, tabs and VirusTotal verdicts (path and SHA-256 of each file that got one) in
 `%APPDATA%\RustExplorer`; the VirusTotal API key in Windows Credential Manager; the index of file names
-(about 215 MB for 3 million files) in `%LOCALAPPDATA%\RustExplorer`; copies of files opened from archives
+(about 215 MB for 3 million names) in `%LOCALAPPDATA%\RustExplorer`; copies of files opened or previewed from archives
 in `%TEMP%`, removed at a later start once unused for a day.
 
 ## Crash reports

@@ -57,7 +57,7 @@ nie znaleźliśmy.
 | | **RustExplorer** | **Eksplorator plików** (Windows 11) |
 |---|---|---|
 | **Dwa foldery obok siebie** | **Tak**: `F3`, każdy panel z własnymi kartami | **Karty i osobne okna** (`Ctrl+T`, `Ctrl+N`) ([Microsoft](https://support.microsoft.com/pl-pl/accessibility/windows/keyboard-shortcuts-in-windows)) |
-| **Archiwa** | **ZIP, 7z, RAR jak foldery**; ZIP i 7z zmieniane na miejscu; zaszyfrowane pytają o hasło przy wypakowaniu | **ZIP jak folder**; czyta RAR, 7z i TAR, tworzy ZIP, 7z i TAR (24H2); „nie obsługuje operacji na zaszyfrowanych plikach archiwum” ([Microsoft](https://support.microsoft.com/pl-pl/windows/experience/storage-filemanagement/zip-and-unzip-files), [24H2](https://learn.microsoft.com/pl-pl/windows/whats-new/whats-new-windows-11-version-24h2)) |
+| **Archiwa** | **ZIP, 7z, RAR jak foldery**; ZIP i 7z zmieniane na miejscu; zaszyfrowane pytają o hasło przy wypakowaniu całego archiwum | **ZIP jak folder**; czyta RAR, 7z i TAR, tworzy ZIP, 7z i TAR (24H2); „nie obsługuje operacji na zaszyfrowanych plikach archiwum” ([Microsoft](https://support.microsoft.com/pl-pl/windows/experience/storage-filemanagement/zip-and-unzip-files), [24H2](https://learn.microsoft.com/pl-pl/windows/whats-new/whats-new-windows-11-version-24h2)) |
 | **Szukanie nazw na dyskach** | **Własny indeks** wszystkich dysków lokalnych, wczytywany przy szukaniu | **Indeks Windows Search**: domyślnie Dokumenty, Obrazy, Muzyka i pulpit, cały komputer w trybie „Rozszerzonym” ([Microsoft](https://support.microsoft.com/pl-pl/windows/experience/performance-optimization/search-indexing-in-windows)) |
 | **Co zajmuje dysk** | **Lista według rozmiaru i mapa kafelków**, dla dysku albo folderu | **Ustawienia ▸ Magazyn**, według kategorii, np. aplikacje i pliki tymczasowe ([Microsoft](https://support.microsoft.com/pl-pl/windows/experience/storage-filemanagement/storage-settings-in-windows)) |
 | **Świeżo zmienione pliki** | **Zielone przez 3 godziny**, od razu po uruchomieniu | — |
@@ -206,7 +206,7 @@ Opcjonalnie: każde wydanie na GitHubie buduje GitHub Actions z tego repozytoriu
 pochodzenia, którą sprawdza [GitHub CLI](https://cli.github.com/):
 
 ```powershell
-gh attestation verify RustExplorer-<wersja>.exe -R jarx-dev/RustExplorer
+gh attestation verify <ścieżka do pobranego .exe> -R jarx-dev/RustExplorer
 ```
 
 Ustawienia i karty są w `%APPDATA%\RustExplorer`. Nowe wydania program pobiera sam, sprawdza ich
@@ -222,7 +222,7 @@ Pomiar na laptopie z AMD Ryzen 7 8840HS, zintegrowaną grafiką Radeon 780M i je
 | Co | Wynik |
 |---|---|
 | Kopiowanie 5000 plików po 20 KB | **1,1–1,6 s** (8,3 s przez kopiowanie powłoki Windows, którego program używał wcześniej) |
-| Szukanie nazw wśród 2,97 mln plików na dysku C: | **2–4 ms** na zapytanie (12 ms dla jednej litery); indeks wczytuje się w 0,2 s, zajmuje 215 MB na dysku, a pełny skan trwa 31 s |
+| Szukanie wśród 2,97 mln nazw (plików i folderów) na dysku C: | **2–4 ms** na zapytanie (12 ms dla jednej litery); indeks wczytuje się w 0,2 s, zajmuje 215 MB na dysku, a pełny skan trwa 31 s |
 | Pamięć, otwarte okno, folder z 3000 plików | **~113 MB** pamięci prywatnej |
 | Pamięć, okno zminimalizowane lub w zasobniku | **~1 MB** working set |
 | CPU, bezczynne okno | ok. 0,01 s na minutę |
@@ -234,7 +234,7 @@ sterownik grafiki: samo puste okno egui zajmuje prawie tyle samo. Szczegóły w 
 ## Prywatność w skrócie
 
 Bez analityki i bez śledzenia. Program sam z siebie nie wysyła nigdzie nazw, ścieżek ani zawartości plików;
-plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Poza folderami sieciowymi, które sam otworzysz, wydanie z GitHuba z domyślnymi ustawieniami łączy się tylko z:
+plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Poza udziałami sieciowymi, których używasz (otwierane foldery, zmapowane dyski; łączy się z nimi Windows), wydanie z GitHuba z domyślnymi ustawieniami łączy się tylko z:
 
 - **GitHubem** (github.com i serwer, z którego GitHub podaje pliki wydań), żeby sprawdzić, czy jest nowe wydanie (co minutę, co 15 minut przy oknie
   zminimalizowanym lub w zasobniku), i je pobrać. Zwykły `cargo build` nie sprawdza nigdy.
@@ -245,9 +245,9 @@ plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Poza fo
 
 Linki w Plik ▸ „O programie” otwierają się w przeglądarce, gdy je klikniesz.
 
-Na komputerze zostają: ustawienia, karty i wyniki VirusTotal (ścieżka i SHA-256 każdego sprawdzonego
-pliku) w `%APPDATA%\RustExplorer`; klucz API VirusTotal w Menedżerze poświadczeń Windows; indeks nazw
-plików (ok. 215 MB przy 3 mln plików) w `%LOCALAPPDATA%\RustExplorer`; kopie plików otwartych z archiwów
+Na komputerze zostają: ustawienia, karty i wyniki VirusTotal (ścieżka i SHA-256 każdego pliku,
+który dostał werdykt) w `%APPDATA%\RustExplorer`; klucz API VirusTotal w Menedżerze poświadczeń Windows; indeks nazw
+plików (ok. 215 MB przy 3 mln nazw) w `%LOCALAPPDATA%\RustExplorer`; kopie plików otwartych lub podglądanych z archiwów
 w `%TEMP%`, usuwane przy którymś z kolejnych uruchomień, gdy przez dobę nikt ich nie używał.
 
 ## Raporty o awariach
