@@ -1,140 +1,169 @@
-<p align="center">
-  <b>English</b> | <a href="README.pl.md">Polski</a>
-</p>
+<div align="center">
 
-<p align="center">
-  <img src="shots/ikona.png" width="112" alt="RustExplorer icon: a blue tile with a yellow folder split into two panes">
-</p>
+<b>English</b> | <a href="README.pl.md">Polski</a>
 
-<h1 align="center">RustExplorer</h1>
+<img src="shots/ikona.png" width="56" alt="RustExplorer icon: a blue tile with a yellow folder split into two panes">
 
-<p align="center">
-  <b>A fast, dual-pane file manager for Windows 11, written in Rust.</b><br>
-  A single <code>.exe</code> (~18 MB): no installer, no .NET, no Electron.
-</p>
+# RustExplorer
 
-<p align="center">
-  <b><a href="https://github.com/jarx-dev/RustExplorer/releases/latest">Download the latest version</a></b>
-</p>
+**A free file manager for Windows 10 and 11: two panes with tabs, ZIP and 7z you edit like folders,
+a file-name search across every local drive in milliseconds, and a map of what fills your disk.**
 
-<p align="center">
-  <img src="docs/screenshots/en/main.png" alt="Main window in the dark theme: a tree with the path to the folder, the file list and a note preview">
-  <br><sub>All screenshots show a folder of demo data (made-up files).</sub>
-</p>
+<a href="https://github.com/jarx-dev/RustExplorer/releases/latest"><img src="docs/download.svg" width="260" alt="Download the EXE"></a>
 
-> **Note:** the interface is in English by default; Polish is one click away in File ▸ Settings ▸ Language / Język. Labels below are quoted as the English interface shows them.
+<sub>Portable ~19 MB EXE · take `RustExplorer-….exe` under Assets · not code-signed ([first run](#download-and-first-run))</sub>
 
----
+[![Latest release](https://img.shields.io/github/v/release/jarx-dev/RustExplorer?label=release&color=1E6FD9)](https://github.com/jarx-dev/RustExplorer/releases/latest)
+[![Release date](https://img.shields.io/github/release-date/jarx-dev/RustExplorer?label=released)](https://github.com/jarx-dev/RustExplorer/releases/latest)
+[![CI](https://github.com/jarx-dev/RustExplorer/actions/workflows/ci.yml/badge.svg)](https://github.com/jarx-dev/RustExplorer/actions/workflows/ci.yml)
+[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-## Why?
 
-Windows Explorer is convenient until you need to compare two folders, find a file deep in a
-tree, or see what is eating your disk space. Classic dual-pane file managers can do all of that,
-but they look like they are from 2005 or cost money. RustExplorer sits in between: it looks and
-behaves like Windows 11, and underneath it has what Explorer lacks.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/hero-dark.png">
+  <img src="docs/screenshots/en/hero.png" alt="RustExplorer with two panes: the Office folder on the left with recently changed files in green, an archive opened like a folder on the right, a text preview on the far right">
+</picture>
 
-## Highlights
+<sub>Left: a folder, files changed in the last 3 hours in green. Right: a ZIP opened as a folder, with a file just added. `F3` splits the window. All screenshots show made-up demo data.</sub>
 
-### Archives as folders
+[Why switch](#why-switch) · [vs File Explorer](#rustexplorer-and-file-explorer) · [Tour](#a-quick-tour) · [Download](#download-and-first-run) · [Privacy](#privacy-at-a-glance) · [For developers](#for-developers)
 
-You open ZIP, 7z and RAR files with a double-click, like any folder: browse them, preview files and
-open them without extracting the whole archive. ZIP and 7z can also be modified in place: you add
-files by dragging or pasting, delete them and rename them, and the program rewrites the archive in
-the background. When you save a file opened from an archive in another program, RustExplorer asks
-whether to update it in the archive. RAR is read-only and extract-only. "Extract here",
-"Extract to folder" and "Compress…" (as ZIP or 7z) are in the right-click
-menu; an encrypted archive asks for its password. Everything runs inside the program itself
-(the `rx-archive` crate), without 7-Zip and without `tar.exe`, and progress shows in the "Operations"
-panel.
+</div>
 
-<img src="docs/screenshots/en/archive.png" alt="Contents of a ZIP archive shown like a folder, in the path bar and in the tree">
+## Why switch
+
+- **Two folders side by side in one window.** `F3` splits it into two panes, each with its own tabs;
+  drag files from one to the other, or a tab onto the split.
+- **5–7 times faster than the Windows shell copy it used before, with thousands of small files.** The program's own copy
+  engine works on several files at once: 5,000 files of 20 KB took 1.1–1.6 s on an NVMe SSD, against 8.3 s through the Windows shell
+  copy it used before ([measurements](#performance)).
+- **Finds a file by name on every local drive at once**: 2–4 ms a query over about 3 million names, from
+  its own index, after a one-time scan of about 30 s ([measurements](#performance)). No Windows Search, no Everything,
+  no system service.
+- **Shows what fills your disk**: a list by size next to a tile map; a click opens the folder, a right-click
+  offers to send it to the Recycle Bin.
+- **Archives you can change.** ZIP, 7z and RAR open like folders; preview and open a file without
+  extracting the whole archive, and add, delete or rename files inside a ZIP or 7z.
+- **See what just changed.** Files and folders created or changed in the last 3 hours show in green,
+  with "40 min ago" instead of a date. The status bar in every folder tells you how many files are hidden.
+- **Light on your PC.** About 113 MB of private memory with the window open; minimized or in the tray,
+  Task Manager shows about 1 MB in use (working set; private memory stays the same). An idle window uses about 0.01 s of CPU per minute.
+
+## RustExplorer and File Explorer
+
+Every statement about File Explorer links to Microsoft's own documentation; a dash means we found
+nothing about it there.
+
+| | **RustExplorer** | **File Explorer** (Windows 11) |
+|---|---|---|
+| **Two folders side by side** | **Yes**: `F3`, each pane with its own tabs | **Tabs and separate windows** (`Ctrl+T`, `Ctrl+N`) ([Microsoft](https://support.microsoft.com/en-us/accessibility/windows/keyboard-shortcuts-in-windows)) |
+| **Archives** | **ZIP, 7z, RAR as folders**; ZIP and 7z changed in place; encrypted ones ask for the password when you extract them | **ZIP as a folder**; reads RAR, 7z and TAR, creates ZIP, 7z and TAR (24H2); "does not support operations on encrypted archive files" ([Microsoft](https://support.microsoft.com/en-us/windows/experience/storage-filemanagement/zip-and-unzip-files), [24H2](https://learn.microsoft.com/en-us/windows/whats-new/whats-new-windows-11-version-24h2)) |
+| **Name search across drives** | **Own index** of every local drive, loaded when you search | **Windows Search index**: Documents, Pictures, Music and the desktop by default, the whole PC in "Enhanced" mode ([Microsoft](https://support.microsoft.com/en-us/windows/experience/performance-optimization/search-indexing-in-windows)) |
+| **What fills the disk** | **Size list and tile map**, for a drive or a folder | **Settings ▸ Storage**, by category such as apps and temporary files ([Microsoft](https://support.microsoft.com/en-us/windows/experience/storage-filemanagement/storage-settings-in-windows)) |
+| **Recently changed files** | **Green for 3 hours**, out of the box | — |
+| **Undo** | **`Ctrl+Z`**, up to 30 operations | **`Ctrl+Z`**, "undo the previous action" ([Microsoft](https://support.microsoft.com/en-us/accessibility/windows/keyboard-shortcuts-in-windows)) |
+| **Price** | **Free**, open source (MIT) | **Part of Windows** |
+| **Getting it** | **One ~19 MB EXE**, nothing to install, updates itself | **Built in** |
+
+## A quick tour
 
 ### Search everywhere
 
-The disk button next to the search box switches it from the current folder to all local drives, as in
-Everything, but without Everything and without an administrator service. The program keeps its own
-index of file names on disk: it loads the index only on the first search, refreshes it in the background
-at most every 10 minutes and frees it from memory 5 minutes after the last query. On a drive with
-3 million files a query takes a few milliseconds, Polish diacritics do not matter (`zolw` finds `żółw`),
-and each result shows its folder.
+The drive button next to the search box switches it from the current folder to all local drives. The
+program keeps its own index of file names on disk: it loads it when you search (and rescans the drives in
+the background if the last scan is over 10 minutes old) and frees it from memory 5 minutes after the last query. Letters with
+Polish diacritics match their plain forms (`zolw` finds `żółw`), and every result shows its folder.
 
-<img src="docs/screenshots/en/find.png" alt="Search results across all drives with the folder of each file">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/find-dark.png">
+  <img src="docs/screenshots/en/find.png" alt="Results for Hargrove across all drives, each with its folder, and the drive button next to the search box">
+</picture>
 
-### Disk space analysis
+### What fills the disk
 
-Tools ▸ "Disk usage" asks for a scope: the whole drive or the current folder. The list is
-sorted by size and expands like a tree, and below it a tile map shows what takes up the space.
-Clicking a tile jumps to that folder, right-clicking sends it to the Recycle Bin, and "Largest files"
-lists them together, regardless of folder. The map uses the drive index, so the whole
-drive is not scanned again.
+Tools ▸ "Disk usage" asks for a scope: the whole drive or the current folder. The list is sorted by size and
+expands like a tree; the tile map below shows what takes the space. A click on a tile opens that folder (on a file,
+shows it in its folder), a right-click offers Open, Copy path and Delete to Recycle Bin, and "Largest files"
+lists them together, whatever their folder. The map uses the same index as the search (names and sizes,
+rescanned in the background when it is old), not a new scan of the drive.
 
-<img src="docs/screenshots/en/space.png" alt="Disk space analysis: a list by size and a tile map">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/space-dark.png">
+  <img src="docs/screenshots/en/space.png" alt="Disk usage of a folder: a list by size and a tile map">
+</picture>
 
-### A tree without clutter
+### Archives as folders
 
-The tree on the left shows only the path to the current folder. The rest of each level is collapsed
-into "… N more folders" and expands with a click, so even in a deep folder the tree fits
-on the screen. You can turn on the full tree in File ▸ Settings ▸ Full folder tree.
+Double-click a ZIP, 7z or RAR file to browse it like a folder, preview the files
+and open them without extracting the whole archive. In a ZIP or 7z you also add files (drag or paste),
+delete and rename them; the program writes the archive anew in the background and replaces the original
+only once the new one is complete; save a file opened from a ZIP or 7z in another program within 4 hours and
+RustExplorer offers to put it back. RAR is read-only. "Extract here", "Extract to folder" and "Compress…" are in the
+right-click menu, all without 7-Zip.
 
-### Two panes
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/archive-dark.png"><img src="docs/screenshots/en/archive.png" alt="A ZIP archive open like a folder, with a file just added shown in green and a text preview"></picture>
 
-`F3` splits the window into two panes, each with its own tabs, filter and search. You drag files
-between the panes, or tabs onto the split.
+<sub>Inside a ZIP: a file just added (green) and a preview</sub>
 
-<img src="docs/screenshots/en/split.png" alt="Two panes side by side in the dark theme">
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/pack-dark.png"><img width="420" src="docs/screenshots/en/pack.png" alt="The Compress dialog: archive name, ZIP or 7z, compression level and a password with AES-256 encryption"></picture><br><sub>Compress… as ZIP or 7z, with a password</sub></p>
 
-### Fresh files in green
+### Thumbnails, preview and fresh files
 
-Files and folders created or modified in the last 3 hours have green text across the whole row, and
-show "40 min ago" instead of a date. A fresh creation counts too, so a file you just copied
-shows up green even though its modification date is old. You can see this in the screenshots
-above: three files changed a moment ago and folders that just received something. You don't need to
-sort by date to see what has just changed.
+Three views: details, thumbnails, and details with thumbnails. The preview shows pictures, the first page of
+a PDF, text and code. Files changed in the last 3 hours stay green in every view; a file you have just copied
+counts too, even with an old modification date. The status bar counts hidden files, in red while some are
+hidden; a click shows them.
 
-### Sorting remembered per folder
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/thumbs-dark.png">
+  <img src="docs/screenshots/en/thumbs.png" alt="Thumbnails view with recently changed files in green, a picture preview and the hidden-files counter on the status bar">
+</picture>
 
-Each folder remembers its own sort order: sort "Downloads" newest first and "Invoices" by
-name, and each opens the way you left it, even after a restart. A folder sorted the plain way
-(Name ascending) remembers nothing. If you want to carry one sort order over to subsequent folders,
-File ▸ Settings ▸ "Lock format (keep sorting)" keeps it while you
-navigate; the badge on the status bar turns the lock off.
+## Everything it does
 
-## What it can do
+<details>
+<summary><b>The full feature list</b> (18 rows)</summary>
 
-| | |
+| Feature | What it does |
 |---|---|
-| 🗂️ **Tabs and split** | Browser-style tabs (`Ctrl+T`, `Ctrl+W`), a split view with two panes (`F3`), each with its own tabs. The layout comes back after a restart. |
-| 👁️ **Preview** | Images (PNG, JPG, GIF, BMP, WebP, ICO, TIFF), the first page of a PDF, text and code files, a folder summary, and for everything else a thumbnail from the Windows shell. A file that exists only in the cloud is not downloaded for the preview: you see its thumbnail and a "Download to preview" button. |
-| 🖼️ **Three views** | Details, thumbnails, and details with thumbnails. You resize each column by dragging its border in the header (a double-click on the Name border restores fill mode); in a narrow pane the columns hide on their own. |
-| 🔢 **Natural sorting** | `Report2` before `Report10`, case-insensitive; each folder remembers its own sort order. |
-| 🔍 **Search and filter** | A search box for the current folder; the funnel next to it turns it into a filter such as `*.pdf;*.jpg` or simply `invoice` (matches anywhere in the name), which applies only to the current tab (in the two-pane view each pane has its own) and stays when you change folder. |
-| 🟩 **What's new?** | Files created or modified in the last 3 hours have green text and "N min ago" instead of a date. |
-| 🌙 **Dark theme** | View ▸ Theme: System (follows the Windows setting, including changes made while running), Light or Dark. The colours of both themes are in `crates/rx-core/src/palette.rs`, and a test checks text contrast (WCAG, at least 4.5:1 in the dark theme). |
-| 📏 **Folder sizes** | One click, in the background, without blocking the window. |
-| 🪜 **Flat view** | All files from subfolders in a single list (up to 20,000), with filtering and sorting. |
-| 💽 **This PC** | Drives with a usage bar (red above 90%), file system, network drives. |
-| ⭐ **Bookmarks** | Favourite folders in the tree on the left, next to quick access. |
-| 🌳 **Path tree** | The tree on the left shows only the path to the current folder; "… N more folders" expands that level, and File ▸ Settings ▸ Full folder tree shows them all. |
-| 🧰 **Tools** | A `.bak` copy with one shortcut (`Ctrl+B`), ZIP extraction, a terminal in the current folder, copying the path (from a Samba network drive as a Linux path `/home/<user>/…`), "Lock format (keep sorting)". |
-| 📋 **Clipboard and dragging** | Copy and Cut put files on the Windows clipboard (like Explorer), so you can paste them in Explorer, on the desktop or in a mail client, and files copied there can be pasted here; archive items stay in the program's own clipboard. You drop files from other programs onto the list, onto a folder or onto a tab, which puts them in that tab's folder (copy; with `Shift`, move), and a row dragged outside the window carries on as an ordinary Windows drag. |
-| 🪟 **Windows menu** | "Show more options…" at the end of the right-click menu (or `Shift`+right-click) shows Explorer's own menu for the selection: "Send to", "Open with", 7-Zip, Git, "Free up space" and "Always keep on this device" in OneDrive. |
-| ↩️ **Undo** | `Ctrl+Z` undoes the most recent operations (up to 30): deleting to the Recycle Bin (restores from the Bin), a move (moves back), a copy (the copies go to the Bin, newly created ones only), a rename, a new folder and a `.bak` copy; it never overwrites anything and skips an item that has changed since. What cannot be undone (deleting from disk without the Bin, changes inside archives, files replaced during a copy) is reported by the status bar; commands from the Windows menu are not undone by the program. |
-| ⚡ **Fast copying** | The program's own copy engine, separate from the Windows one, copies several files at a time, so a folder of thousands of small files goes several times faster than in Explorer. Details below the table. |
-| ⏳ **Operations** | One panel in the status bar for the copying, moving, extracting and VirusTotal checks of all tabs, with their speed and a history. |
-| 🛡️ **VirusTotal** | "Check on VirusTotal" in the right-click menu looks a file up by its SHA-256, so the file leaves the computer only if you choose to upload it; it needs a free API key (File ▸ Settings). |
-| 🔄 **Self-update** | A new version installs itself when you are idle; if it fails to start, the previous one comes back. Details below. |
-| 📌 **Tray** | An icon next to the clock; clicking it shows or hides the window. Closing the window hides it to the tray (no taskbar button), and starting the program again restores it; "Exit" exits the program. |
+| 🗂️ **Tabs and split** | Browser-style tabs (`Ctrl+T`, `Ctrl+W`), two panes (`F3`), each with its own tabs; the layout comes back after a restart. |
+| 👁️ **Preview** | Images (PNG, JPG, GIF, BMP, WebP, ICO, TIFF), the first page of a PDF, text and code, a folder summary, and a Windows thumbnail for the rest. A cloud-only file is not downloaded for it. |
+| 🖼️ **Three views** | Details, thumbnails, details with thumbnails. Columns resize by dragging; in a narrow pane they hide on their own. |
+| 🔢 **Natural sorting** | `Report2` before `Report10`. Each folder remembers its own sort order, even after a restart; File ▸ Settings ▸ "Lock format" carries one order on to the next folders. |
+| 🔍 **Search and filter** | Search the current folder, or turn the box into a filter such as `*.pdf;*.jpg` or `invoice` that stays with the tab. |
+| 📏 **Folder sizes** | One click (or `Space` on selected folders), counted in the background. |
+| 🪜 **Flat view** | All files from the subfolders in one list (up to 20,000), with filter and sorting. |
+| 🌳 **Path tree** | The tree shows only the path to the current folder; "… N more folders" expands a level. A full tree is in File ▸ Settings. |
+| 💽 **This PC and bookmarks** | Drives with a usage bar (red above 90%) and file system; favourite folders in the tree. |
+| 📋 **Clipboard and dragging** | Copy and Cut use the Windows clipboard, so files go to and from Explorer, the desktop or a mail program; drop files from other programs onto the list, a folder or a tab. |
+| 🪟 **Windows menu** | "Show more options…" (or `Shift`+right-click) opens Explorer's own menu: "Send to", "Open with", 7-Zip, Git, OneDrive. |
+| ↩️ **Undo** | `Ctrl+Z` undoes up to 30 operations: delete to the Recycle Bin, move, copy, rename, new folder, `.bak` copy. It never overwrites anything; what cannot be undone, the status bar says. |
+| ⏳ **Operations** | One panel for the copying, moving, extracting and VirusTotal checks of all tabs, with speed and a history; the program's own copy and move can also be paused and cancelled. |
+| 🧰 **Tools** | A `.bak` copy of a file (`Ctrl+B`, also in the right-click menu), a terminal in the current folder, copy the path. |
+| 🛡️ **VirusTotal** | "Check on VirusTotal" in the right-click menu looks a file up by its SHA-256; the file itself leaves your PC only if you choose to upload it. Needs a free API key. |
+| 🌙 **Light and dark** | View ▸ Theme: System, Light or Dark; a test keeps text contrast at WCAG 4.5:1 or better in the dark theme. |
+| 🔄 **Self-update** | A new release installs itself while you are idle; if it does not start, the previous one comes back. |
+| 📌 **Tray** | Closing the window hides it next to the clock; starting the program again brings it back. |
 
-Copying and moving inside the program use its own copy, with progress in the Operations panel:
-several files at a time (one at a time on a hard disk), so a folder of thousands of small files
-copies several times faster than in Explorer. When a name is already taken in the target, the
+</details>
+
+<details>
+<summary><b>Copying, deleting and conflicts in detail</b></summary>
+
+Copying and moving inside the program use its own copy engine, with progress in the Operations panel:
+several files at a time (one at a time on a hard disk). When a name is already taken in the target, the
 Windows shell takes over with its conflict prompt, as it does for links and folders that need
 administrator consent. Files dragged out to other programs or copied with `Ctrl+C` work as in
-Explorer. `Delete` sends to the Recycle Bin without asking, as in Windows 11;
-a file that does not fit in the Bin (e.g. from a network drive) is deleted permanently, but only
-after the shell's warning.
+Explorer. `Delete` sends to the Recycle Bin without asking, as in Windows 11; a file that does not fit
+in the Bin (e.g. from a network drive) is deleted permanently, but only after the shell's warning.
+Undo restores from the Bin, moves back, sends new copies to the Bin and skips an item that has changed
+since; deleting without the Bin, changes inside archives and files replaced during a copy cannot be
+undone, and commands from the Windows menu are not undone by the program.
 
-### Shortcuts
+</details>
+
+<details>
+<summary><b>Keyboard shortcuts</b></summary>
 
 | Shortcut | Action | Shortcut | Action |
 |---|---|---|---|
@@ -150,7 +179,120 @@ after the shell's warning.
 | `Esc` | cancels a rename, clears the search | middle button on a tab | close the tab (not a pinned one) |
 | `Space` | size of the selected folders (in the Size column) | | |
 
-## Under the hood
+</details>
+
+## What it does not do
+
+- **Windows only**: Windows 10 and 11 on x64. No ARM build, no macOS or Linux.
+- **No batch renaming, folder comparison or synchronisation, tags, FTP or plugins.**
+- **RAR is read-only**: browse and extract, no changes inside. An encrypted 7z or an old-style ZipCrypto ZIP
+  can be extracted but not changed.
+- **Two languages**: English and Polish.
+- **Not code-signed**, so Windows may warn on the first start (see below).
+- **Paths longer than 260 characters** work for listing, renaming and the program's own copy, but deleting
+  through the Windows shell, opening, properties and thumbnails may still fail on them.
+
+## Download and first run
+
+<a href="https://github.com/jarx-dev/RustExplorer/releases/latest"><img src="docs/download.svg" width="240" alt="Download the EXE"></a>
+
+1. **Download** `RustExplorer-….exe` from the **Assets** list on the
+   [release page](https://github.com/jarx-dev/RustExplorer/releases/latest) (the button opens that page).
+2. **Run it.** There is nothing to install. Windows SmartScreen may warn about an unknown publisher:
+   "More info" → "Run anyway".
+
+Optional: every GitHub release is built by GitHub Actions from this repository with a provenance
+attestation, which the [GitHub CLI](https://cli.github.com/) checks:
+
+```powershell
+gh attestation verify RustExplorer-<version>.exe -R jarx-dev/RustExplorer
+```
+
+Settings and tabs are kept in `%APPDATA%\RustExplorer`. New releases are downloaded by the program
+itself, checked against their size and SHA-256, and rolled back if the new version does not start.
+
+Something does not work, or you miss a feature? [Open an issue](https://github.com/jarx-dev/RustExplorer/issues).
+
+## Performance
+
+Measured on a laptop with an AMD Ryzen 7 8840HS, integrated Radeon 780M graphics and one NVMe SSD (so the copy
+went from and to the same drive, and the search covers that single drive).
+
+| What | Result |
+|---|---|
+| Copying 5,000 files of 20 KB | **1.1–1.6 s** (8.3 s through the Windows shell copy it used before) |
+| Name search over 2.97 million files on drive C: | **2–4 ms** a query (12 ms for a single letter); the index loads in 0.2 s, takes 215 MB on disk and a full scan 31 s |
+| Memory, window open, a folder of 3,000 files | **~113 MB** private memory |
+| Memory, minimized or in the tray | **~1 MB** working set |
+| CPU, idle window | ~0.01 s per minute |
+| Program | one EXE, 18.8 MB (release v26.1122.0933) |
+
+On an integrated GPU, graphics memory is ordinary process RAM, so most of the 113 MB is the graphics
+driver: an empty egui window alone takes almost as much. Details in [Under the hood](#under-the-hood).
+
+## Privacy at a glance
+
+No analytics and no tracking. The program sends no file names, paths or contents anywhere on its own; a
+file goes to VirusTotal only if you choose to upload it. A release from GitHub, with default settings, connects only to:
+
+- **GitHub** (github.com and the host it serves release files from), to check for a new release (every minute, every 15 minutes while minimized or in the tray)
+  and download it. A plain `cargo build` never checks.
+- **errors.jarx.pl**, to send one short crash report after the program panics (an internal error); on by default, File ▸ Settings switches it off
+  ([exactly what it contains](#crash-reports)).
+- **VirusTotal**, only when you click "Check on VirusTotal", with your own API key: it sends the file's
+  SHA-256, and the file only if you choose to upload it.
+
+Links in File ▸ "About" open in your browser when you click them.
+
+Kept on your PC: settings and tabs in `%APPDATA%\RustExplorer`; the index of file names (about 215 MB
+for 3 million files) in `%LOCALAPPDATA%\RustExplorer`; copies of files opened from archives in `%TEMP%`,
+for a day.
+
+## Crash reports
+
+After the first panic of a run (a Rust bug: usually the program then crashes, sometimes it
+recovers and goes on), it sends one short report, with no user or installation id, so the bug can be
+found and fixed. It is on by default; switch it off in **File → Settings → Send crash reports**
+(Polish UI: **Plik → Ustawienia → Wysyłaj raporty o awariach**). The change applies at once and is saved
+right away.
+
+The whole report, three lines:
+
+```
+{"event_id":"5f1c0a9e2b7d4c3e8a6f1b2d3c4e5f60"}
+{"type":"event"}
+{"event_id":"5f1c0a9e2b7d4c3e8a6f1b2d3c4e5f60","level":"fatal","platform":"native","release":"rustexplorer@26.1104.2135","environment":"production","contexts":{"os":{"name":"Windows","version":"10.0.26100"}},"exception":{"values":[{"type":"panic","value":"src/main.rs:1234","mechanism":{"type":"panic","handled":false}}]},"fingerprint":["src/main.rs:1234"]}
+```
+
+That is: the program's build number (its build time in UTC, `YY.MMDD.HHMM`), the Windows version
+(with its build number) and the place in the program's source code where the panic happened
+(`file:line`). A path inside the program's repository stays as it is; a library from the cargo
+registry keeps the part from its crate folder (`ureq-2.12.1/src/pool.rs`); the standard library
+the part from `library/` (`core/src/option.rs`); any other path becomes the file name alone. `event_id` is random, new for every report. The
+request also has the `User-Agent` and `X-Sentry-Auth` headers with the program's name and version
+and the project's public key, nothing more.
+
+Never sent: the panic message (it can contain a file name or text), names or paths of your files,
+the computer name, your user name, e-mail addresses, any content, settings, logs, environment
+variables, an installation or user id, session data. At most one report per run; only release
+builds send (also your own `cargo build --release`), a debug build and screenshot runs never do.
+The program waits at most 3 s for the server, and any error is ignored.
+
+Where it goes: the author's own [Rustrak](https://github.com/rustrak/rustrak) server (open source,
+Sentry-compatible) at `errors.jarx.pl`. The report is stored only there, on no other company's
+service. On the way the traffic passes through Cloudflare, like that of any site behind Cloudflare.
+The report holds no IP address, but the server, like every web server, sees the connection's IP in
+its access log.
+
+The code that builds and sends the report is one short file you can check:
+[`crates/rx-update/src/crash_report.rs`](crates/rx-update/src/crash_report.rs).
+
+## For developers
+
+### Under the hood
+
+<details>
+<summary><b>Crates, threads, updates, the window</b></summary>
 
 ```mermaid
 flowchart LR
@@ -190,6 +332,12 @@ flowchart LR
   asking the disk, so an unavailable network drive does not hold up startup: its tab shows an error
   in the list once the system stops waiting for it. The preview is built by a separate thread (of a
   series of selections only the last one), and a file that exists only in the cloud is not read for it.
+- **Archives** are read and written in-process by `rx-archive` (ZIP, 7z; RAR read-only), without
+  7-Zip and without `tar.exe`. A changed archive is written to a new file first, and the original is
+  replaced only once that has succeeded.
+- **Copying** (`rx_core::copy`, `CopyFileExW`) plans the whole tree first, then copies 4 files at a
+  time (1 on a hard disk), with progress in bytes. A move within a volume is a rename; between drives
+  the source goes only after everything was copied, and only what was copied.
 - **Thumbnails**: at most 500 textures; past that, the least recently drawn ones disappear. A thread
   loads them in the order they were requested and skips tiles that have already left the screen. A
   folder of 3000 files scrolled to the end in Thumbnails uses 141 MB of private memory (364 MB before
@@ -223,12 +371,13 @@ flowchart LR
   themselves. Deleting, copying and moving through the shell (`SHFileOperationW`), opening, properties, the
   Windows menu and thumbnails are shell calls that this entry does not cover: with paths over 260
   characters they may still fail (untested). No DPI, controls or theme entries, so the look does
-  not change; no segment heap: 1-2 MB less private memory out of about 112 MB, and CPU with
-  thumbnails no better (10.2-10.7 s versus 9.2-10.1 s, two runs each).
+  not change; no segment heap: 1–2 MB less private memory out of about 112 MB, and CPU with
+  thumbnails no better (10.2–10.7 s versus 9.2–10.1 s, two runs each).
 - **The title bar** is drawn by the program, but hovering over "Maximize" shows the system's
   snap layouts menu: a window subclass (`rx-sys/src/caption.rs`) answers Windows with
   `HTMAXBUTTON` over the rectangle of that button. The minimum window size is 420×320 pt
-  (`MIN_SIZE`): the icon, four menus and window buttons still fit, and Microsoft requires at most 500,
+  (`MIN_SIZE`): the icon, four menus and window buttons still fit, and Microsoft asks for a minimum
+  width of at most 500 ([snap layouts](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/ui/apply-snap-layout-menu)),
   so the window also fills narrow snap zones. In a narrow window, the toolbar buttons disappear
   first, then the tree (below 480 pt), the preview (below 700 pt), the search box and the free space
   on the status bar.
@@ -237,7 +386,12 @@ flowchart LR
   appear on screen, takes no focus and has no taskbar button), so tests can run on a computer that is
   in use; `--visible` shows it.
 
-### Size
+</details>
+
+### Size and memory
+
+<details>
+<summary><b>How the EXE got to its size, and where the memory goes</b></summary>
 
 | | EXE |
 |---|---|
@@ -246,16 +400,14 @@ flowchart LR
 | + only DirectX 12 in wgpu (no Vulkan, GL or Metal) | 13.8 MB |
 | + tray icon | 14.1 MB |
 | + OpenGL as the main renderer | 14.4 MB |
-| today's build (archives, VirusTotal, index, clipboard, Windows menu…) | 17.9 MB |
-
-### Memory
+| today's release (archives, VirusTotal, index, clipboard, Windows menu…) | 18.8 MB |
 
 Measured on a laptop with a Ryzen and integrated Radeon 780M graphics (a folder of 3000 files, a
 1600×860 window at 175% scale). On an integrated GPU, GPU memory is ordinary process RAM.
 
 | | working set | private memory |
 |---|---|---|
-| DirectX 12, default wgpu settings | 430-460 MB | 430-455 MB |
+| DirectX 12, default wgpu settings | 430–460 MB | 430–455 MB |
 | DirectX 12, `MemoryHints::MemoryUsage` | ~280 MB | ~280 MB |
 | **OpenGL** (default), Details, idle window | **~109 MB** | **~113 MB** |
 | OpenGL, Thumbnails scrolled to the end of the folder | ~136 MB | ~141 MB |
@@ -273,14 +425,9 @@ hold it off. A re-scan of the index that nobody is waiting for runs at Windows b
 
 The program uses OpenGL. If the OpenGL driver fails to start, it switches to DirectX 12.
 
-## Download
+</details>
 
-The ready-made EXE is in the [releases](https://github.com/jarx-dev/RustExplorer/releases/latest). Just
-download and run it, no installation (Windows 10 or 11). The program fetches later releases by itself.
-The file is not signed, so the first time Windows may warn about an unknown publisher:
-"More info" → "Run anyway".
-
-## Building
+### Building
 
 On Windows:
 
@@ -294,16 +441,19 @@ On Linux (cross-compiling, without Windows), via [cargo-xwin](https://github.com
 ```bash
 cargo install cargo-xwin
 cargo xwin build --release --target x86_64-pc-windows-msvc
-cargo test -p rx-core -p rx-update -p rx-archive      # tests without Windows
+cargo test -p rx-core -p rx-update -p rx-archive -p rx-scan    # tests without Windows
 ```
 
 The Rust version is pinned in `rust-toolchain.toml`.
 
-Releases on GitHub are built by GitHub Actions (the "Wydanie" (Release) workflow, started manually from `main`):
+Releases on GitHub are built by GitHub Actions (the release workflow, `.github/workflows/release.yml`, named "Wydanie", Polish for "Release", and started manually from `main`):
 the EXE, `latest.json` for updates and a build provenance attestation for the file. Every PR and every
 change to `main` goes through a build and tests on Windows (the "CI" workflow).
 
 ### Your own update server
+
+<details>
+<summary><b>Publish your own builds to your own server</b></summary>
 
 A plain build never updates itself. Only a build from a GitHub release (it fetches later releases)
 or from `scripts/publish.sh` does, which embeds the `latest.json` address and the version identity.
@@ -327,43 +477,7 @@ builds and publishes every new commit on `main` every minute. On the computer ru
 `RUSTEXPLORER_UPDATE_URL=off` turns updates off, and a different `latest.json` address in that variable
 points them elsewhere. The update progress is logged in `%APPDATA%\RustExplorer\update.log`.
 
-## Crash reports
-
-After the first panic of a run (a Rust bug: usually the program then crashes, sometimes it
-recovers and goes on), it sends one short anonymous report so the bug can be found and fixed.
-It is on by default; switch it off in **File → Settings → Send crash reports** (Polish UI:
-**Plik → Ustawienia → Wysyłaj raporty o awariach**). The change applies at once and is saved
-right away.
-
-The whole report, three lines:
-
-```
-{"event_id":"5f1c0a9e2b7d4c3e8a6f1b2d3c4e5f60"}
-{"type":"event"}
-{"event_id":"5f1c0a9e2b7d4c3e8a6f1b2d3c4e5f60","level":"fatal","platform":"native","release":"rustexplorer@26.1104.2135","environment":"production","contexts":{"os":{"name":"Windows","version":"10.0.26100"}},"exception":{"values":[{"type":"panic","value":"src/main.rs:1234","mechanism":{"type":"panic","handled":false}}]},"fingerprint":["src/main.rs:1234"]}
-```
-
-That is: the program's build number (its build time in UTC, `YY.MMDD.HHMM`), the Windows version
-(with its build number) and the place in the program's source code where the panic happened
-(`file:line`). A path inside the program's repository stays as it is; a library from the cargo
-registry keeps the part from its crate folder (`ureq-2.12.1/src/pool.rs`); the standard library
-the part from `library/` (`core/src/option.rs`); any other path becomes the file name alone. `event_id` is random, new for every report. The
-request also has the `User-Agent` and `X-Sentry-Auth` headers with the program's name and version
-and the project's public key, nothing more.
-
-Never sent: the panic message (it can contain a file name or text), names or paths of your files,
-the computer name, your user name, e-mail addresses, any content, settings, logs, environment
-variables, an installation or user id, session data. At most one report per run; only release
-builds send (also your own `cargo build --release`), a debug build and screenshot runs never do.
-The program waits at most 3 s for the server, and any error is ignored.
-
-Where it goes: the author's own [Rustrak](https://github.com/rustrak/rustrak) server (open source,
-Sentry-compatible) at `errors.jarx.pl`. The data is not given to any third-party company. The
-traffic passes through Cloudflare, like that of any site behind Cloudflare. The report holds no IP
-address, but the server, like every web server, sees the connection's IP in its access log.
-
-The code that builds and sends the report is one short file you can check:
-[`crates/rx-update/src/crash_report.rs`](crates/rx-update/src/crash_report.rs).
+</details>
 
 ## About the author
 

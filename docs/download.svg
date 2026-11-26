@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="56" viewBox="0 0 260 56" role="img" aria-label="Download the EXE">
+  <rect width="260" height="56" rx="10" fill="#1E6FD9"/>
+  <g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" transform="translate(28 15)">
+    <path d="M13 2v17M6 12l7 7 7-7M3 25h20"/>
+  </g>
+  <text x="68" y="35" fill="#fff" font-family="Segoe UI, -apple-system, Helvetica, Arial, sans-serif" font-size="20" font-weight="600">Download the EXE</text>
+</svg>
