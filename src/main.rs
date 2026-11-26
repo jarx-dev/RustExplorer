@@ -1127,7 +1127,7 @@ fn main() -> eframe::Result {
     // a folder given on the command line opens there instead of the saved tabs. Taken by its
     // look (a full path that is no flag's value), not asked of the disk: a share that does not
     // answer would hold the window back for seconds; a path that is no folder says so in its list
-    let valued = ["--screenshot", "--select", "--save-icon", "--find", "--search", "--filter", "--click-type", "--theme", "--size", "--lang", "--pin"];
+    let valued = ["--screenshot", "--select", "--save-icon", "--find", "--search", "--filter", "--click-type", "--theme", "--size", "--lang", "--pin", "--split-to"];
     let given = (1..args.len()).filter(|&i| !valued.contains(&args[i - 1].as_str())).map(|i| PathBuf::from(&args[i])).find(|p| p.is_absolute() || is_pc(p));
     let explicit = given.is_some() || select.is_some();
     // none: Documents, asked for only once no saved tab has taken its place (see below)
@@ -1283,7 +1283,13 @@ fn main() -> eframe::Result {
                     app.pending.push(Act::NewTab(None));
                 }
             }
-            if split {
+            // --split-to <folder>: the other pane opens there, so a picture shows two different folders
+            if let Some(p) = args.iter().position(|a| a == "--split-to").and_then(|i| args.get(i + 1)).filter(|_| is_shot) {
+                let mut t = Tab::new(PathBuf::from(p));
+                t.side = 1;
+                app.tabs.push(t);
+                app.pending.push(Act::ToggleSplit);
+            } else if split {
                 app.pending.push(Act::ToggleSplit);
             }
             // test runs: hidden files shown from the start
