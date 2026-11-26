@@ -38,7 +38,7 @@ szukanie po nazwie na wszystkich dyskach lokalnych w milisekundach i mapa tego, 
   kopiowania programu bierze kilka plików naraz: 5000 plików po 20 KB zajęło 1,1–1,6 s na dysku NVMe SSD, wobec 8,3 s przez kopiowanie
   powłoki Windows, którego program używał wcześniej ([pomiary](#wydajność)).
 - **Znajduje plik po nazwie na wszystkich dyskach lokalnych naraz**: 2–4 ms na zapytanie przy ok. 3 mln
-  nazw, z własnego indeksu, po jednorazowym skanie trwającym ok. 30 s ([pomiary](#wydajność)). Bez Windows Search,
+  nazw (plików i folderów) we własnym indeksie, który buduje i odświeża skan w tle trwający ok. 30 s ([pomiary](#wydajność)). Bez Windows Search,
   bez Everything, bez usługi systemowej.
 - **Pokazuje, co zajmuje dysk**: lista według rozmiaru obok mapy kafelków; kliknięcie otwiera folder,
   prawy przycisk proponuje usunięcie do Kosza.
@@ -97,7 +97,7 @@ z nowego skanu dysku.
 
 ZIP, 7z i RAR otwierasz dwuklikiem jak folder: przeglądasz, podglądasz
 pliki i otwierasz je bez wypakowywania całości. W ZIP i 7z dorzucasz pliki (przeciąganiem lub
-wklejaniem), usuwasz je i zmieniasz nazwy, a program zapisuje archiwum od nowa w tle i podmienia
+wklejaniem), usuwasz je i zmieniasz nazwy (plik dodany do zaszyfrowanego ZIP-a trafia tam bez hasła), a program zapisuje archiwum od nowa w tle i podmienia
 oryginał dopiero, gdy nowe jest gotowe; gdy plik otwarty z ZIP albo 7z zapiszesz w innym programie
 w ciągu 4 godzin, RustExplorer zaproponuje odłożenie go z powrotem. RAR jest tylko do odczytu. „Wypakuj tutaj”,
 „Wypakuj do folderu” i „Spakuj…” są w menu prawego klawisza, wszystko bez 7-Zipa.
@@ -234,7 +234,7 @@ sterownik grafiki: samo puste okno egui zajmuje prawie tyle samo. Szczegóły w 
 ## Prywatność w skrócie
 
 Bez analityki i bez śledzenia. Program sam z siebie nie wysyła nigdzie nazw, ścieżek ani zawartości plików;
-plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Wydanie z GitHuba z domyślnymi ustawieniami łączy się tylko z:
+plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Poza folderami sieciowymi, które sam otworzysz, wydanie z GitHuba z domyślnymi ustawieniami łączy się tylko z:
 
 - **GitHubem** (github.com i serwer, z którego GitHub podaje pliki wydań), żeby sprawdzić, czy jest nowe wydanie (co minutę, co 15 minut przy oknie
   zminimalizowanym lub w zasobniku), i je pobrać. Zwykły `cargo build` nie sprawdza nigdy.
@@ -245,9 +245,10 @@ plik trafia do VirusTotal tylko wtedy, gdy zdecydujesz się go wysłać. Wydanie
 
 Linki w Plik ▸ „O programie” otwierają się w przeglądarce, gdy je klikniesz.
 
-Na komputerze zostają: ustawienia i karty w `%APPDATA%\RustExplorer`; indeks nazw plików (ok. 215 MB
-przy 3 mln plików) w `%LOCALAPPDATA%\RustExplorer`; kopie plików otwartych z archiwów w `%TEMP%`,
-przez dobę.
+Na komputerze zostają: ustawienia, karty i wyniki VirusTotal (ścieżka i SHA-256 każdego sprawdzonego
+pliku) w `%APPDATA%\RustExplorer`; klucz API VirusTotal w Menedżerze poświadczeń Windows; indeks nazw
+plików (ok. 215 MB przy 3 mln plików) w `%LOCALAPPDATA%\RustExplorer`; kopie plików otwartych z archiwów
+w `%TEMP%`, usuwane przy którymś z kolejnych uruchomień, gdy przez dobę nikt ich nie używał.
 
 ## Raporty o awariach
 

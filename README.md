@@ -37,8 +37,8 @@ a file-name search across every local drive in milliseconds, and a map of what f
 - **5–7 times faster than the Windows shell copy it used before, with thousands of small files.** The program's own copy
   engine works on several files at once: 5,000 files of 20 KB took 1.1–1.6 s on an NVMe SSD, against 8.3 s through the Windows shell
   copy it used before ([measurements](#performance)).
-- **Finds a file by name on every local drive at once**: 2–4 ms a query over about 3 million names, from
-  its own index, after a one-time scan of about 30 s ([measurements](#performance)). No Windows Search, no Everything,
+- **Finds a file by name on every local drive at once**: 2–4 ms a query over about 3 million names (files
+  and folders) in its own index, which a background scan of about 30 s builds and refreshes ([measurements](#performance)). No Windows Search, no Everything,
   no system service.
 - **Shows what fills your disk**: a list by size next to a tile map; a click opens the folder, a right-click
   offers to send it to the Recycle Bin.
@@ -96,7 +96,7 @@ rescanned in the background when it is old), not a new scan of the drive.
 
 Double-click a ZIP, 7z or RAR file to browse it like a folder, preview the files
 and open them without extracting the whole archive. In a ZIP or 7z you also add files (drag or paste),
-delete and rename them; the program writes the archive anew in the background and replaces the original
+delete and rename them (a file added to an encrypted ZIP is stored without a password); the program writes the archive anew in the background and replaces the original
 only once the new one is complete; save a file opened from a ZIP or 7z in another program within 4 hours and
 RustExplorer offers to put it back. RAR is read-only. "Extract here", "Extract to folder" and "Compress…" are in the
 right-click menu, all without 7-Zip.
@@ -233,7 +233,7 @@ driver: an empty egui window alone takes almost as much. Details in [Under the h
 ## Privacy at a glance
 
 No analytics and no tracking. The program sends no file names, paths or contents anywhere on its own; a
-file goes to VirusTotal only if you choose to upload it. A release from GitHub, with default settings, connects only to:
+file goes to VirusTotal only if you choose to upload it. Apart from network folders you open yourself, a release from GitHub, with default settings, connects only to:
 
 - **GitHub** (github.com and the host it serves release files from), to check for a new release (every minute, every 15 minutes while minimized or in the tray)
   and download it. A plain `cargo build` never checks.
@@ -244,9 +244,10 @@ file goes to VirusTotal only if you choose to upload it. A release from GitHub, 
 
 Links in File ▸ "About" open in your browser when you click them.
 
-Kept on your PC: settings and tabs in `%APPDATA%\RustExplorer`; the index of file names (about 215 MB
-for 3 million files) in `%LOCALAPPDATA%\RustExplorer`; copies of files opened from archives in `%TEMP%`,
-for a day.
+Kept on your PC: settings, tabs and VirusTotal results (path and SHA-256 of each checked file) in
+`%APPDATA%\RustExplorer`; the VirusTotal API key in Windows Credential Manager; the index of file names
+(about 215 MB for 3 million files) in `%LOCALAPPDATA%\RustExplorer`; copies of files opened from archives
+in `%TEMP%`, removed at a later start once unused for a day.
 
 ## Crash reports
 
